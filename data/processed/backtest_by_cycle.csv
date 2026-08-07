@@ -1,0 +1,7 @@
+statistic,leave_out_cycle,actual_value,predicted_mean,predicted_median,date_error_mean,date_error_median,outer_range_min,outer_range_max,predicted_in_outer_mean,predicted_in_outer_median
+D_halving_to_top,C1,371.0,535.0,534.0,164.0,163.0,371.0,546.0,True,True
+D_halving_to_top,C2,525.0,483.6666666666667,534.0,41.333333333333314,9.0,371.0,546.0,True,True
+D_halving_to_top,C3,546.0,476.6666666666667,525.0,69.33333333333331,21.0,371.0,546.0,True,True
+D_top_to_next_bottom,C1,406.0,371.0,371.0,35.0,35.0,364.0,406.0,True,True
+D_top_to_next_bottom,C2,364.0,392.0,392.0,28.0,28.0,364.0,406.0,True,True
+D_top_to_next_bottom,C3,378.0,385.0,385.0,7.0,7.0,364.0,406.0,True,True

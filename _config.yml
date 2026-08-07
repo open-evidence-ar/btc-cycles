@@ -1,0 +1,33 @@
+title: Crypto Cycle Correlation Framework
+description: A financial white-paper studying Bitcoin cycle dynamics and cross-asset correlations.
+url: ""
+baseurl: ""
+markdown: kramdown
+highlighter: rouge
+permalink: pretty
+
+defaults:
+  - scope:
+      path: ""
+    values:
+      layout: default
+
+collections:
+  sections:
+    output: false
+    permalink: /sections/:name/
+
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - README.md
+  - DESIGN.md
+  - AGENTS.md
+  - tests/
+  - scripts/
+  - notebooks/
+  - data/
+  - docs/
+  - requirements.txt
+  - pyproject.toml
+  - .gitignore

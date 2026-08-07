@@ -1,0 +1,6 @@
+chart_annotation,framework_value,chart_value,delta,tolerance,pass_fail,notes
+520d,525,520,-5,14,yes,D_halving_to_top(C2) = days(H2 -> 2017-12-17)
+336d,338,336,-2,14,yes,D_H3_to_C3_first_high = days(H3 -> 2021-04-14)
+550d,546,550,4,14,yes,D_halving_to_top(C3) = days(H3 -> 2021-11-10)
+TOP_ZONE,N/A (I-09),$133k-$180k (stubbed),N/A,N/A,stubbed,to be filled by I-09
+BOTTOM_ZONE,N/A (I-10),$19k-$28k (stubbed),N/A,N/A,stubbed,to be filled by I-10

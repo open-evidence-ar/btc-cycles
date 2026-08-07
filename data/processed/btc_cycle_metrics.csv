@@ -1,0 +1,5 @@
+cycle_id,halving_date,pre_halving_bottom_date,pre_halving_bottom_price,final_top_date,final_top_price,next_bear_bottom_date,next_bear_bottom_price,D_prev_bottom_to_halving,D_halving_to_top,D_top_to_next_bottom,mult_bottom_to_top,drawdown_pct,first_high_date,first_high_price,D_halving_to_first_high,top_character
+C1,2012-11-28,2011-11-14,2.15,2013-12-04,1132.01,2015-01-14,171.41,380,371,406,526.516279,0.848579,2013-04-09,260.0,132,euphoric
+C2,2016-07-09,2015-01-14,171.0,2017-12-16,19187.78,2018-12-15,3179.54,542,525,364,112.20924,0.834293,,,,euphoric
+C3,2020-05-11,2018-12-15,3122.0,2021-11-08,67559.0,2022-11-21,15766.0,513,546,378,21.639654,0.766634,2021-04-14,64863.0,338,euphoric
+C4,2024-04-20,2022-11-21,15652.0,2025-10-06,124728.0,,,516,534,,7.968822,,,,,apathetic

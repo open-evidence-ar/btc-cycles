@@ -1,0 +1,88 @@
+This repository contains two categories of work, each released under
+its own license.
+
+================================================================================
+1. White-paper content
+================================================================================
+
+Unless otherwise noted, all long-form research content in this repository
+— including but not limited to:
+
+  - `_sections/*.md`                      (chapter sections)
+  - `abstract.md`
+  - `index.md`
+  - `status.md`
+  - `DESIGN.md`                           (design document, including text)
+
+is licensed under the Creative Commons Attribution 4.0 International
+License (CC-BY-4.0).
+
+You are free to:
+  - Share — copy and redistribute the material in any medium or format
+  - Adapt — remix, transform, and build upon the material for any purpose,
+    even commercially
+
+Under the following terms:
+  - Attribution — You must give appropriate credit, provide a link to the
+    license, and indicate if changes were made. You may do so in any
+    reasonable manner, but not in any way that suggests the licensor
+    endorses you or your use.
+  - No additional restrictions — You may not apply legal terms or
+    technological measures that legally restrict others from doing
+    anything the license permits.
+
+Full license text: https://creativecommons.org/licenses/by/4.0/legalcode
+
+================================================================================
+2. Software code
+================================================================================
+
+Unless otherwise noted, all software code in this repository — including
+but not limited to:
+
+  - `scripts/*.py`                        (data ingest + analysis scripts)
+  - `tests/*.py`                         (validation gate suite)
+  - `.github/workflows/*.yml`            (CI / deploy workflows)
+  - `build_charts.py`
+  - any `.py` files at the repository root
+
+is licensed under the MIT License.
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR
+OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+OTHER DEALINGS IN THE SOFTWARE.
+
+================================================================================
+3. Data snapshots
+================================================================================
+
+The raw data snapshots under `data/raw/` are third-party material
+re-distributed under fair use / open-data terms of the original sources:
+
+  - Bitstamp BTCUSD OHLCV        — Bitstamp API Terms of Service
+  - CryptoDataDownload ETHUSD/XRPUSD/SOLUSD  — CryptoDataDownload Open Data License
+  - Yahoo Finance SPX/NDX/DXY/TLT — Yahoo Finance Terms of Service
+
+Derived tables under `data/processed/` are original work of this framework
+and are released under CC-BY-4.0 in line with the white-paper content.
+
+================================================================================
+Attribution
+================================================================================
+
+When citing this work, please cite the repository URL and the latest
+commit SHA on `main` at the time of access.

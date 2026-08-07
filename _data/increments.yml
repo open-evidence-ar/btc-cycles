@@ -1,0 +1,60 @@
+- id: I-00
+  title: Repo + Pages skeleton
+  status: done
+- id: I-01
+  title: Event table canonicalization
+  status: done
+- id: I-02
+  title: Crypto price ingest (BTC)
+  status: done
+- id: I-03
+  title: Crypto price ingest (altcoins)
+  status: done
+- id: I-04
+  title: Macro asset ingest
+  status: done
+- id: I-05
+  title: Extrema detection rules (Rule T, Rule B)
+  status: done
+- id: I-06
+  title: Halving-day alignment of all assets
+  status: done
+- id: I-07
+  title: Phase-conditioned correlation (static)
+  status: done
+- id: I-08
+  title: Rolling correlation + lead/lag
+  status: done
+- id: I-09
+  title: Forward ranges from prior cycles
+  status: done
+- id: I-10
+  title: Confluence zone map for next cycle
+  status: done
+- id: I-11
+  title: Backtest-by-cycle (LOOCO prediction error)
+  status: done
+- id: I-12
+  title: Macro-regime robustness check
+  status: done
+- id: I-13
+  title: Chart renderers C1-C7
+  status: done
+- id: I-14
+  title: Jekyll chapter sections filled
+  status: done
+- id: I-15
+  title: CI orchestration
+  status: done
+- id: I-16
+  title: Public release + integrity
+  status: done
+- id: I-17
+  title: Per-asset halving-cycle timing
+  status: done
+- id: I-18a
+  title: SMA valuation floors (decision overlay; C-SMA)
+  status: done
+- id: I-18b
+  title: Folklore bull-rhythm cross-check (D_bottom_to_next_top)
+  status: done

@@ -1,0 +1,18 @@
+<figure class="chart-container"
+        {% if include.caption %}
+        aria-label="{{ include.id }}: {{ include.caption | strip_html | truncate: 200 }}"
+        {% else %}
+        aria-label="BTC chart {{ include.id }}"
+        {% endif %}>
+  <iframe src="{{ '/assets/charts/' | append: include.id | append: '.html' | relative_url }}"
+          title="{{ include.caption | default: include.id }}"
+          loading="lazy"
+          {% if include.height %}
+          style="width:100%;max-width:100%;border:none;height:{{ include.height }};"
+          {% else %}
+          style="width:100%;max-width:100%;border:none;"
+          {% endif %}></iframe>
+  {% if include.caption %}
+  <figcaption class="chart-caption">{{ include.caption }}</figcaption>
+  {% endif %}
+</figure>

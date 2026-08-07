@@ -1,0 +1,17 @@
+event_type,cycle_id,label,date,price_usd,reason_code,source,notes
+halving,H1,H1,2012-11-28,,canonical,mempool.space,block 210000 subsidy 50->25
+halving,H2,H2,2016-07-09,,canonical,mempool.space,block 420000 subsidy 25->12.5
+halving,H3,H3,2020-05-11,,canonical,mempool.space,block 630000 subsidy 12.5->6.25
+halving,H4,H4,2024-04-20,,canonical,mempool.space,block 840000 subsidy 6.25->3.125
+halving,H5,H5,2028-04-01,,projected,mempool.space,block ~1050000 projected from ~10-min cadence
+bottom,B0,B0,2011-11-14,2.15,canonical,coingeeko,pre-halving bottom for C1
+bottom,B1,B1,2015-01-14,171.00,canonical,coingeeko,bear low after C1 top; pre-halving bottom for C2
+bottom,B2,B2,2018-12-15,3122.00,canonical,coingeeko,bear low after C2 top; pre-halving bottom for C3
+bottom,B3,B3,2022-11-21,15652.00,canonical,coingeeko,bear low after C3 top; pre-halving bottom for C4
+bottom,B4,B4,,,not_yet_observed,framework,B4 = projected bear bottom after C4 top; populated by I-10 confluence zone map
+top,C1,first_high,2013-04-09,260.00,local_high_not_cycle_top,coingeeko,April 2013 local peak within C1 halving window
+top,C1,final_top,2013-12-04,1150.00,canonical,coingecko,cycle top T1 anchored on H1
+top,C2,final_top,2017-12-17,19497.00,canonical,coingecko,cycle top T2 anchored on H2
+top,C3,first_high,2021-04-14,64863.00,canonical,coingecko,C3 double-top first peak
+top,C3,final_top,2021-11-10,69044.00,canonical,coingecko,cycle top T3 anchored on H3
+top,C4,final_top,2025-10-06,124728.00,canonical,bitstamp_raw,cycle top T4 anchored on H4; observed as max daily close in Rule T window per I-05

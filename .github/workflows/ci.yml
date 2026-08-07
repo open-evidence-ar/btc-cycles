@@ -1,0 +1,130 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    name: Pytest gate suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run full pytest gate suite
+        run: pytest -q tests/
+
+  regenerate-artifacts:
+    name: Re-run data + chart builders (reproducibility)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: tests
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Cache data/raw by manifest SHA
+        uses: actions/cache@v4
+        with:
+          path: data/raw
+          key: raw-${{ hashFiles('data/raw/manifest.txt') }}
+
+      - name: Re-run I-05 cycle metrics
+        run: python scripts/build_cycle_metrics.py
+
+      - name: Re-run I-06 halving-day alignment
+        run: python scripts/align_to_halving.py
+
+      - name: Re-run I-07 phase correlations
+        run: python scripts/build_correlations_phase.py
+
+      - name: Re-run I-08 rolling correlations
+        run: python scripts/build_rolling_corr.py
+
+      - name: Re-run I-09 forward ranges
+        run: python scripts/build_forward_ranges.py
+
+      - name: Re-run I-10 next-cycle zones
+        run: python scripts/build_next_cycle_zones.py
+
+      - name: Re-run I-11 backtest-by-cycle
+        run: python scripts/build_backtest.py
+
+      - name: Re-run I-12 regime robustness
+        run: python scripts/build_regime_robustness.py
+
+      - name: Re-run I-17.1 alt cycle metrics
+        run: python scripts/build_alt_cycle_metrics.py
+
+      - name: Re-run I-17.2 alt forward ranges
+        run: python scripts/build_alt_forward_ranges.py
+
+      - name: Re-run I-17.3 alt next-cycle zones
+        run: python scripts/build_alt_next_cycle_zones.py
+
+      - name: Re-run I-13 charts C1-C9
+        run: python scripts/build_charts.py
+
+      - name: Verify regenerated artifacts still pass gates
+        run: pytest -q tests/
+
+  jekyll-build:
+    name: Jekyll site build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: tests
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+          bundler-cache: true
+
+      - name: Build site with Jekyll
+        run: bundle exec jekyll build
+        env:
+          JEKYLL_ENV: production
+
+      - name: Generate integrity hash
+        run: |
+          sha256sum _site/index.html > _site/integrity.txt
+          echo "Integrity hash:"
+          cat _site/integrity.txt
+
+      - name: Upload site artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: jekyll-site
+          path: _site
+          retention-days: 7

@@ -1,0 +1,663 @@
+<div id="now-stamp" class="now-stamp" data-state="pending" data-asset="BTC">
+  <div class="now-stamp-row">
+    <span class="now-stamp-dot" aria-hidden="true"></span>
+    <span class="now-stamp-text">
+      <span class="seg seg-today">Today: <span class="seg-val">—</span></span>
+      <span class="sep">·</span>
+      <span class="seg seg-next">Next: <span class="seg-val">—</span></span>
+      <span class="sep">·</span>
+      <span class="seg seg-phase">—</span>
+    </span>
+    <span class="now-stamp-state-badge" aria-hidden="true">—</span>
+    <button id="now-stamp-toggle" class="now-stamp-toggle" type="button" aria-expanded="false" aria-controls="now-stamp-chart" title="Show price + cycle-window chart">⤢ chart</button>
+  </div>
+  <div class="now-stamp-asset-bar" id="now-stamp-asset-bar" role="tablist" aria-label="Asset timeline selector"></div>
+  <div id="now-stamp-chart" class="now-stamp-chart" hidden aria-hidden="true">
+    <svg class="cycle-strip" viewBox="0 0 600 120" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Log-scale price line (history from 2024 onward) overlaid with cycle-window bands: last observed top (C4 top), next cycle bottom window (B4), next top window (C5), and exit window (B5). Dashed projection line through B4 -> C5 -> B5 centers; today marked with a dashed vertical line."></svg>
+    <div class="cycle-strip-legend"></div>
+  </div>
+  <script type="application/json" id="cycle-status-data">{{ site.data.cycle_status | jsonify }}</script>
+  <noscript>
+    <div class="now-stamp-noscript">
+      <strong>Where we are today (site build {{ site.time | date: "%Y-%m-%d" }} UTC):</strong>
+      {% assign btc_ns = site.data.cycle_status.btc %}
+      {% assign last_ns = btc_ns.last_observed_event %}
+      {% assign next_ns = btc_ns.next_window %}
+      Last observed event: <strong>{{ last_ns.label }}</strong> on {{ last_ns.date }} at {{ last_ns.price }} ({{ last_ns.note }}).
+      Next window: <strong>{{ next_ns.label }}</strong> — base {{ next_ns.base_start }} → {{ next_ns.base_end }} (outer {{ next_ns.outer_start }} → {{ next_ns.outer_end }}).
+      Price corridor {{ next_ns.price_low }} – {{ next_ns.price_high }} (center {{ next_ns.price_center }}).
+      Cross-check status: {{ next_ns.cross_check }}.
+      Phase hint: {{ site.data.cycle_status.current_phase_hint.pre_b4_bear | default: 'Late bear — next bottom watch imminent' }}.
+      Interactive today/asset-switch requires JavaScript; this static BTC summary sourced from <code>_data/cycle_status.json</code> at build time.
+    </div>
+  </noscript>
+</div>
+<script>
+(function() {
+  var dataEl = document.getElementById('cycle-status-data');
+  var stampEl = document.getElementById('now-stamp');
+  var chartEl = document.getElementById('now-stamp-chart');
+  var toggleBtn = document.getElementById('now-stamp-toggle');
+  var svgEl = chartEl ? chartEl.querySelector('svg.cycle-strip') : null;
+  var legendEl = chartEl ? chartEl.querySelector('.cycle-strip-legend') : null;
+  var assetBarEl = document.getElementById('now-stamp-asset-bar');
+  if (!dataEl || !stampEl) return;
+  var data;
+  try { data = JSON.parse(dataEl.textContent || '{}'); } catch (e) { return; }
+
+  // ---- helpers ----
+  function parseDate(s) { return s ? Date.parse(s + 'T00:00:00Z') : NaN; }
+  function daysBetween(a, b) { return Math.round((b - a) / 86400000); }
+  function fmtDate(ms) {
+    var d = new Date(ms);
+    return d.getUTCFullYear() + '-' +
+      String(d.getUTCMonth() + 1).padStart(2, '0') + '-' +
+      String(d.getUTCDate()).padStart(2, '0');
+  }
+  function shortDate(s) {
+    if (!s) return '';
+    var ms = parseDate(s);
+    if (isNaN(ms)) return s;
+    var d = new Date(ms);
+    return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getUTCMonth()] + ' ' + d.getUTCFullYear();
+  }
+  function pickExec(evt) { return evt && (evt.exec_label || evt.label) || ''; }
+  function priceNum(s) { return typeof s === 'number' ? s : Number(String(s || '').replace(/[^0-9.]/g, '')); }
+
+  // Resolve asset block. Falls back to legacy top-level ``btc`` if the new
+  // ``assets`` dict is absent (older cycle_status.json).
+  var assets = data.assets || {};
+  if (!assets.BTC && data.btc) assets.BTC = data.btc;
+  var assetOrder = data.asset_order || Object.keys(assets);
+  if (assetOrder.indexOf('BTC') === -1 && assets.BTC) assetOrder.unshift('BTC');
+  var currentAsset = 'BTC';
+  var phaseHint = data.current_phase_hint || {};
+  var altWatchOrder = data.alt_watch_order || [];
+
+  // ---- deterministic PRNG + normal sample (for projection random walk) ----
+  // mulberry32: fast, deterministic 32-bit PRNG. Seeded by asset key + phase
+  // index so each pill gets a stable, asset-distinct projection curve.
+  function _mulberry32(a) {
+    return function() {
+      a |= 0; a = (a + 0x6D2B79F5) | 0;
+      var t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  function _seedFromString(str) {
+    var h = 2166136261 >>> 0;
+    for (var i = 0; i < str.length; i++) {
+      h ^= str.charCodeAt(i);
+      h = Math.imul(h, 16777619) >>> 0;
+    }
+    return h || 1;
+  }
+  // Box-Muller transform: maps two uniform(0,1) draws to one standard normal.
+  function _standardNormal(rng) {
+    var u1 = rng() || 1e-9;
+    var u2 = rng();
+    return Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+  }
+
+  // ---- asset pill bar ----
+  function buildAssetBar() {
+    if (!assetBarEl) return;
+    assetBarEl.innerHTML = '';
+    assetOrder.forEach(function(key) {
+      if (!assets[key]) return;
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'now-stamp-asset-pill' + (key === currentAsset ? ' is-selected' : '');
+      btn.setAttribute('role', 'tab');
+      btn.setAttribute('aria-selected', key === currentAsset ? 'true' : 'false');
+      btn.setAttribute('data-asset', key);
+      btn.textContent = key;
+      btn.addEventListener('click', function() {
+        if (key === currentAsset) return;
+        currentAsset = key;
+        Array.prototype.forEach.call(assetBarEl.children, function(b) {
+          var sel = b.getAttribute('data-asset') === key;
+          b.classList.toggle('is-selected', sel);
+          b.setAttribute('aria-selected', sel ? 'true' : 'false');
+        });
+        renderAsset();
+      });
+      assetBarEl.appendChild(btn);
+    });
+  }
+
+  // ---- status computation for a single asset ----
+  function computeStatus(block) {
+    var lastEvt = block.last_observed_event || {};
+    var nextWin = block.next_window || {};
+    var laterWindows = block.later_windows || [];
+    var lastMs = parseDate(lastEvt.date);
+    var baseStart = parseDate(nextWin.base_start);
+    var baseEnd = parseDate(nextWin.base_end);
+    var outerStart = parseDate(nextWin.outer_start);
+    var outerEnd = parseDate(nextWin.outer_end);
+    var now = Date.now();
+    var state = 'pending', phase = '', segToday = '', segNext = '', stateBadgeText = '—';
+    var execNext = pickExec(nextWin);
+    var execLast = pickExec(lastEvt);
+
+    if (isNaN(baseStart) || isNaN(baseEnd)) {
+      state = 'pending';
+      segToday = fmtDate(now);
+      segNext = 'Cycle status unavailable';
+      phase = 'see appendix B for current window';
+      stateBadgeText = 'PENDING';
+    } else if (now < outerStart) {
+      var dUntilOuter = daysBetween(now, outerStart);
+      var dSinceLast = isNaN(lastMs) ? null : daysBetween(lastMs, now);
+      state = 'pre';
+      segToday = fmtDate(now) + (dSinceLast !== null ? ' — post-' + execLast + ' bear, day ' + dSinceLast : '');
+      segNext = execNext + ' in ' + dUntilOuter + 'd (' + shortDate(nextWin.outer_start) + ' – ' + shortDate(nextWin.outer_end) + ')';
+      phase = phaseHint.pre_b4_bear || 'Late bear - next bottom watch imminent';
+      stateBadgeText = 'PRE';
+    } else if (now >= outerStart && now < baseStart) {
+      var dUntilBase = daysBetween(now, baseStart);
+      state = 'outer';
+      segToday = fmtDate(now);
+      segNext = execNext + ' outer window open; base band starts in ' + dUntilBase + 'd';
+      phase = 'Outer envelope active';
+      stateBadgeText = 'OUTER';
+    } else if (now >= baseStart && now <= baseEnd) {
+      var dIntoBase = daysBetween(baseStart, now);
+      var dUntilBaseEnd = daysBetween(now, baseEnd);
+      state = 'base';
+      segToday = fmtDate(now);
+      segNext = 'inside ' + execNext + ' base band (day ' + (dIntoBase + 1) + ', ' + dUntilBaseEnd + 'd to close). Price ' + nextWin.price_low + '–' + nextWin.price_high + ' (center ' + nextWin.price_center + ')';
+      phase = phaseHint.in_b4_window || 'Bottom window open - attention peak';
+      stateBadgeText = 'BASE';
+    } else if (now > baseEnd && now <= outerEnd) {
+      var dSinceBaseEnd = daysBetween(baseEnd, now);
+      var dUntilOuterEnd = daysBetween(now, outerEnd);
+      state = 'outer';
+      segToday = fmtDate(now);
+      segNext = execNext + ' base band closed ' + dSinceBaseEnd + 'd ago; outer window still open ' + dUntilOuterEnd + 'd';
+      phase = 'Outer envelope — late-watch';
+      stateBadgeText = 'OUTER';
+    } else {
+      var nextFuture = null;
+      for (var i = 0; i < laterWindows.length; i++) {
+        var w = laterWindows[i];
+        var wStart = parseDate(w.base_start || w.date);
+        if (!isNaN(wStart) && wStart > now) { nextFuture = w; break; }
+      }
+      if (nextFuture) {
+        var futStart = parseDate(nextFuture.base_start || nextFuture.date);
+        var dUntil = daysBetween(now, futStart);
+        var isAccum = nextFuture.label.indexOf('H5') >= 0;
+        state = 'patience';
+        segToday = fmtDate(now) + ' (' + daysBetween(baseEnd, now) + 'd past ' + execNext + ')';
+        segNext = pickExec(nextFuture) + ' in ' + dUntil + 'd (' + shortDate(nextFuture.base_start || nextFuture.date) + ')';
+        phase = isAccum ? (phaseHint.in_accumulation || 'Patience window — accumulation') : 'Between windows';
+        stateBadgeText = 'PATIENCE';
+      } else {
+        state = 'patience';
+        segToday = fmtDate(now);
+        segNext = 'past every published window';
+        phase = phaseHint.exit || 'Post-top bear — exit watch';
+        stateBadgeText = 'EXIT';
+      }
+    }
+    return {
+      state: state, phase: phase, segToday: segToday, segNext: segNext,
+      stateBadgeText: stateBadgeText,
+      lastEvt: lastEvt, nextWin: nextWin, laterWindows: laterWindows,
+      lastMs: lastMs, baseStart: baseStart, baseEnd: baseEnd,
+      outerStart: outerStart, outerEnd: outerEnd,
+    };
+  }
+
+  // ---- SVG strip for a single asset ----
+  function drawStrip(block, Status) {
+    if (!svgEl || !legendEl) return;
+    var lastEvt = Status.lastEvt;
+    var nextWin = Status.nextWin;
+    var laterWindows = Status.laterWindows;
+    var lastMs = Status.lastMs;
+    var baseStart = Status.baseStart;
+    var baseEnd = Status.baseEnd;
+    var outerStart = Status.outerStart;
+    var outerEnd = Status.outerEnd;
+
+    // Timeline bounds. tlStart is anchored at 2024-01-01 across all assets
+    // for visual comparability — pill switching won't shift the timeline.
+    // 2024 captures the H4 halving setup → run-up → C4 top → bear → B4 →
+    // C5 → B5 (~7y window). Price history before 2024 is filtered out so
+    // the line narrowly fits the strip's visible range (also tightens the
+    // log y-axis around the post-2024 price band for each asset).
+    var histPts = (block.price_history || []).map(function(p) {
+      return { date: parseDate(p.date), close: Number(p.close) };
+    }).filter(function(p) { return !isNaN(p.date) && !isNaN(p.close) && p.close > 0; });
+    var tlStartFloor = parseDate('2024-01-01');
+    if (!isNaN(tlStartFloor)) {
+      histPts = histPts.filter(function(p) { return p.date >= tlStartFloor; });
+    }
+    var tlStartRaw = tlStartFloor;
+
+    // tlEnd = furthest published window outer_end, capped to ~10 years from
+    // tlStart so long-tail assets (WGMI exit ends 2033-07) don't visually
+    // compress the price line. If the cap is hit, a "→ +Ny" continuation
+    // marker is drawn at the right edge.
+    var tlEndRaw = NaN;
+    if (!isNaN(outerEnd)) tlEndRaw = outerEnd;
+    for (var j = 0; j < laterWindows.length; j++) {
+      var ow = laterWindows[j];
+      var oe = parseDate(ow.outer_end || ow.date);
+      if (!isNaN(oe) && (isNaN(tlEndRaw) || oe > tlEndRaw)) tlEndRaw = oe;
+    }
+    var TIMELINE_CAP_YEARS = 7;
+    var tlEndCap = isNaN(tlStartRaw) ? NaN : tlStartRaw + TIMELINE_CAP_YEARS * 365.25 * 86400000;
+    var tlEnd = tlEndRaw;
+    var overshootMs = 0;
+    if (!isNaN(tlEndCap) && (!isNaN(tlEndRaw) && tlEndRaw > tlEndCap)) {
+      tlEnd = tlEndCap;
+      overshootMs = tlEndRaw - tlEndCap;
+    }
+    var tlStart = tlStartRaw;
+    if (!isNaN(tlStart) && !isNaN(tlEnd) && tlEnd > tlStart) {
+      var padMs = (tlEnd - tlStart) * 0.02;
+      // Pad only the right side; left side stays pinned to the year-2024
+      // floor so the visible timeline always starts ~2024-01-01 (don't
+      // show empty "no data" area to the left of the actionable dates).
+      tlEnd += padMs;
+    }
+    if (isNaN(tlStart) || isNaN(tlEnd) || tlEnd <= tlStart) {
+      svgEl.innerHTML = '';
+      legendEl.innerHTML = '<span class="legend-label">No timeline data for this asset.</span>';
+      return;
+    }
+
+
+    svgEl.setAttribute('viewBox', '0 0 600 120');
+    var W = 600, H = 120;
+    var PAD_L = 36, PAD_R = 8, PAD_T = 12, PAD_B = 22;
+    var plotW = W - PAD_L - PAD_R, plotH = H - PAD_T - PAD_B;
+
+    function xFor(ms) { return PAD_L + plotW * (ms - tlStart) / (tlEnd - tlStart); }
+
+    var allPrices = histPts.map(function(p) { return p.close; });
+    function pushPrice(s) { var n = priceNum(s); if (n > 0) allPrices.push(n); }
+    pushPrice(nextWin.price_low); pushPrice(nextWin.price_high); pushPrice(nextWin.price_center);
+    laterWindows.forEach(function(w) {
+      pushPrice(w.price_low); pushPrice(w.price_high); pushPrice(w.price_center);
+    });
+
+    if (allPrices.length === 0) allPrices = [1, 1000];
+    var pMin = Math.min.apply(null, allPrices);
+    var pMax = Math.max.apply(null, allPrices);
+    if (!(pMin > 0) || !(pMax > pMin)) { pMin = 1; pMax = 1000; }
+    var logMin = Math.log(pMin) - 0.05 * (Math.log(pMax) - Math.log(pMin));
+    var logMax = Math.log(pMax) + 0.05 * (Math.log(pMax) - Math.log(pMin));
+
+    function yFor(price) {
+      if (price <= 0) return PAD_T + plotH;
+      return PAD_T + plotH * (1 - (Math.log(price) - logMin) / (logMax - logMin));
+    }
+
+    // 1. window vrects
+    var rects = '';
+    function vrect(msStart, msEnd, cls) {
+      if (isNaN(msStart) || isNaN(msEnd) || msEnd < tlStart || msStart > tlEnd) return;
+      var xs = Math.max(xFor(msStart), PAD_L);
+      var xe = Math.min(xFor(msEnd), W - PAD_R);
+      if (xe - xs < 1) xe = xs + 1;
+      rects += '<rect class="' + cls + '" x="' + xs.toFixed(1) + '" y="' + PAD_T +
+        '" width="' + (xe - xs).toFixed(1) + '" height="' + plotH + '"/>';
+    }
+    vrect(outerStart, outerEnd, 'band band-next-bottom');
+    var distOW = laterWindows.find(function(w) { return w.label.indexOf('C5') >= 0; }) || {};
+    var distOS = parseDate(distOW.outer_start);
+    var distOE = parseDate(distOW.outer_end);
+    var distBS = parseDate(distOW.base_start);
+    var distBE = parseDate(distOW.base_end);
+    // Reminder for the gap between B4 close and C5 open: this is the
+    // patience / accumulation window — intentionally NOT drawn as a colored
+    // vrect so the three action windows (B4 bottom / C5 top / B5 exit)
+    // remain the only visible mass on the strip. Below, thin vertical
+    // reference markers at the C5 and B5 center dates guarantee every
+    // window has a visible chart mark even when the band's day-span is
+    // barely a pixel (e.g. MSTR's 60-day C5 outer).
+    vrect(distOS, distOE, 'band band-next-top');
+    var exitOW = laterWindows.find(function(w) { return w.label.indexOf('B5') >= 0; }) || {};
+    var exitOS = parseDate(exitOW.outer_start);
+    var exitOE = parseDate(exitOW.outer_end);
+    vrect(exitOS, exitOE, 'band band-exit');
+
+    // 2. price-corridor lines per window
+    var corridors = '';
+    function priceCorridor(msStart, msEnd, pLow, pHigh, pCenter) {
+      if (isNaN(msStart) || isNaN(msEnd)) return;
+      var xs = Math.max(xFor(msStart), PAD_L);
+      var xe = Math.min(xFor(msEnd), W - PAD_R);
+      if (pLow > 0) {
+        var yL = yFor(pLow);
+        corridors += '<line class="corridor-low" x1="' + xs.toFixed(1) + '" y1="' + yL.toFixed(1) +
+          '" x2="' + xe.toFixed(1) + '" y2="' + yL.toFixed(1) + '"/>';
+      }
+      if (pHigh > 0) {
+        var yH = yFor(pHigh);
+        corridors += '<line class="corridor-high" x1="' + xs.toFixed(1) + '" y1="' + yH.toFixed(1) +
+          '" x2="' + xe.toFixed(1) + '" y2="' + yH.toFixed(1) + '"/>';
+      }
+      if (pCenter > 0) {
+        var yC = yFor(pCenter);
+        corridors += '<line class="corridor-center" x1="' + xs.toFixed(1) + '" y1="' + yC.toFixed(1) +
+          '" x2="' + xe.toFixed(1) + '" y2="' + yC.toFixed(1) + '"/>';
+      }
+    }
+    priceCorridor(outerStart, outerEnd, priceNum(nextWin.price_low), priceNum(nextWin.price_high), priceNum(nextWin.price_center));
+    priceCorridor(distOS, distOE, priceNum(distOW.price_low), priceNum(distOW.price_high), priceNum(distOW.price_center));
+    priceCorridor(exitOS, exitOE, priceNum(exitOW.price_low), priceNum(exitOW.price_high), priceNum(exitOW.price_center));
+
+    // 3. band top labels
+    var bandLabels = '';
+    function bandLabel(msStart, msEnd, label) {
+      if (isNaN(msStart) || isNaN(msEnd)) return;
+      var xs = Math.max(xFor(msStart), PAD_L);
+      var xe = Math.min(xFor(msEnd), W - PAD_R);
+      if (xe - xs < 22) return;
+      bandLabels += '<text class="band-label" x="' + ((xs + xe) / 2).toFixed(1) +
+        '" y="' + (PAD_T + 9) + '" text-anchor="middle">' + label + '</text>';
+    }
+    bandLabel(outerStart, outerEnd, 'Next bottom');
+    bandLabel(distOS, distOE, 'Next top');
+    bandLabel(exitOS, exitOE, 'Exit');
+
+    // 3b. vertical center markers for the C5 and B5 windows. The strip
+    // intentionally drops the long accumulation band so the three action
+    // windows (B4 / C5 / B5) are the only colored mass — but thin windows
+    // (MSTR's 60-day C5 outer) would barely be visible at this scale.
+    // These thin dashed vertical lines + small labels at the band centers
+    // guarantee every window always has a visible reference point.
+    var windowCenterMarkers = '';
+    function windowCenterMarker(msStart, msEnd, label) {
+      if (isNaN(msStart) || isNaN(msEnd) || msEnd < msStart) return;
+      var mid = (xFor(msStart) + xFor(msEnd)) / 2;
+      if (mid < PAD_L || mid > W - PAD_R) return;
+      windowCenterMarkers += '<line class="window-center-marker" x1="' + mid.toFixed(1) +
+        '" y1="' + PAD_T + '" x2="' + mid.toFixed(1) + '" y2="' + (PAD_T + plotH) + '"/>';
+      windowCenterMarkers += '<text class="window-center-label" x="' + mid.toFixed(1) +
+        '" y="' + (PAD_T + 9) + '" text-anchor="middle">' + label + '</text>';
+    }
+    windowCenterMarker(distOS, distOE, 'C5 ⌄');
+    windowCenterMarker(exitOS, exitOE, 'B5 ⌄');
+
+    // 4. asset price line (sampled closes)
+    var linePath = '';
+    histPts.forEach(function(p, i) {
+      var x = xFor(p.date);
+      var y = yFor(p.close);
+      if (x < PAD_L) x = PAD_L; if (x > W - PAD_R) x = W - PAD_R;
+      if (y < PAD_T) y = PAD_T; if (y > PAD_T + plotH) y = PAD_T + plotH;
+      linePath += (i === 0 ? 'M' : 'L') + x.toFixed(1) + ',' + y.toFixed(1) + ' ';
+    });
+
+    // 5. dashed projection line — phase-aware deterministic random walk.
+    // Walks weekly log-steps from last observed close -> B4 center -> C5
+    // center -> B5 center, where each segment has its own volatility (sigma)
+    // and a directional skew applied additively to each shock — gives
+    // bear-slide / bull-run / post-top-crash a believable directional
+    // texture without the exponential blowup that a hard up-down |z|
+    // swap produces.
+    // Determinism: PRNG seeded by asset key + segment index. Anchor-clamped
+    // at segment endpoints so the line meets the projected corridor dots.
+    var projPath = '';
+    var nwCenter = priceNum(nextWin.price_center);
+    var dCenter = priceNum(distOW.price_center);
+    var exCenter = priceNum(exitOW.price_center);
+    if (histPts.length > 0 && !isNaN(nwCenter) && !isNaN(baseStart)) {
+      var lastPt = histPts[histPts.length - 1];
+      var b4AnchorMs = baseStart + (baseEnd - baseStart) / 2;
+      var c5AnchorMs = distBS + (distBE - distBS) / 2;
+      var b5AnchorMs = parseDate(exitOW.base_start) + (parseDate(exitOW.base_end) - parseDate(exitOW.base_start)) / 2;
+      // Phase parameters per segment (applied to the segment LEADING INTO
+      // the given anchor):
+      //   sigma:   weekly log-return std-dev (~0.05 calm -> ~0.12 capit)
+      //   skew:    additive directional bias per shock (positive=up-heavy)
+      //
+      // Phase 0: last close -> B4 (bear slide)  vol moderate, slight down-bias
+      // Phase 1: B4 -> C5 (bull run)          low->high vol ramp, up-bias
+      // Phase 2: C5 -> B5 (post-top crash)    high->low vol decay, strong down-bias early
+      var phases = [
+        { sigmaStart: 0.07, sigmaEnd: 0.11, skewStart: -0.15, skewEnd: 0.10 },
+        { sigmaStart: 0.05, sigmaEnd: 0.13, skewStart: +0.20, skewEnd: +0.40 },
+        { sigmaStart: 0.13, sigmaEnd: 0.05, skewStart: -0.55, skewEnd: -0.05 }
+      ];
+      var anchors = [
+        { date: lastPt.date,  price: lastPt.close },
+        { date: b4AnchorMs,    price: nwCenter },
+        { date: c5AnchorMs,    price: dCenter },
+        { date: !isNaN(b5AnchorMs) ? b5AnchorMs : c5AnchorMs,
+          price: !isNaN(exCenter) && exCenter > 0 ? exCenter : dCenter }
+      ];
+      var STEP_MS = 7 * 86400000;
+      for (var a = 0; a < anchors.length - 1; a++) {
+        var a0 = anchors[a], a1 = anchors[a + 1];
+        var t0 = a0.date, t1 = a1.date, p0 = a0.price, p1 = a1.price;
+        if (!(p0 > 0) || !(p1 > 0) || t1 <= t0) continue;
+        var phase = phases[Math.min(a, phases.length - 1)];
+        var segmentLog0 = Math.log(p0), segmentLog1 = Math.log(p1);
+        var driftPerStep = (segmentLog1 - segmentLog0) / (t1 - t0) * STEP_MS;
+        var segLen = t1 - t0;
+        var nSteps = Math.max(2, Math.round(segLen / STEP_MS));
+        // PRNG seeded by (asset, segment) so each pill gets a stable,
+        // asset-distinct curve and consecutive segments diverge visually.
+        var rng = _mulberry32(_seedFromString(currentAsset + '|' + a));
+        var runningLog = segmentLog0;
+        for (var s = 0; s <= nSteps; s++) {
+          var frac = s / nSteps;
+          var ms = t0 + frac * segLen;
+          var sigma = phase.sigmaStart + (phase.sigmaEnd - phase.sigmaStart) * frac;
+          var skew = phase.skewStart + (phase.skewEnd - phase.skewStart) * frac;
+          var price;
+          if (s === 0) {
+            price = p0;
+            runningLog = segmentLog0;
+          } else if (s === nSteps) {
+            // anchor-clamp: final point sits exactly on the next corridor center
+            price = p1;
+            runningLog = segmentLog1;
+          } else {
+            // Standard normal shock, scaled by weekly sigma, with a small
+            // arithmetic skew added per phase. Variance stays roughly σ²,
+            // mean is shifted by σ·skew — a directional random walk that
+            // doesn't exponentially blow up like the hard |z| swap would.
+            var z = _standardNormal(rng);
+            var shock = sigma * (z + skew * 0.3);
+            var targetLog = segmentLog0 + frac * (segmentLog1 - segmentLog0);
+            // Mean-revert lightly toward the linear log-trend so the walk
+            // never drifts far from the projected anchor path (prevents
+            // exponential runaway on long segments). Pull strength = 0.15
+            // per step toward trend; shock carries 100% weight so the
+            // walk still has chart-like wandering visible.
+            runningLog = runningLog + driftPerStep * 0.85 + (targetLog - runningLog) * 0.15 + shock * 1.0;
+            price = Math.exp(runningLog);
+          }
+          // Clamp inside the relevant corridor bands so the projection
+          // doesn't visually pierce the corridor low/high lines.
+          if (a === 0 && !isNaN(outerStart) && ms >= outerStart) {
+            var lo = priceNum(nextWin.price_low), hi = priceNum(nextWin.price_high);
+            if (lo > 0 && price < lo * 0.6) price = lo * 0.6;
+            if (hi > 0 && price > hi * 1.6) price = hi * 1.6;
+          } else if (a === 1 && !isNaN(distOS) && ms >= distOS) {
+            var dhi = priceNum(distOW.price_high);
+            if (dhi > 0 && price > dhi * 1.3) price = dhi * 1.3;
+          } else if (a === 2 && !isNaN(exitOS) && ms >= exitOS) {
+            var elo = priceNum(exitOW.price_low);
+            if (elo > 0 && price < elo * 0.6) price = elo * 0.6;
+          }
+          var x = xFor(ms), y = yFor(price);
+          if (x > W - PAD_R) x = W - PAD_R;
+          projPath += (a === 0 && s === 0 ? 'M' : 'L') + x.toFixed(1) + ',' + y.toFixed(1) + ' ';
+        }
+      }
+    }
+
+    // 5b. right-edge continuation marker when the published windows extend
+    // past the ~8y timeline cap (e.g. WGMI's exit window ends 2033-07).
+    var continuationMarker = '';
+    if (overshootMs > 0) {
+      var overshootYears = (overshootMs / (365.25 * 86400000));
+      var capX = xFor(tlEnd);
+      continuationMarker += '<line class="continuation-line" x1="' + capX.toFixed(1) +
+        '" y1="' + PAD_T + '" x2="' + capX.toFixed(1) + '" y2="' + (PAD_T + plotH) + '"/>';
+      continuationMarker += '<text class="continuation-marker" x="' + (W - PAD_R - 2).toFixed(1) +
+        '" y="' + (PAD_T + 9) + '" text-anchor="end">→ +' + overshootYears.toFixed(1) + 'y</text>';
+    }
+
+    // 5c. launch-date note when the asset's first price_history point arrives
+    // noticeably later than the timeline start (e.g. WGMI ETF launched
+    // 2022-02 — no pre-launch data by construction).
+    var launchNote = '';
+    if (histPts.length > 0) {
+      var firstHistMs = histPts[0].date;
+      var gapDays = daysBetween(tlStart, firstHistMs);
+      if (gapDays > 30) {
+        launchNote += '<text class="launch-note" x="' + (PAD_L + 3) + '" y="' + (PAD_T + plotH - 4) +
+          '">history from ' + shortDate(histPts[0].date) + '</text>';
+      }
+    }
+
+    // 6. last observed C4 top marker
+    var markers = '';
+    if (!isNaN(lastMs)) {
+      var lastMarkerX = xFor(lastMs);
+      markers += '<line class="last-marker" x1="' + lastMarkerX.toFixed(1) + '" y1="' + PAD_T +
+        '" x2="' + lastMarkerX.toFixed(1) + '" y2="' + (PAD_T + plotH) + '"/>';
+      markers += '<text class="last-label" x="' + (lastMarkerX + 3).toFixed(1) + '" y="' + (PAD_T + 11) +
+        '" text-anchor="start">C4 top ' + shortDate(lastEvt.date) + '</text>';
+    }
+
+    // 7. TODAY vertical dashed marker
+    var now = Date.now();
+    var nowX = xFor(now);
+    markers += '<line class="now-marker" x1="' + nowX.toFixed(1) + '" y1="' + (PAD_T - 4) +
+      '" x2="' + nowX.toFixed(1) + '" y2="' + (PAD_T + plotH + 2) + '"/>';
+    markers += '<circle class="now-dot" cx="' + nowX.toFixed(1) + '" cy="' + (PAD_T + plotH + 12) +
+      '" r="2.5"/>';
+    markers += '<text class="now-label" x="' + nowX.toFixed(1) + '" y="' + (PAD_T + plotH + 20) +
+      '" text-anchor="middle">TODAY</text>';
+
+    // 8. year axis ticks at the bottom
+    var axis = '';
+    var yrStart = new Date(tlStart).getUTCFullYear();
+    var yrEnd = new Date(tlEnd).getUTCFullYear();
+    for (var y = yrStart; y <= yrEnd + 1; y++) {
+      var ms = parseDate(y + '-01-01');
+      if (ms >= tlStart && ms <= tlEnd) {
+        var xp = xFor(ms);
+        axis += '<line class="axis-tick" x1="' + xp.toFixed(1) + '" y1="' + (PAD_T + plotH) +
+          '" x2="' + xp.toFixed(1) + '" y2="' + (PAD_T + plotH + 4) + '"/>';
+        axis += '<text class="axis-label" x="' + xp.toFixed(1) + '" y="' + (H - 5) +
+          '" text-anchor="middle">' + y + '</text>';
+      }
+    }
+
+    // 9. price axis ticks on the left (log gridlines)
+    var priceAxis = '';
+    var ticks = [0.5, 1, 5, 10, 50, 100, 500, 1000, 5e3, 1e4, 5e4, 1e5, 2e5, 3e5, 5e5, 1e6];
+    ticks = ticks.filter(function(t) { return t >= pMin && t <= pMax; });
+    if (ticks.length > 6) {
+      var step = Math.ceil(ticks.length / 6);
+      var trimmed = [];
+      for (var ti = 0; ti < ticks.length; ti += step) trimmed.push(ticks[ti]);
+      ticks = trimmed;
+    }
+    ticks.forEach(function(t) {
+      var y = yFor(t);
+      priceAxis += '<line class="price-gridline" x1="' + PAD_L + '" y1="' + y.toFixed(1) +
+        '" x2="' + (W - PAD_R) + '" y2="' + y.toFixed(1) + '"/>';
+      var lab;
+      if (t >= 1e6) lab = '$' + (t / 1e6) + 'M';
+      else if (t >= 1000) lab = '$' + (t / 1000) + 'k';
+      else if (t >= 1) lab = '$' + (t % 1 === 0 ? t : t.toFixed(2));
+      else lab = '$' + t.toFixed(2);
+      priceAxis += '<text class="price-label" x="' + (PAD_L - 4) + '" y="' + (y + 3).toFixed(1) +
+        '" text-anchor="end">' + lab + '</text>';
+    });
+
+    svgEl.innerHTML =
+      '<rect class="strip-bg" x="0" y="0" width="' + W + '" height="' + H + '"/>' +
+      '<rect class="plot-bg" x="' + PAD_L + '" y="' + PAD_T + '" width="' + plotW + '" height="' + plotH + '"/>' +
+      priceAxis + axis + rects + corridors +
+      '<path class="price-line" d="' + linePath + '"/>' +
+      '<path class="projection-line" d="' + projPath + '"/>' +
+      bandLabels + windowCenterMarkers + markers + continuationMarker + launchNote;
+
+    // Cross-asset watch order (kept constant across asset selection so the
+    // calendar order is always visible at a glance).
+    var sorted = altWatchOrder.slice().sort(function(a, b) {
+      return parseDate(a.b4_base_start) - parseDate(b.b4_base_start);
+    });
+    var legendHtml = '<span class="legend-label">Alt watch order:</span> ';
+    sorted.forEach(function(a, i) {
+      var lead = a.lead_vs_btc_days || 0;
+      var sign = lead < 0 ? 'leads' : (lead > 0 ? 'lags' : 'anchor');
+      lead = Math.abs(lead);
+      legendHtml += '<span class="legend-asset' + (a.asset === currentAsset ? ' is-current' : '') + '"><b>' + a.asset + '</b> ' + shortDate(a.b4_base_start) +
+        ' (' + (a.asset === 'BTC' ? 'anchor' : (sign + ' BTC by ' + lead + 'd')) + ')</span>' +
+        (i < sorted.length - 1 ? '<span class="legend-arrow"> → </span>' : '');
+    });
+    legendEl.innerHTML = legendHtml;
+  }
+
+  // ---- render one asset (text + strip + legend) ----
+  function renderAsset() {
+    var block = assets[currentAsset];
+    if (!block) return;
+    var Status = computeStatus(block);
+
+    stampEl.setAttribute('data-state', Status.state);
+    stampEl.setAttribute('data-asset', currentAsset);
+    stampEl.querySelector('.seg-today .seg-val').textContent = Status.segToday;
+    stampEl.querySelector('.seg-next .seg-val').textContent = Status.segNext;
+    stampEl.querySelector('.seg-phase').textContent = Status.phase;
+    var badgeEl = stampEl.querySelector('.now-stamp-state-badge');
+    if (badgeEl) { badgeEl.textContent = '[' + Status.stateBadgeText + ']'; }
+
+    // Only draw the strip when the chart panel is expanded; it re-draws
+    // on every asset switch + every expand of the toggle.
+    var expanded = chartEl && !chartEl.hasAttribute('hidden');
+    if (expanded) drawStrip(block, Status);
+  }
+
+  // ---- expand-on-click toggle ----
+  function setBannerScrollMargin(isExpanded) {
+    var v = isExpanded
+      ? 'var(--banner-height-expanded)'
+      : 'var(--banner-height-collapsed)';
+    document.documentElement.style.setProperty('--now-stamp-margin', v);
+  }
+  if (toggleBtn && chartEl) {
+    setBannerScrollMargin(false);
+    toggleBtn.addEventListener('click', function() {
+      var isHidden = chartEl.hasAttribute('hidden');
+      if (isHidden) {
+        chartEl.removeAttribute('hidden');
+        chartEl.setAttribute('aria-hidden', 'false');
+        toggleBtn.setAttribute('aria-expanded', 'true');
+        toggleBtn.textContent = '✕ collapse';
+        stampEl.classList.add('now-stamp-expanded');
+        setBannerScrollMargin(true);
+        renderAsset();
+      } else {
+        chartEl.setAttribute('hidden', '');
+        chartEl.setAttribute('aria-hidden', 'true');
+        toggleBtn.setAttribute('aria-expanded', 'false');
+        toggleBtn.textContent = '⤢ chart';
+        stampEl.classList.remove('now-stamp-expanded');
+        setBannerScrollMargin(false);
+      }
+    });
+  }
+
+  // ---- init ----
+  buildAssetBar();
+  renderAsset();
+})();
+</script>

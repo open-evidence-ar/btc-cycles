@@ -1,0 +1,115 @@
+# Canonical cycle event table — mirrors data/events.csv
+# Source: DESIGN.md §3.2
+
+halvings:
+  - id: H1
+    date: "2012-11-28"
+    block: 210000
+    reason_code: canonical
+    source: mempool.space
+    notes: "subsidy 50->25"
+  - id: H2
+    date: "2016-07-09"
+    block: 420000
+    reason_code: canonical
+    source: mempool.space
+    notes: "subsidy 25->12.5"
+  - id: H3
+    date: "2020-05-11"
+    block: 630000
+    reason_code: canonical
+    source: mempool.space
+    notes: "subsidy 12.5->6.25"
+  - id: H4
+    date: "2024-04-20"
+    block: 840000
+    reason_code: canonical
+    source: mempool.space
+    notes: "subsidy 6.25->3.125"
+  - id: H5
+    date: "2028-04-01"
+    block: 1050000
+    reason_code: projected
+    source: mempool.space
+    notes: "projected from ~10-min block cadence"
+
+bottoms:
+  - id: B0
+    cycle_id: C1
+    date: "2011-11-14"
+    price_usd: 2.15
+    reason_code: canonical
+    source: coingecko
+    notes: "pre-halving bottom for C1"
+  - id: B1
+    cycle_id: C2
+    date: "2015-01-14"
+    price_usd: 171.00
+    reason_code: canonical
+    source: coingecko
+    notes: "bear low after C1 top; pre-halving bottom for C2"
+  - id: B2
+    cycle_id: C3
+    date: "2018-12-15"
+    price_usd: 3122.00
+    reason_code: canonical
+    source: coingecko
+    notes: "bear low after C2 top; pre-halving bottom for C3"
+  - id: B3
+    cycle_id: C4
+    date: "2022-11-21"
+    price_usd: 15652.00
+    reason_code: canonical
+    source: coingecko
+    notes: "bear low after C3 top; pre-halving bottom for C4"
+  - id: B4
+    cycle_id: C5
+    date: ""
+    price_usd:
+    reason_code: not_yet_observed
+    source: framework
+    notes: "B4 = projected bear bottom after C4 top; populated by I-10 confluence zone map (next_cycle_zones.csv)"
+
+tops:
+  - cycle_id: C1
+    label: first_high
+    date: "2013-04-09"
+    price_usd: 260.00
+    reason_code: local_high_not_cycle_top
+    source: coingecko
+    notes: "April 2013 local peak within C1 halving window"
+  - cycle_id: C1
+    label: final_top
+    date: "2013-12-04"
+    price_usd: 1150.00
+    reason_code: canonical
+    source: coingecko
+    notes: "cycle top T1 anchored on H1"
+  - cycle_id: C2
+    label: final_top
+    date: "2017-12-17"
+    price_usd: 19497.00
+    reason_code: canonical
+    source: coingecko
+    notes: "cycle top T2 anchored on H2"
+  - cycle_id: C3
+    label: first_high
+    date: "2021-04-14"
+    price_usd: 64863.00
+    reason_code: canonical
+    source: coingecko
+    notes: "C3 double-top first peak"
+  - cycle_id: C3
+    label: final_top
+    date: "2021-11-10"
+    price_usd: 69044.00
+    reason_code: canonical
+    source: coingecko
+    notes: "cycle top T3 anchored on H3"
+  - cycle_id: C4
+    label: final_top
+    date: "2025-10-06"
+    price_usd: 124728.00
+    reason_code: canonical
+    source: bitstamp_raw
+    notes: "cycle top T4 anchored on H4; observed as max daily close in Rule T window per I-05"

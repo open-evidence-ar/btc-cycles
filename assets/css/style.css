@@ -1,0 +1,869 @@
+﻿/* Crypto Cycle Correlation Framework â€” dark/modern theme
+ * Sticky left sidebar nav, full-page scrollable main content area.
+ */
+
+:root {
+  --bg: #0a0e1a;             /* page background (near-black with blue tint) */
+  --bg-elevated: #131826;    /* sidebar / card surface */
+  --bg-card: #1a2033;        /* secondary card */
+  --border: #2a3349;         /* subtle dividers */
+  --text: #e6edf3;           /* primary text (near-white) */
+  --text-muted: #8b96a8;     /* secondary text */
+  --text-tertiary: #5a6578;  /* tertiary */
+  --accent: #7c9eff;         /* links / accents */
+  --accent-hover: #a7bdf8;   /* link hover */
+  --green: #4ade80;          /* positive / accumulation */
+  --orange: #fb923c;         /* warning / distribution */
+  --red: #f87171;            /* negative / exit */
+  --code-bg: #0d1220;
+  --code-text: #c0caff;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter",
+               Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", "SF Mono", Consolas,
+               "Liberation Mono", Menlo, monospace;
+  --radius: 8px;
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.6);
+  --sidebar-w: 260px;
+  /* R-3.3: scroll-margin-top spacer so deep-link anchors land below the
+   * sticky now-stamp banner. Collapsed banner ≈ 40px (2.5rem); expanded
+   * (with inline SVG + legend) ≈ 240px (15rem). Default conservative =
+   * expanded, so deep links don't hide the section title behind the
+   * banner. JS in now-stamp.html overrides this on the documentElement
+   * when the banner collapses. */
+  --banner-height-expanded: 17rem;
+  --banner-height-collapsed: 2.5rem;
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  /* R-2.6: suppress the now-stamp color-dot pulse for reduced-motion users. */
+  .now-stamp[data-state="base"]  .now-stamp-dot,
+  .now-stamp[data-state="outer"] .now-stamp-dot { animation: none; }
+  /*.Suppress other decorative transitions */
+  .sidebar nav a { transition: none; }
+  .now-stamp-toggle { transition: none; }
+  .anchor-link { transition: none; }
+}
+
+body {
+  font-family: var(--font-sans);
+  line-height: 1.65;
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ----------- Layout: sticky sidebar + scrollable main ----------- */
+
+.app-shell {
+  display: grid;
+  grid-template-columns: var(--sidebar-w) 1fr;
+  min-height: 100vh;
+}
+
+.sidebar {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+  background: var(--bg-elevated);
+  border-right: 1px solid var(--border);
+  padding: 2rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar .brand {
+  display: block;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text);
+  text-decoration: none;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 1.25rem;
+}
+
+.sidebar .brand-subtitle {
+  margin-top: 0.25rem;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-weight: 400;
+  line-height: 1.4;
+}
+
+.sidebar nav h2 {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-tertiary);
+  margin: 1.5rem 0 0.5rem;
+}
+
+.sidebar nav ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.sidebar nav li {
+  margin: 0.1rem 0;
+}
+
+.sidebar nav a {
+  display: block;
+  padding: 0.45rem 0.75rem;
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 0.9rem;
+  border-radius: 6px;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.sidebar nav a:hover {
+  background: rgba(124, 158, 255, 0.08);
+  color: var(--accent-hover);
+}
+
+.sidebar nav a.active {
+  background: rgba(124, 158, 255, 0.15);
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.sidebar .sidebar-footer {
+  margin-top: auto;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+}
+
+.main {
+  padding: 3rem 3.5rem 5rem;
+  min-width: 0;  /* prevent grid overflow */
+  overflow-x: clip;  /* clip, not hidden â€” hidden traps position:sticky children */
+}
+
+/* ----------- Typography ----------- */
+
+h1, h2, h3, h4 {
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  color: var(--text);
+  margin-top: 2.5rem;
+  margin-bottom: 1rem;
+  line-height: 1.25;
+}
+
+h1 { font-size: 2.1rem; }
+h2 { font-size: 1.5rem; padding-bottom: 0.4rem; border-bottom: 1px solid var(--border); }
+h3 { font-size: 1.2rem; }
+
+p { margin: 1rem 0; }
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+a:hover { color: var(--accent-hover); text-decoration: underline; }
+
+code {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  padding: 0.15em 0.35em;
+  background: var(--code-bg);
+  color: var(--code-text);
+  border-radius: 4px;
+  border: 1px solid var(--border);
+}
+
+pre {
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  padding: 1rem;
+  border-radius: var(--radius);
+  overflow-x: auto;
+}
+pre code {
+  background: none;
+  border: none;
+  padding: 0;
+}
+
+blockquote {
+  border-left: 3px solid var(--accent);
+  margin: 1.25rem 0;
+  padding: 0.5rem 1rem;
+  background: rgba(124, 158, 255, 0.05);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  color: var(--text-muted);
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1.5rem 0;
+  font-size: 0.9rem;
+}
+
+/* R-5: .table-dense — locally-scoped smaller font + tighter padding for
+ * information-dense multi-column tables (used on the 8-asset per-asset
+ * table). Smaller size keeps table from overflowing at narrow viewports
+ * while still readable above 1rem; padding reduction keeps row-count low. */
+.table-dense {
+  font-size: 0.85rem;
+}
+.table-dense th,
+.table-dense td {
+  padding: 0.35rem 0.5rem;
+}
+.table-dense sup {
+  font-size: 0.7em;
+  vertical-align: super;
+  color: var(--accent);
+  font-weight: 600;
+  margin-left: 0.1rem;
+}
+.table-dense caption {
+  text-align: left;
+  font-style: italic;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  margin-bottom: 0.4rem;
+  caption-side: top;
+}
+/* Footnote list rendered under the dense table */
+.table-dense-footnotes {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-top: 0.5rem;
+  padding-left: 1.2rem;
+  line-height: 1.55;
+}
+.table-dense-footnotes li { margin: 0.15rem 0; }
+.table-dense-footnotes li sup { color: var(--accent); font-weight: 600; margin-right: 0.15rem; }
+
+th, td {
+  padding: 0.55rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+th {
+  background: var(--bg-elevated);
+  font-weight: 600;
+  color: var(--text);
+}
+
+tbody tr:hover {
+  background: rgba(124, 158, 255, 0.04);
+}
+
+hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 2rem 0;
+}
+
+/* ----------- Chart container ----------- */
+
+.chart-container {
+  margin: 2rem 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+/* <figure> default UA margin reset — we use the .chart-container margin above */
+figure.chart-container { margin: 2rem 0; padding: 0; }
+
+.chart-container iframe {
+  width: 100%;
+  height: 560px;  /* default; override with height param for taller charts */
+  border: none;
+  display: block;
+}
+
+.chart-container .chart-caption {
+  padding: 0.75rem 1rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border);
+  background: var(--bg-elevated);
+}
+
+/* ----------- Site footer ----------- */
+
+.site-footer {
+  margin-top: 4rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.site-footer .meta {
+  margin: 0.4rem 0;
+}
+
+.site-footer a {
+  color: var(--accent);
+}
+
+/* ----------- Responsive ----------- */
+
+@media (max-width: 960px) {
+  :root { --sidebar-w: 220px; }
+  .main { padding: 2rem 1.5rem 4rem; }
+}
+
+@media (max-width: 760px) {
+  .app-shell {
+    grid-template-columns: 1fr;
+  }
+  .sidebar {
+    position: static;
+    height: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    padding: 1.25rem 1rem;
+  }
+  .sidebar nav { display: none; }  /* nav is also shown in mobile header */
+  .sidebar .brand { padding-bottom: 0.5rem; margin-bottom: 0.5rem; }
+  .main { padding: 1.5rem 1.25rem 3rem; max-width: 100%; }
+  .chart-container iframe { height: 400px; }
+  .mobile-toc { display: block; }
+}
+
+/* ----------- Anchor links + section spacing ----------- */
+
+.anchor-link {
+  margin-left: 0.5rem;
+  color: var(--text-tertiary);
+  font-size: 0.85em;
+  text-decoration: none;
+  opacity: 0;
+  transition: opacity 0.18s;
+}
+
+h1.section-title,
+h2.section-title:hover,
+h3:hover .anchor-link {
+  opacity: 0.8;
+}
+
+h1.section-title,
+h2.section-title,
+h3.section-title {
+  margin-top: 0;
+  padding-top: 2rem;
+}
+
+h1.section-title:hover .anchor-link,
+h2.section-title:hover .anchor-link,
+h3:hover .anchor-link {
+  opacity: 1;
+}
+
+.anchor-link:hover {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+/* Add scroll-margin so the anchor target lands below the sticky
+ * "where we are today" banner instead of under it.
+ * Default = expanded (banner's tallest state, with inline SVG chart +
+ * alt legend visible — ~240px). JS in now-stamp.html overrides this
+ * to --banner-height-collapsed (~40px) when the banner collapses,
+ * freeing vertical real estate between sections. */
+.section-anchor {
+  scroll-margin-top: var(--now-stamp-margin, var(--banner-height-expanded));
+  padding-top: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.section-anchor > h1.section-title:first-child {
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+}
+
+/* Mobile TOC: a top-of-page compact navigation visible only on small screens */
+.mobile-toc {
+  display: none;
+  background: var(--bg-elevated);
+  border-bottom: 1px solid var(--border);
+  padding: 0.75rem 1rem;
+  font-size: 0.85rem;
+}
+.mobile-toc ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.mobile-toc li { white-space: nowrap; }
+.mobile-toc a {
+  color: var(--accent);
+  text-decoration: none;
+}
+.mobile-toc a:hover { text-decoration: underline; }
+
+/* Sidebar active-section highlight (driven by JS Scrollspy) */
+.sidebar nav a.active {
+  background: rgba(124, 158, 255, 0.20);
+  color: var(--accent);
+  font-weight: 600;
+  border-left: 2px solid var(--accent);
+  padding-left: calc(0.75rem - 2px);
+}
+
+
+
+/* ---- Where we are today sticky banner ------------------------------
+ * Sticky top-of-viewport strip. Default = compressed 3-segment
+ * Today/Next/Phase micro-format with state-colored dot.
+ * Expand-on-click reveals inline SVG timeline strip + alt legend.
+ * No Jekyll/Liquid dependencies; banner JS lives inside the include. */
+
+.now-stamp {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: rgba(13, 18, 32, 0.94);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.3);
+  font-family: var(--font-sans);
+  color: var(--text);
+  font-size: 0.83rem;
+  line-height: 1.45;
+}
+
+/* Row 1: dot + text segments + toggle button */
+.now-stamp-row {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.7rem 1.1rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.now-stamp-dot {
+  flex-shrink: 0;
+  width: 9px; height: 9px;
+  border-radius: 50%;
+  display: inline-block;
+  background: var(--text-tertiary);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.3), 0 0 8px currentColor;
+}
+.now-stamp[data-state="pending"]  .now-stamp-dot { background: var(--text-tertiary); color: var(--text-tertiary); }
+.now-stamp[data-state="pre"]      .now-stamp-dot { background: var(--red);    color: var(--red); }
+.now-stamp[data-state="outer"]    .now-stamp-dot { background: var(--orange); color: var(--orange); }
+.now-stamp[data-state="base"]     .now-stamp-dot { background: var(--green);  color: var(--green); }
+.now-stamp[data-state="patience"] .now-stamp-dot { background: var(--text-tertiary); }
+
+.now-stamp[data-state="base"]  .now-stamp-dot,
+.now-stamp[data-state="outer"] .now-stamp-dot {
+  animation: now-stamp-pulse 2.2s ease-in-out infinite;
+}
+@keyframes now-stamp-pulse {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(0,0,0,0.3), 0 0 0 0 var(--dot-pulse, rgba(255,255,255,0.4)); opacity: 1; }
+  50%      { box-shadow: 0 0 0 2px rgba(0,0,0,0.3), 0 0 0 7px transparent; opacity: 0.78; }
+}
+.now-stamp[data-state="base"]  .now-stamp-dot { --dot-pulse: rgba(74, 222, 128, 0.4); }
+.now-stamp[data-state="outer"] .now-stamp-dot { --dot-pulse: rgba(251, 146, 60, 0.4); }
+
+/* Textual state badge — color-blind-accessible companion to the dot.
+ * Short uppercase tag in brackets, color-matched to the dot so the
+ * color carries through both visual and textual channels. */
+.now-stamp-state-badge {
+  flex-shrink: 0;
+  display: inline-block;
+  padding: 0.1rem 0.4rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  line-height: 1.4;
+}
+.now-stamp[data-state="pending"]  .now-stamp-state-badge { color: var(--text-tertiary); border-color: var(--text-tertiary); }
+.now-stamp[data-state="pre"]      .now-stamp-state-badge { color: var(--red);    border-color: var(--red);    background: rgba(248, 113, 113, 0.06); }
+.now-stamp[data-state="outer"]    .now-stamp-state-badge { color: var(--orange); border-color: var(--orange); background: rgba(251, 146, 60, 0.06); }
+.now-stamp[data-state="base"]     .now-stamp-state-badge { color: var(--green);  border-color: var(--green);  background: rgba(74, 222, 128, 0.06); }
+.now-stamp[data-state="patience"] .now-stamp-state-badge { color: var(--text-muted); }
+
+/* Three text segments: Today / Next / Phase */
+.now-stamp-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0;
+  overflow: hidden;
+}
+.now-stamp-text .seg {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.now-stamp-text .seg-today .seg-val { color: var(--text); font-weight: 600; }
+.now-stamp-text .seg-next .seg-val  { color: var(--accent-hover); font-weight: 600; }
+.now-stamp-text .seg-phase          { color: var(--text-muted); font-style: italic; font-weight: 400; }
+.now-stamp-text .seg-next  { flex: 1 1 auto; min-width: 0; }
+.now-stamp-text .seg-phase { flex: 0 1 auto; min-width: 0; }
+.now-stamp-text .sep {
+  color: var(--text-tertiary);
+  margin: 0 0.55rem;
+  opacity: 0.5;
+  flex-shrink: 0;
+}
+
+/* Toggle button - chip-styled, not OS-default */
+.now-stamp-toggle {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.65rem;
+  font-size: 0.73rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: rgba(124, 158, 255, 0.06);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  font-family: var(--font-sans);
+}
+.now-stamp-toggle:hover {
+  background: rgba(124, 158, 255, 0.16);
+  color: var(--accent);
+  border-color: rgba(124, 158, 255, 0.35);
+}
+.now-stamp-toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Row 2: chart container - hidden by default, expanded on click */
+.now-stamp-chart {
+  padding: 0.65rem 1.1rem 0.85rem;
+  border-top: 1px solid var(--border);
+  background: rgba(13, 18, 32, 0.92);
+  max-width: 1200px;
+  margin: 0 auto;
+}
+.now-stamp-chart[hidden] { display: none; }
+
+/* Row 1.5: asset pill switcher — BTC default-selected; switching rewrites
+ * the timeline (text segments + strip + legend) below. Pills sit between
+ * the status row and the (collapsed-by-default) chart. Keep them flat,
+ * compact, and colour-coded only on the selected pill — the dot/badge
+ * above already carries the cycle-state colour. */
+.now-stamp-asset-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0 1.1rem 0.55rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  border-bottom: 1px solid var(--border);
+}
+.now-stamp-asset-bar:empty { display: none; }
+.now-stamp-asset-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.now-stamp-asset-pill:hover {
+  color: var(--accent);
+  border-color: rgba(124, 158, 255, 0.35);
+  background: rgba(124, 158, 255, 0.08);
+}
+.now-stamp-asset-pill.is-selected {
+  color: var(--bg-card, #1a2033);
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.now-stamp-asset-pill:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+/* Selected-asset highlight inside the legend (below the strip). */
+.cycle-strip-legend .legend-asset.is-current b {
+  color: var(--accent);
+  text-decoration: underline;
+  text-decoration-color: rgba(124, 158, 255, 0.55);
+  text-underline-offset: 2px;
+}
+
+.cycle-strip {
+  display: block;
+  width: 100%;
+  height: 140px;
+  color: var(--text);
+  background: var(--bg-card, #1a2033);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+/* Backgrounds */
+.cycle-strip .strip-bg { fill: #0f1320; }
+.cycle-strip .plot-bg { fill: rgba(0, 0, 0, 0.18); }
+
+/* Window vrects (vertical color bands behind the price line) */
+.cycle-strip .band { }
+.cycle-strip .band-next-bottom { fill: rgba(251, 146, 60, 0.18); }   /* amber soft */
+.cycle-strip .band-patience    { fill: rgba(74, 222, 128, 0.05); }   /* very faint green */
+.cycle-strip .band-next-top     { fill: rgba(251, 146, 60, 0.35); }   /* amber strong */
+.cycle-strip .band-exit        { fill: rgba(248, 113, 113, 0.25); }   /* red */
+
+/* Window inline labels (top of each band) */
+.cycle-strip .band-label {
+  fill: rgba(245, 250, 255, 0.92);
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  pointer-events: none;
+  paint-order: stroke;
+  stroke: rgba(0, 0, 0, 0.55);
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+}
+
+/* Vertical center markers for C5 and B5 windows — drawn even when the
+ * band's day-span is barely a pixel (e.g. MSTR's 60-day C5 outer). A thin
+ * dashed vertical line + small label at the band center guarantees every
+ * window always has a visible reference point. */
+.cycle-strip .window-center-marker {
+  stroke: rgba(255, 255, 255, 0.32);
+  stroke-width: 1;
+  stroke-dasharray: 1 3;
+  vector-effect: non-scaling-stroke;
+}
+.cycle-strip .window-center-label {
+  fill: rgba(255, 255, 255, 0.78);
+  font-size: 8px;
+  font-weight: 600;
+  paint-order: stroke;
+  stroke: rgba(0, 0, 0, 0.65);
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+}
+
+/* Price-corridor lines inside each window band (low/center/high) */
+.cycle-strip .corridor-low, .cycle-strip .corridor-high {
+  stroke: rgba(255, 255, 255, 0.18);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+  vector-effect: non-scaling-stroke;
+}
+.cycle-strip .corridor-center {
+  stroke: rgba(255, 255, 255, 0.35);
+  stroke-width: 1.2;
+  stroke-dasharray: 5 3;
+  vector-effect: non-scaling-stroke;
+}
+
+/* BTC price line (weekly-sampled closes, log scale) */
+.cycle-strip .price-line {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.6;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+
+/* Dashed projection line — phase-aware deterministic random walk
+ * (bear-slide -> bull-run -> post-top-crash). The walk is anchored to the
+ * projected B4/C5/B5 center prices so the line meets the corridor dots. */
+.cycle-strip .projection-line {
+  fill: none;
+  stroke: var(--orange);
+  stroke-width: 1.2;
+  stroke-dasharray: 4 3;
+  stroke-opacity: 0.7;
+  vector-effect: non-scaling-stroke;
+}
+
+/* Right-edge continuation marker: shown when the published windows extend
+ * past the ~8y cap on the visible timeline (e.g. WGMI exit ends 2033-07,
+ * +3y beyond the cap). Vertical cap line + "→ +N.y" label at the top. */
+.cycle-strip .continuation-line {
+  stroke: rgba(124, 158, 255, 0.45);
+  stroke-width: 1;
+  stroke-dasharray: 2 4;
+  vector-effect: non-scaling-stroke;
+}
+.cycle-strip .continuation-marker {
+  fill: rgba(124, 158, 255, 0.85);
+  font-size: 8.5px;
+  font-weight: 600;
+  paint-order: stroke;
+  stroke: rgba(0, 0, 0, 0.55);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+/* Launch-date footnote shown when the asset's first price_history point
+ * arrives noticeably after the timeline start (e.g. WGMI history begins
+ * 2022-02-08 — ETF listing date, no pre-launch data). */
+.cycle-strip .launch-note {
+  fill: var(--text-tertiary);
+  font-size: 8px;
+  font-weight: 500;
+  font-style: italic;
+  paint-order: stroke;
+  stroke: rgba(0, 0, 0, 0.55);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+/* Last observed C4 top marker (vertical dotted grey) */
+.cycle-strip .last-marker {
+  stroke: var(--text-muted);
+  stroke-width: 1;
+  stroke-dasharray: 2 3;
+  stroke-opacity: 0.7;
+  vector-effect: non-scaling-stroke;
+}
+.cycle-strip .last-label {
+  fill: var(--text-muted);
+  font-size: 8.5px;
+  font-weight: 500;
+  paint-order: stroke;
+  stroke: rgba(0, 0, 0, 0.6);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+/* Today vertical dashed marker + the coloured dot at its base */
+.cycle-strip .now-marker {
+  stroke: var(--accent);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 3;
+  stroke-opacity: 0.85;
+  vector-effect: non-scaling-stroke;
+}
+.cycle-strip .now-dot { fill: var(--accent); }
+.cycle-strip .now-label {
+  fill: var(--accent);
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  paint-order: stroke;
+  stroke: rgba(0, 0, 0, 0.5);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+/* Year + price axes */
+.cycle-strip .axis-tick {
+  stroke: var(--text-tertiary);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+.cycle-strip .axis-label {
+  fill: var(--text-tertiary);
+  font-size: 9px;
+  font-weight: 500;
+}
+.cycle-strip .price-gridline {
+  stroke: rgba(255, 255, 255, 0.06);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+.cycle-strip .price-label {
+  fill: var(--text-muted);
+  font-size: 8.5px;
+  font-weight: 500;
+}
+
+.cycle-strip-legend {
+  margin-top: 0.45rem;
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+.cycle-strip-legend .legend-label {
+  color: var(--text-tertiary);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+  margin-right: 0.4rem;
+}
+.cycle-strip-legend .legend-asset b {
+  color: var(--text);
+  font-weight: 600;
+}
+.cycle-strip-legend .legend-arrow {
+  color: var(--text-tertiary);
+  margin: 0 0.2rem;
+}
+
+.now-stamp-noscript {
+  color: var(--text-muted);
+  font-style: italic;
+  padding: 0.4rem 0;
+}
+
+/* Mobile / small screens */
+@media (max-width: 768px) {
+  .now-stamp-row { padding: 0.55rem 0.85rem; gap: 0.5rem; }
+  .now-stamp { font-size: 0.75rem; }
+  .now-stamp-text { flex-wrap: wrap; }
+  .now-stamp-text .sep { display: none; }
+  .now-stamp-text .seg-phase {
+    flex: 1 1 100%;
+    margin-top: 0.15rem;
+  }
+  .now-stamp-toggle {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.68rem;
+  }
+  .now-stamp-asset-bar { padding: 0 0.85rem 0.5rem; gap: 0.25rem; }
+  .now-stamp-asset-pill { padding: 0.15rem 0.45rem; font-size: 0.62rem; }
+  .now-stamp-chart { padding: 0.5rem 0.85rem 0.7rem; }
+  .cycle-strip-legend { font-size: 0.7rem; }
+}

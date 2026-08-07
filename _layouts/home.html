@@ -1,0 +1,149 @@
+﻿<!DOCTYPE html>
+<html lang="{{ site.lang | default: 'en' }}">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% if page.title %}{{ page.title }} -- {{ site.title }}{% else %}{{ site.title }}{% endif %}</title>
+  <meta name="description" content="{{ page.description | default: site.description }}" />
+  <link rel="stylesheet" href="{{ '/assets/css/style.css' | relative_url }}" />
+</head>
+<body>
+  <div class="app-shell">
+
+    <aside class="sidebar" id="sidebar">
+      <a class="brand" href="#top">
+        {{ site.title }}
+        <span class="brand-subtitle">Bitcoin halving-cycle white paper</span>
+      </a>
+
+      <nav id="nav">
+        <h2>Decision</h2>
+        <ul>
+          <li><a href="#top" data-anchor="top">Home</a></li>
+          <li><a href="#abstract" data-anchor="abstract">Abstract</a></li>
+          <li><a href="#predictive-ranges" data-anchor="predictive-ranges">The Prediction (BTC)</a></li>
+          <li><a href="#cross-asset-timing" data-anchor="cross-asset-timing">Per-Asset Windows</a></li>
+          <li><a href="#validation" data-anchor="validation">Confidence & Limits</a></li>
+        </ul>
+
+        <h2>Appendices</h2>
+        <ul>
+          <li><a href="#methodology" data-anchor="methodology">A. Methodology</a></li>
+          <li><a href="#cycle-anatomy" data-anchor="cycle-anatomy">B. Cycle Anatomy</a></li>
+          <li><a href="#cross-asset" data-anchor="cross-asset">C. Cross-Asset Correlations</a></li>
+          <li><a href="#release-checklist" data-anchor="release-checklist">D. Release Checklist</a></li>
+          <li><a href="#theory" data-anchor="theory">E. Theoretical Framework</a></li>
+        </ul>
+
+        <h2>Project</h2>
+        <ul>
+          <li><a href="#status" data-anchor="status">Status</a></li>
+        </ul>
+      </nav>
+
+      <div class="sidebar-footer">
+        Open-source white paper<br />
+        MIT (code) -- CC-BY-4.0 (text)<br />
+        Not financial advice
+      </div>
+    </aside>
+
+    <main class="main" id="top">
+      {% include now-stamp.html %}
+
+      {{ content }}
+
+      {% comment %} Render the abstract inline first {% endcomment %}
+      {% assign abstract_page = site.pages | where: "permalink", "/abstract/" | first %}
+      {% if abstract_page %}
+      <section id="abstract" class="section-anchor">
+        <h1 class="section-title">{{ abstract_page.title }}
+          <a class="anchor-link" href="#abstract">#</a></h1>
+        {{ abstract_page.content }}
+      </section>
+      {% endif %}
+
+      {% comment %} Render all _sections/ files, sorted by weight front-matter {% endcomment %}
+      {% assign sections = site.sections | sort: "weight" %}
+      {% for section in sections %}
+      <section id="{{ section.slug | default: section.name | replace: '.md','' }}" class="section-anchor">
+        <h1 class="section-title">{{ section.title }}
+          <a class="anchor-link" href="#{{ section.slug | default: section.name | replace: '.md','' }}">#</a></h1>
+        {{ section.content }}
+      </section>
+      {% endfor %}
+
+      {% comment %} Render status page inline last {% endcomment %}
+      {% assign status_page = site.pages | where: "permalink", "/status/" | first %}
+      {% if status_page %}
+      <section id="status" class="section-anchor">
+        <h1 class="section-title">{{ status_page.title }}
+          <a class="anchor-link" href="#status">#</a></h1>
+        {{ status_page.content }}
+      </section>
+      {% endif %}
+
+      {% include provenance-footer.html %}
+    </main>
+
+  </div>
+
+  <script>
+    // Smooth-scroll + Scrollspy: highlight the currently-visible section
+    // in the sidebar nav. No framework dependencies.
+    (function() {
+      var links = Array.prototype.slice.call(
+        document.querySelectorAll('#nav a[data-anchor]')
+      );
+      var anchors = links.map(function(a) {
+        return { link: a, target: document.getElementById(a.dataset.anchor) };
+      }).filter(function(x) { return x.target !== null; });
+
+      function handleClick(e) {
+        e.preventDefault();
+        var anchor = e.currentTarget.dataset.anchor;
+        var target = document.getElementById(anchor);
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          history.replaceState(null, '', '#' + anchor);
+        }
+        return false;
+      }
+      links.forEach(function(a) { a.addEventListener('click', handleClick); });
+
+      // Scrollspy: use IntersectionObserver to detect the most-visible section
+      if ('IntersectionObserver' in window) {
+        var observer = new IntersectionObserver(function(entries) {
+          entries.forEach(function(entry) {
+            var match = anchors.find(function(x) { return x.target === entry.target; });
+            if (match) {
+              if (entry.isIntersecting) {
+                links.forEach(function(a) {
+                  a.classList.remove('active');
+                  a.removeAttribute('aria-current');
+                });
+                match.link.classList.add('active');
+                match.link.setAttribute('aria-current', 'true');
+              }
+            }
+          });
+        }, { rootMargin: '-30% 0px -60% 0px', threshold: [0, 0.1, 0.5, 1] });
+        anchors.forEach(function(x) { observer.observe(x.target); });
+      }
+
+      // On initial load, scroll to URL hash (deep-link support)
+      window.addEventListener('load', function() {
+        if (location.hash && location.hash.length > 1) {
+          var target = document.getElementById(location.hash.slice(1));
+          if (target) {
+            // Defer until layout has settled
+            setTimeout(function() {
+              target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 50);
+          }
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

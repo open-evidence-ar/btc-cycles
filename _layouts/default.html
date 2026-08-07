@@ -1,0 +1,61 @@
+﻿<!DOCTYPE html>
+<html lang="{{ site.lang | default: 'en' }}">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% if page.title %}{{ page.title }} -- {{ site.title }}{% else %}{{ site.title }}{% endif %}</title>
+  <meta name="description" content="{{ page.description | default: site.description }}" />
+  <link rel="stylesheet" href="{{ '/assets/css/style.css' | relative_url }}" />
+</head>
+<body>
+  <div class="app-shell">
+
+    <aside class="sidebar">
+      <a class="brand" href="{{ '/' | relative_url }}">
+        {{ site.title }}
+        <span class="brand-subtitle">Bitcoin halving-cycle white paper</span>
+      </a>
+
+      <nav>
+        <h2>Decision</h2>
+        <ul>
+          <li><a href="{{ '/' | relative_url }}">Home</a></li>
+          <li><a href="{{ '/abstract/' | relative_url }}">Abstract</a></li>
+          <li><a href="{{ '/predictive-ranges/' | relative_url }}">The Prediction (BTC)</a></li>
+          <li><a href="{{ '/cross-asset-timing/' | relative_url }}">Per-Asset Windows</a></li>
+          <li><a href="{{ '/validation/' | relative_url }}">Confidence & Limits</a></li>
+        </ul>
+
+        <h2>Appendices</h2>
+        <ul>
+          <li><a href="{{ '/methodology/' | relative_url }}">A. Methodology</a></li>
+          <li><a href="{{ '/cycle-anatomy/' | relative_url }}">B. Cycle Anatomy</a></li>
+          <li><a href="{{ '/cross-asset/' | relative_url }}">C. Cross-Asset Correlations</a></li>
+          <li><a href="{{ '/release-checklist/' | relative_url }}">D. Release Checklist</a></li>
+          <li><a href="{{ '/theory/' | relative_url }}">E. Theoretical Framework</a></li>
+        </ul>
+
+        <h2>Project</h2>
+        <ul>
+          <li><a href="{{ '/status/' | relative_url }}">Status</a></li>
+        </ul>
+      </nav>
+
+      <div class="sidebar-footer">
+        Open-source white paper<br />
+        MIT (code) -- CC-BY-4.0 (text)<br />
+        Not financial advice
+      </div>
+    </aside>
+
+    <main class="main">
+      {% include now-stamp.html %}
+
+      {{ content }}
+
+      {% include provenance-footer.html %}
+    </main>
+
+  </div>
+</body>
+</html>
