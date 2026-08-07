@@ -1,4 +1,4 @@
-﻿---
+---
 layout: default
 title: B. Cycle Anatomy
 permalink: /cycle-anatomy/
