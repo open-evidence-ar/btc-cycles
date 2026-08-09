@@ -402,8 +402,10 @@ h3:hover .anchor-link {
 }
 
 /* Mobile TOC: a top-of-page compact navigation visible only on small screens */
+@media (min-width: 761px) {
+  .mobile-toc { display: none; }
+}
 .mobile-toc {
-  display: none;
   background: var(--bg-elevated);
   border-bottom: 1px solid var(--border);
   padding: 0.75rem 1rem;

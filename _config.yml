@@ -14,8 +14,8 @@ defaults:
 
 collections:
   sections:
-    output: false
-    permalink: /sections/:name/
+    output: true
+    permalink: /:name/
 
 exclude:
   - Gemfile

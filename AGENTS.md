@@ -35,6 +35,9 @@ pytest -q tests/          # run all increment gates
 bundle exec jekyll build  # site build check
 ```
 
+Local GitHub / push / init workflow commands are documented at
+`docs/github-workflow.md`.
+
 ## Quick refresh workflow
 
 One command rebuilds everything from fresh data:

@@ -8,6 +8,21 @@
   <link rel="stylesheet" href="{{ '/assets/css/style.css' | relative_url }}" />
 </head>
 <body>
+  <nav class="mobile-toc" id="mobile-toc" aria-label="Section navigation">
+    <ul>
+      <li><a href="#top" data-anchor="top">Top</a></li>
+      <li><a href="#abstract" data-anchor="abstract">Abstract</a></li>
+      <li><a href="#predictive-ranges" data-anchor="predictive-ranges">The Prediction</a></li>
+      <li><a href="#cross-asset-timing" data-anchor="cross-asset-timing">Per-Asset Windows</a></li>
+      <li><a href="#validation" data-anchor="validation">Confidence</a></li>
+      <li><a href="#methodology" data-anchor="methodology">A. Methodology</a></li>
+      <li><a href="#cycle-anatomy" data-anchor="cycle-anatomy">B. Cycle Anatomy</a></li>
+      <li><a href="#cross-asset" data-anchor="cross-asset">C. Cross-Asset</a></li>
+      <li><a href="#release-checklist" data-anchor="release-checklist">D. Checklist</a></li>
+      <li><a href="#theory" data-anchor="theory">E. Theory</a></li>
+      <li><a href="#status" data-anchor="status">Status</a></li>
+    </ul>
+  </nav>
   <div class="app-shell">
 
     <aside class="sidebar" id="sidebar">
@@ -93,7 +108,7 @@
     // in the sidebar nav. No framework dependencies.
     (function() {
       var links = Array.prototype.slice.call(
-        document.querySelectorAll('#nav a[data-anchor]')
+        document.querySelectorAll('#nav a[data-anchor], #mobile-toc a[data-anchor]')
       );
       var anchors = links.map(function(a) {
         return { link: a, target: document.getElementById(a.dataset.anchor) };

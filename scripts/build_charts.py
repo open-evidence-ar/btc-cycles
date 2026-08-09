@@ -874,7 +874,6 @@ def build_c2():
         xaxis_title='Days from Halving', yaxis_title='Price (USD)',
         xaxis=dict(range=[-1500, 1500]),
         template='plotly_dark', height=500,
-        autosize=False,
         yaxis=dict(type='log', **y_ticks),
     )
     _safe_write_html(fig, CHARTS_DIR / 'C2.html', config={'responsive': True})
@@ -914,8 +913,6 @@ def build_c3():
         title='C3 — Per-Cycle Duration Metrics',
         xaxis_title='Cycle', yaxis_title='Days',
         barmode='group', template='plotly_dark', height=500,
-        autosize=False,
-
         showlegend=False,
     )
     _safe_write_html(fig, CHARTS_DIR / 'C3.html', config={'responsive': True})
@@ -946,7 +943,6 @@ def build_c4():
     fig.update_layout(
         title='C4 — Cross-Asset Phase-Conditioned Correlations (Pearson)',
         template='plotly_dark', height=400,
-        autosize=False,
     )
     _safe_write_html(fig, CHARTS_DIR / 'C4.html', config={'responsive': True})
     _safe_write_image(fig, CHARTS_DIR / 'C4.png', scale=2)
@@ -973,7 +969,6 @@ def build_c5():
         xaxis_title='Days from Halving', yaxis_title='Pearson r',
         xaxis=dict(range=[-1500, 1500]),
         template='plotly_dark', height=400,
-        autosize=False,
     )
     _safe_write_html(fig, CHARTS_DIR / 'C5.html', config={'responsive': True})
     _safe_write_image(fig, CHARTS_DIR / 'C5.png', scale=2)
@@ -1483,7 +1478,6 @@ def build_c7():
         title='C7 — LOOCO Backtest: D_halving_to_top',
         xaxis_title='Actual (days)', yaxis_title='Predicted (days)',
         template='plotly_dark', height=500,
-        autosize=False,
     )
     _safe_write_html(fig, CHARTS_DIR / 'C7.html', config={'responsive': True})
     _safe_write_image(fig, CHARTS_DIR / 'C7.png', scale=2)
@@ -1918,7 +1912,8 @@ def _build_alt_chart(asset, filename, title, subtitle):
         title=dict(text=title + '<br><sub>' + subtitle + '</sub>',
                    font=dict(size=14, color='#e6edf3')),
         template='plotly_dark', paper_bgcolor='#0a0e1a', plot_bgcolor='#0a0e1a',
-        font=dict(color='#e6edf3'), height=820, width=1200,
+        font=dict(color='#e6edf3'), height=700,
+        autosize=True,
         showlegend=False, margin=dict(t=80, b=170, l=90, r=40),
     )
     _safe_write_html(fig, CHARTS_DIR / filename, config={'responsive': True})
@@ -2241,7 +2236,8 @@ def build_c8_macro():
         title=dict(text='C8d — Macro Assets Cycle-Tied Projection (I-19)',
                    font=dict(size=14, color='#e6edf3')),
         template='plotly_dark', paper_bgcolor='#0a0e1a', plot_bgcolor='#0a0e1a',
-        font=dict(color='#e6edf3'), height=2000, width=1200,
+        font=dict(color='#e6edf3'), height=2000,
+        autosize=True,
         showlegend=False, margin=dict(t=80, b=160, l=90, r=40))
     fig.update_xaxes(title_text='Date', row=len(assets), col=1)
     _safe_write_html(fig, CHARTS_DIR / 'C8d.html', config={'responsive': True})
