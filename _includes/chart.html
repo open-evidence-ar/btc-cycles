@@ -4,14 +4,15 @@
         {% else %}
         aria-label="BTC chart {{ include.id }}"
         {% endif %}>
-  <iframe src="{{ '/assets/charts/' | append: include.id | append: '.html' | relative_url }}"
-          title="{{ include.caption | default: include.id }}"
-          loading="lazy"
-          {% if include.height %}
-          style="width:100%;max-width:100%;border:none;height:{{ include.height }};"
-          {% else %}
-          style="width:100%;max-width:100%;border:none;"
-          {% endif %}></iframe>
+  {% assign chart_ratio = '' %}
+  {% if include.ratio %}{% assign chart_ratio = include.ratio %}{% endif %}
+  {% assign chart_height = '500px' %}
+  {% if include.height %}{% assign chart_height = include.height %}{% endif %}
+  <div class="chart-swipe" style="--chart-h:{{ chart_height }}"{% if chart_ratio %} data-ratio="{{ chart_ratio }}"{% endif %}>
+    <iframe src="{{ '/assets/charts/' | append: include.id | append: '.html' | relative_url }}"
+            title="{{ include.caption | default: include.id }}"
+            loading="lazy"></iframe>
+  </div>
   {% if include.caption %}
   <figcaption class="chart-caption">{{ include.caption }}</figcaption>
   {% endif %}

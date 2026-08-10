@@ -290,11 +290,29 @@ hr {
 /* <figure> default UA margin reset — we use the .chart-container margin above */
 figure.chart-container { margin: 2rem 0; padding: 0; }
 
-.chart-container iframe {
-  width: 100%;
-  height: 560px;  /* default; override with height param for taller charts */
-  border: none;
+/* Chart are embedded as Plotly HTML in an iframe (chart.html include). The
+ * chart HTML is regenerated with autosize so the SVG fills its iframe, and
+ * the iframe box is sized entirely from CSS so every breakpoint can adapt:
+ *   - height: viewport-relative (vh) with a floor/ceiling — a short landscape
+ *     window never overflows the screen.
+ *   - mobile (<=760px): a min-width keeps the plot readable, the container
+ *     scrolls horizontally (swipe) — labels stay legible, nothing clips.
+ */
+.chart-swipe {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.chart-swipe iframe {
   display: block;
+  border: none;
+  width: 100%;
+  height: var(--chart-h, 500px);
+}
+
+@media (max-width: 880px) {
+  .chart-swipe iframe {
+    min-width: 760px;
+  }
 }
 
 .chart-container .chart-caption {
@@ -326,9 +344,31 @@ figure.chart-container { margin: 2rem 0; padding: 0; }
 
 /* ----------- Responsive ----------- */
 
+/* Landscape phones (~844px) still hit the sidebar-collapse because the
+ * sticky 220px sidebar at that width leaves only ~600px for charts and the
+ * predicted-windows plot overlaps its own labels. Collapse the sidebar earlier
+ * (≤880px) so landscape phones get the full-width mobile layout, with the
+ * swipe container handling horizontal scrolling for wide charts. */
 @media (max-width: 960px) {
   :root { --sidebar-w: 220px; }
   .main { padding: 2rem 1.5rem 4rem; }
+}
+
+@media (max-width: 880px) {
+  .app-shell {
+    grid-template-columns: 1fr;
+  }
+  .sidebar {
+    position: static;
+    height: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    padding: 1.25rem 1rem;
+  }
+  .sidebar nav { display: none; }
+  .sidebar .brand { padding-bottom: 0.5rem; margin-bottom: 0.5rem; }
+  .main { padding: 1.5rem 1.25rem 3rem; max-width: 100%; }
+  .mobile-toc { display: block; }
 }
 
 @media (max-width: 760px) {
@@ -342,10 +382,9 @@ figure.chart-container { margin: 2rem 0; padding: 0; }
     border-bottom: 1px solid var(--border);
     padding: 1.25rem 1rem;
   }
-  .sidebar nav { display: none; }  /* nav is also shown in mobile header */
+  .sidebar nav { display: none; }
   .sidebar .brand { padding-bottom: 0.5rem; margin-bottom: 0.5rem; }
   .main { padding: 1.5rem 1.25rem 3rem; max-width: 100%; }
-  .chart-container iframe { height: 400px; }
   .mobile-toc { display: block; }
 }
 

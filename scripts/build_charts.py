@@ -22,12 +22,22 @@ def _safe_write_html(fig, path, retries=12, delay=0.3, **kwargs):
     so we retry on *any* OSError up to `retries`; a persistent failure
     (real permission issue) will simply exhaust retries and re-raise.
     Retries with a small backoff let the OS release the handle.
+
+    Auto-height post-pass: every chart is written as a *fluid* document so
+    the iframe height (driven by CSS in style.css) is the single sizing
+    authority on all viewports. We strip the figure's fixed `"height":N`
+    from the layout JSON and make the wrapper/plotly-graph-div height:100%.
+    Plotly's `responsive: True` then refits the SVG to whatever box the
+    iframe gives it, so narrow portrait charts swipe and short landscape
+    windows never overflow.
     """
     import random
+    import re
     last_err = None
     for attempt in range(retries):
         try:
             fig.write_html(path, **kwargs)
+            _autoheight_html(path)
             return
         except (OSError, IOError) as e:
             last_err = e
@@ -37,6 +47,34 @@ def _safe_write_html(fig, path, retries=12, delay=0.3, **kwargs):
             raise
     if last_err:
         raise last_err
+
+
+def _autoheight_html(path):
+    """Post-process a freshly-written Plotly HTML doc to fluid height.
+
+    - `<div style="height:<N>px; width:100%;">`  ->  height:100%
+    - plotly-graph-div inline height            ->  height:100%
+    - layout JSON `,"height":N}`                 ->  `}`  (last layout key)
+    """
+    import re
+    from pathlib import Path
+    p = Path(path)
+    c = p.read_text(encoding='utf-8', errors='replace')
+    c = re.sub(r'<div style="height:\d+px; width:100%;">',
+               '<div style="height:100%;width:100%;">', c, count=1)
+    c = re.sub(r'(class="plotly-graph-div" style=")height:\d+px; ',
+               r'\1height:100%; ', c, count=1)
+    c = re.sub(r'<div style="height:\d+px; width:100%;">',
+               '<div style="height:100%;width:100%;">', c, count=1)
+    c = re.sub(r'(class="plotly-graph-div" style=")height:\d+px; ',
+               r'\1height:100%; ', c, count=1)
+    c = re.sub(r',"height":\d+,', ',', c)      # mid-layout height key
+    c = re.sub(r',"height":\d+}', '}', c, count=1)  # height last layout key
+    c = re.sub(r'\{"height":\d+,', '{', c)     # height first layout key
+    if '<style>html,body' not in c:
+        c = c.replace('</head>',
+                      '<style>html,body{height:100%;margin:0;padding:0}</style></head>')
+    p.write_text(c, encoding='utf-8')
 
 
 def _safe_write_image(fig, path, retries=12, delay=0.3, **kwargs):
