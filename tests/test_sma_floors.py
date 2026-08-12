@@ -112,18 +112,38 @@ def test_last_row_matches_memo_jul_2026_reference():
     )
 
 
-def test_latest_position_below_50w_above_200w():
+def test_memo_reference_position_below_50w_above_200w():
     """Memo: 'Price traded beneath the 200-week SMA at the early-summer low
     near $57,000 and has since recovered above it, closing near $65,300'
-    AND '50-week SMA sits far above at roughly $86,500'. So as of last row,
-    price must be below 50w AND above 200w."""
+    AND '50-week SMA sits far above at roughly $86,500'. So as of the memo
+    reference row (2026-07-20 snapshot), price must be below 50w AND above
+    200w. Pinned to the reference date, not the running last row."""
+    df = pd.read_csv(TARGET_CSV, dtype=str)
+    df["date_dt"] = pd.to_datetime(df["date"])
+    memo_row = df[df["date_dt"] == pd.Timestamp("2026-07-20")]
+    assert len(memo_row) == 1, f"Memo reference row 2026-07-20 not found"
+    row = memo_row.iloc[0]
+    assert row["below_sma_50w"] == "True", (
+        f"Expected memo reference close below sma_50w; got below_sma_50w={row['below_sma_50w']!r}"
+    )
+    assert row["below_sma_200w"] == "False", (
+        f"Expected memo reference close above sma_200w; got below_sma_200w={row['below_sma_200w']!r}"
+    )
+
+
+def test_latest_position_reflects_fresh_data():
+    """Live position as of the latest weekly row (2026-08-10 refresh):
+    price re-broke below the 200w SMA (close $63,704 vs sma_200w $64,000),
+    still below the 50w. This is a moving state — update when data changes.
+    See docs/blockers/I-18a-sma-position-rebreak.md."""
     df = pd.read_csv(TARGET_CSV, dtype=str)
     last = df.iloc[-1]
     assert last["below_sma_50w"] == "True", (
         f"Expected latest close below sma_50w; got below_sma_50w={last['below_sma_50w']!r}"
     )
-    assert last["below_sma_200w"] == "False", (
-        f"Expected latest close above sma_200w; got below_sma_200w={last['below_sma_200w']!r}"
+    assert last["below_sma_200w"] == "True", (
+        f"Expected latest close below sma_200w (post-memo re-break); "
+        f"got below_sma_200w={last['below_sma_200w']!r}"
     )
 
 
