@@ -116,8 +116,11 @@ I-03 date-gate relaxations (per §9.4; blocker notes in
 - BTC: B4 = $43,081 (band $29.6k-$53.7k, center 2026-10-22, cross-check
   FAIL @ +45.6%); C5 top = $272,004 (band $186.9k-$338.9k).
 - Crypto alts: ETH uses `2_stage_with_observed_c4` (cross-check FAILs
-  due to n_drawdowns=2). XRP/SOL use `naive_median` (insufficient bear-
-  bottom data for ratio fit) -- no B4 band. Macro (SPX/NDX/DXY/TLT/GOLD) use
+  due to n_drawdowns=2). XRP uses `naive_median_own_dd` (own dd/mult
+  median, n=2 cycles C3+C4). SOL uses `borrowed_2_stage_from_ETH`
+  (ordinal-aligned ETH borrow: SOL C3~ETH C2, SOL C4~ETH C3, SOL
+  C5~ETH C4; SOL's own C3 502x mult makes its own-series naive-median
+  absurd -- see `_sections/methodology.md`). Macro (SPX/NDX/DXY/TLT/GOLD) use
   `macro_2_stage_own_shape` (I-19): 2-stage borrowed-shape machinery,
   anchor = own observed C4 top, shape (drawdown at C4, multiplier at C5)
   fit on the macro's OWN dd/mult series (n=3 from C1-C3 since C4 bottoms

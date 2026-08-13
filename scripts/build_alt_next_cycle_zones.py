@@ -19,7 +19,7 @@ Price-band projection (the **2-stage projection model**):
              between Stage 1 and Stage 2 cross-check triggers the flag column
              `cross_check_ok = False` and the band is widened to contain both.
 
-  Fallback hierarchy when Stage 1 inapplicable (e.g. XRP/SOL with n<4 bottoms):
+  Fallback hierarchy when Stage 1 inapplicable (e.g. XRP with n<4 bottoms):
     1) Anchor C5 top on the asset's most recent observed bear bottom price
        directly (Stage 2 only) and tag the row accordingly in
        `compression_fit_used = 'stage2_only_anchored_on_observed_b'`.
@@ -27,9 +27,11 @@ Price-band projection (the **2-stage projection model**):
        available cycles, marked `naive_median` in `compression_fit_used`.
 
 This explicit policy means the published C5 projection for ETH (n_rbottoms=3,
-n_mults=3) is a true 2-stage fit; for SOL (n_actual=1, with ETH-proxy augmentation)
-the projection is exploratory and the row carries a 'stage2_only_anchored_on_observed_b'
-tag so the reader can see exactly which assumption was made.
+n_mults=3) is a true 2-stage fit; for SOL (own dd/mult series dominated by its
+C3 first-cycle monster, mult=502x) the projection borrows ETH's per-cycle
+ratios aligned by asset-cycle ordinal (`borrowed_2_stage_from_ETH`) so the
+row carries that mode tag and the reader can see exactly which assumption
+was made.
 
 Output: data/processed/alt_next_cycle_zones.csv (>=6 assets x 3 zones=18 rows,
       typically 21 rows = 7 assets x 3 zones; SOL when n_with_proxy < 2 for
@@ -663,6 +665,85 @@ def _project_asset_chain(metrics_df, asset, is_macro):
             observed_c4_top_price = p
             observed_c4_top_date = d
 
+    # ==================== SOL: BORROW ETH SHAPE, ORDINAL-ALIGNED ====================
+    # (2026-08-11) SOL's own dd/mult series are dominated by its first-cycle
+    # monster move (C3 mult = 502x), so its own naive-median path publishes an
+    # absurd C5 band ($264 - $31,252 -- the "wild multiplier spread [502, 27]"
+    # problem). Per the user's framework SOL should borrow ETH's per-cycle
+    # ratios ALIGNED BY ASSET-CYCLE ORDINAL, not by BTC cycle number:
+    #   SOL C3 (its 1st real cycle)  ~ ETH C2 (its 1st real cycle)
+    #   SOL C4 (its 2nd real cycle)  ~ ETH C3 (its 2nd)
+    #   SOL C5 (its 3rd, to project) ~ ETH C4 (its 3rd, observed)
+    # So we evaluate ETH's fitted dd/mult curves at ordinal idx=3 (ETH's own
+    # 3rd-cycle ratios: dd=0.6873, mult=7.12) rather than extrapolating to
+    # SOL's own noisy series. Anchor stays SOL's observed C4 top ($261.82).
+    if (asset == "sol" and not is_macro
+            and observed_c4_top_price is not None):
+        eth_dds, _ = _extract_drawdown_series(metrics_df, "eth")
+        eth_mults, _ = _extract_multiplier_series(metrics_df, "eth")
+        if len(eth_dds) >= 3 and len(eth_mults) >= 3:
+            proj = two_stage_with_observed_c4_borrowed(
+                observed_c4_top_price=observed_c4_top_price,
+                observed_c4_top_date=observed_c4_top_date,
+                parent_dds=eth_dds,
+                parent_mults=eth_mults,
+                parent_label="ETH",
+                dd_project_to_idx=3,
+                mult_project_to_idx=3,
+                dd_c5_project_to_idx=3,
+            )
+            fit_note = (
+                f"mode=borrowed_2_stage_from_ETH; "
+                f"SOL's own dd/mult series are dominated by its C3 first-cycle "
+                f"monster (mult=502x), so own naive-median would publish an "
+                f"absurd C5 band. Borrowed ETH's per-cycle shape aligned by "
+                f"ASSET-CYCLE ORDINAL (not BTC cycle number): SOL C3~ETH C2, "
+                f"SOL C4~ETH C3, SOL C5(projected)~ETH C4 (observed). "
+                f"Parent ETH dds=[" + ", ".join("%.3f" % d for d in eth_dds) + "], "
+                f"mults=[" + ", ".join("%.2f" % m for m in eth_mults) + "]. "
+                f"Projected dd at ordinal 3 = {proj['c4_dd']:.3f} "
+                f"-> B4 = {_fmt_usd(proj['b4_stage1'])} "
+                f"(band {_fmt_usd(proj['b4_band_low'])} - {_fmt_usd(proj['b4_band_high'])}). "
+                f"Projected C5 multiplier = {proj['mult_c5']:.2f} -> "
+                f"C5 top = {_fmt_usd(proj['c5_top'])} "
+                f"(band {_fmt_usd(proj['c5_top_band_low'])} - "
+                f"{_fmt_usd(proj['c5_top_band_high'])}). "
+                f"B5 (post-C5 bottom) = {_fmt_usd(proj['b5_center'])} "
+                f"(band {_fmt_usd(proj['b5_band_low'])} - {_fmt_usd(proj['b5_band_high'])})."
+            )
+            return {
+                'available': True,
+                'mode': 'borrowed_2_stage_from_ETH',
+                'mult_proj': proj['mult_c5'],
+                'mult_band_low': proj['mult_c5_band_low'],
+                'mult_band_high': proj['mult_c5_band_high'],
+                'dd_proj': proj['c4_dd'],
+                'used_anchor_price': proj['b4_stage1'],  # B4 is the dist-zone anchor
+                'anchor_kind': 'projected_B4_via_drawdown',
+                'projected_b4': proj['b4_stage1'],
+                'proj': {
+                    'b4_stage1': proj['b4_stage1'],
+                    'b4_stage1_origin': proj['b4_stage1_origin'],
+                    'b4_via_drawdown': proj['b4_via_drawdown'],
+                    'b4_band_low': proj['b4_band_low'],
+                    'b4_band_high': proj['b4_band_high'],
+                    'cross_check_ok': None,
+                    'cross_check_rel_diff': float('nan'),
+                    'mult_c5': proj['mult_c5'],
+                    'b5_band_low': proj['b5_band_low'],
+                    'b5_band_high': proj['b5_band_high'],
+                    'b5_center': proj['b5_center'],
+                    'shape_source': proj['shape_source'],
+                },
+                'mult_fit': proj['mult_fit'],
+                'dd_fit': proj['dd_fit'],
+                'fit_note': fit_note,
+                'observed_c4_top_price': observed_c4_top_price,
+                'observed_c4_top_date': observed_c4_top_date,
+                'dist_price_low': proj['c5_top_band_low'],
+                'dist_price_high': proj['c5_top_band_high'],
+            }
+
     # ==================== OWN-NAIVE-MEDIAN PATH (>= 2 own dds + >= 2 own mults) ====================
     # NEW (2026-08-04): When an asset has at least 2 own drawdown observations
     # AND at least 2 own multiplier observations AND an observed C4 top, use
@@ -674,8 +755,9 @@ def _project_asset_chain(metrics_df, asset, is_macro):
     # Trigger: ONLY for crypto alts that would otherwise fall to the BORROWED
     # path (n_bottoms<4 OR n_mults<3 OR n_dds<3). Macros are excluded: they
     # route through the macro 2-stage path with their own fitted shape (I-19).
-    # ETH (n>=4/n>=3/n>=3) continues to use 2_stage_with_observed_c4. XRP/SOL
-    # with < 2 dds or < 2 mults continue to the existing naive_median path.
+    # ETH (n>=4/n>=3/n>=3) continues to use 2_stage_with_observed_c4. SOL is
+    # intercepted earlier by the SOL-borrow-ETH branch. XRP with < 2 dds or
+    # < 2 mults falls through to the existing naive_median_own_dd path.
     #
     # Math:
     #   dd_med = median(own_dds); band = [min(own_dds), max(own_dds)]
@@ -1282,7 +1364,8 @@ def main() -> None:
             and obs_c4_date is not None
             and proj_out.get('mode') in
                 ('2_stage_with_observed_c4', 'borrowed_2_stage_from_BTC',
-                 'macro_2_stage_own_shape', 'naive_median_own_dd')
+                 'borrowed_2_stage_from_ETH', 'macro_2_stage_own_shape',
+                 'naive_median_own_dd')
         )
         if crypto_with_proj and obs_c4_price is not None and obs_c4_date is not None:
             # --- New B4 design (2026-07-23) ---
@@ -1442,7 +1525,7 @@ def main() -> None:
             b4_fit_note = ("B4 (post-C4-top bear bottom): macro asset, "
                            "not cycle-tied -- no B4 zone.")
         else:
-            # Insufficient-data path (XRP, SOL with naive_median): emit a
+            # Insufficient-data path (XRP with naive_median; macro not_cycle_tied): emit a
             # placeholder B4 row.
             b4_base_start = b4_base_end = b4_outer_start = b4_outer_end = ""
             b4_price_low = b4_price_high = None

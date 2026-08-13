@@ -32,10 +32,10 @@
       "asset": "SOL",
       "b4_base_end": "2027-01-28",
       "b4_base_start": "2026-09-30",
-      "b4_price_high": "$62.19",
-      "b4_price_low": "$9.76",
+      "b4_price_high": "$85.96",
+      "b4_price_low": "$77.80",
       "lead_vs_btc_days": -12,
-      "method": "naive_median_own_dd"
+      "method": "borrowed_2_stage_from_ETH"
     },
     {
       "asset": "MSTR",
@@ -1640,9 +1640,9 @@
           "label": "C5 distribution (top)",
           "outer_end": "2029-09-27",
           "outer_start": "2028-12-30",
-          "price_center": "$15,758",
-          "price_high": "$31,252",
-          "price_low": "$264.74",
+          "price_center": "$899.53",
+          "price_high": "$1,585",
+          "price_low": "$213.96",
           "role": "attention peak - top watch"
         },
         {
@@ -1652,13 +1652,13 @@
           "label": "B5 - post-C5-top exit",
           "outer_end": "2031-02-13",
           "outer_start": "2030-02-21",
-          "price_center": "$2,165",
-          "price_high": "$4,294",
-          "price_low": "$36.38",
+          "price_center": "$281.31",
+          "price_high": "$495.72",
+          "price_low": "$66.91",
           "role": "next attention peak - exit watch"
         }
       ],
-      "method": "naive_median_own_dd",
+      "method": "borrowed_2_stage_from_ETH",
       "next_window": {
         "base_end": "2027-01-28",
         "base_start": "2026-09-30",
@@ -1667,9 +1667,9 @@
         "label": "B4 - post-C4-top bear bottom",
         "outer_end": "2027-03-29",
         "outer_start": "2026-08-01",
-        "price_center": "$35.97",
-        "price_high": "$62.19",
-        "price_low": "$9.76",
+        "price_center": "$81.88",
+        "price_high": "$85.96",
+        "price_low": "$77.80",
         "role": "attention peak - bottom watch"
       },
       "price_history": [

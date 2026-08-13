@@ -710,7 +710,10 @@ def two_stage_with_observed_c4_borrowed(observed_c4_top_price,
                                           observed_c4_top_date,
                                           parent_dds, parent_mults,
                                           parent_label='parent',
-                                          dd_floor=0.50, mult_floor=2.0):
+                                          dd_floor=0.50, mult_floor=2.0,
+                                          dd_project_to_idx=4,
+                                          mult_project_to_idx=5,
+                                          dd_c5_project_to_idx=None):
     """2-stage projection variant for assets with **insufficient own history**.
 
     Use when an alt has fewer than 4 observed bear bottoms or fewer than 3
@@ -742,12 +745,12 @@ def two_stage_with_observed_c4_borrowed(observed_c4_top_price,
     dd_fit = fit_cycle_compression(
         parent_dds,
         cycle_indices=list(range(1, len(parent_dds) + 1)),
-        project_to_idx=4,
+        project_to_idx=dd_project_to_idx,
         floor=dd_floor,
     )
     if dd_fit['fit_a'] is not None and dd_fit['fit_b'] is not None:
-        dd_c4 = float(max(dd_fit['fit_a'] * (4.0 ** dd_fit['fit_b']), dd_floor))
-        dd_band_low = float(max(dd_fit['fit_a'] * (4.0 ** dd_fit['fit_b']) - dd_fit['log_residual_std'] * 0.5, dd_floor))
+        dd_c4 = float(max(dd_fit['fit_a'] * (float(dd_project_to_idx) ** dd_fit['fit_b']), dd_floor))
+        dd_band_low = float(max(dd_fit['fit_a'] * (float(dd_project_to_idx) ** dd_fit['fit_b']) - dd_fit['log_residual_std'] * 0.5, dd_floor))
         dd_band_high = float(min(0.95, dd_c4 + dd_fit['log_residual_std'] * 0.5))
     else:
         dd_c4 = dd_fit['projected_value']
@@ -762,11 +765,11 @@ def two_stage_with_observed_c4_borrowed(observed_c4_top_price,
     mult_fit = fit_cycle_compression(
         parent_mults,
         cycle_indices=list(range(1, len(parent_mults) + 1)),
-        project_to_idx=5,
+        project_to_idx=mult_project_to_idx,
         floor=mult_floor,
     )
     if mult_fit['fit_a'] is not None and mult_fit['fit_b'] is not None:
-        mult_c5 = float(max(mult_fit['fit_a'] * (5.0 ** mult_fit['fit_b']), mult_floor))
+        mult_c5 = float(max(mult_fit['fit_a'] * (float(mult_project_to_idx) ** mult_fit['fit_b']), mult_floor))
         log_std = mult_fit['log_residual_std'] or 0.3
         mult_band_low = float(max(mult_c5 * math.exp(-log_std), mult_floor))
         mult_band_high = float(mult_c5 * math.exp(log_std))
@@ -786,9 +789,15 @@ def two_stage_with_observed_c4_borrowed(observed_c4_top_price,
     c5_top_band_low = b4_low * mult_band_low
     c5_top_band_high = b4_high * mult_band_high
 
-    # B5 (post-C5 bottom) = C5 * (1 - dd_C5) where dd_C5 is projected dd at idx=5.
+    # B5 (post-C5 bottom) = C5 * (1 - dd_C5) where dd_C5 is projected dd at
+    # the post-C5 cycle. Default: one ordinal past dd_project_to_idx (idx=5
+    # when projecting dd at idx=4, matching the BTC-borrowed path). Borrowed
+    # parents may pass an explicit dd_c5_project_to_idx (e.g. ordinal-aligned
+    # ETH borrowing for SOL).
+    if dd_c5_project_to_idx is None:
+        dd_c5_project_to_idx = dd_project_to_idx + 1
     if dd_fit['fit_a'] is not None and dd_fit['fit_b'] is not None:
-        dd_c5 = float(max(dd_fit['fit_a'] * (5.0 ** dd_fit['fit_b']), dd_floor))
+        dd_c5 = float(max(dd_fit['fit_a'] * (float(dd_c5_project_to_idx) ** dd_fit['fit_b']), dd_floor))
     else:
         dd_c5 = dd_c4
     b5_center = c5_top * (1.0 - dd_c5)
@@ -1845,6 +1854,15 @@ def _build_alt_chart(asset, filename, title, subtitle):
             "Anchor = asset's observed C4 top. Relative shape (drawdown depth at C4, "
             "bottom-to-peak multiplier at C5) borrowed from BTC's 3 observed cycles."
         )
+    elif fit_used == 'borrowed_2_stage_from_ETH':
+        notes.append(
+            "Model: borrowed 2-stage from ETH (ordinal-aligned). SOL's own dd/mult "
+            "series are dominated by its C3 first-cycle monster (mult=502x), so its "
+            "own naive-median publishes an absurd C5 band. ETH's per-cycle ratios "
+            "aligned by asset-cycle ordinal: SOL C3~ETH C2, SOL C4~ETH C3, SOL C5 "
+            "(projected)~ETH C4 (observed). Anchor = SOL observed C4 top. Shape "
+            "(drawdown at C4, multiplier at C5) = ETH's fitted curves at ordinal 3."
+        )
     elif fit_used == 'naive_median':
         notes.append(
             "Model: naive median (insufficient bear-bottom history for power-law fit). "
@@ -1977,7 +1995,7 @@ def build_c8_sol():
     """C8c — SOL individual next-cycle projection chart."""
     _build_alt_chart('sol', 'C8c.html',
         'C8c — SOL Next-Cycle (C5) Price Prediction',
-        'Borrowed 2-stage from BTC: anchor = observed C4 top ($261.82); shape (drawdown, multiplier) borrowed from BTC cycles 1-3 (SOL has <3 own bear bottoms).')
+        'Borrowed 2-stage from ETH (ordinal-aligned): anchor = observed C4 top ($261.82); shape (drawdown, multiplier) borrowed from ETH cycles 2-4 aligned by asset-cycle ordinal (SOL C5 ~ ETH C4; SOL\'s own C3 502x mult makes its own-series naive-median absurd).')
 
 
 def build_c8_mstr():

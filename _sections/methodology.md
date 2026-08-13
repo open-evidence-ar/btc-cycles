@@ -213,7 +213,8 @@ as BTC's Stage-1/Stage-2 — see §"2-stage projection" above.
 | Mode | Asset(s) | Why |
 |---|---|---|
 | `2_stage_with_observed_c4` | **ETH** | Asset-native Stage-1 fit on `[B0,B1,B2,B3]`. Cross-check vs dd-path. ETH FAILs @ +15.3% (C4 below euphoric expectation; n_drawdowns=2 makes the dd power-law admittedly weak). |
-| `borrowed_2_stage_from_BTC` | **XRP, SOL, MSTR, WGMI** | Only 0-2 observed bear bottoms (XRP, SOL, WGMI) or insufficient full-cycle coverage (MSTR: only post-Aug-2020 treasury-pivot data is BTC-correlated) — too few for asset-native ratio fit. Borrow BTC's projected B4 timing anchor (BTC B4 center Oct-22-2026), shift by asset's own lag-vs-BTC-bottom; B4 *price* from asset's own prior-cycle drawdowns on observed C4 top. |
+| `borrowed_2_stage_from_BTC` | **XRP, MSTR, WGMI** | Only 0-2 observed bear bottoms (XRP, WGMI) or insufficient full-cycle coverage (MSTR: only post-Aug-2020 treasury-pivot data is BTC-correlated) — too few for asset-native ratio fit. Borrow BTC's projected B4 timing anchor (BTC B4 center Oct-22-2026), shift by asset's own lag-vs-BTC-bottom; B4 *price* from asset's own prior-cycle drawdowns on observed C4 top. |
+| `borrowed_2_stage_from_ETH` | **SOL** | (2026-08-11) SOL's own dd/mult series are dominated by its C3 first-cycle monster (mult=502x, dd=0.963), so its own naive-median publishes an absurd C5 band. Borrow ETH's per-cycle ratios aligned by asset-cycle ordinal (SOL C3~ETH C2, SOL C4~ETH C3, SOL C5~ETH C4), evaluating ETH's fitted dd/mult curves at ordinal 3 (dd=0.687, mult=7.11). Anchor = SOL's observed C4 top ($261.82). |
 | `macro_2_stage_own_shape` | **SPX, NDX, DXY, TLT, GOLD** | I-19 / I-19b: anchors = own observed C4 top; shape (drawdown depth, bottom-to-top multiplier) fit on the macro's OWN dd/mult series (n=3 from C1-C3 since C4 bottoms are still open for the macros). Economic floors relaxed (dd_floor=0.05, mult_floor=1.05); B4 band drawdown clamped to the macro's observed dd range. Gold additionally carries the validated 20-mo SMA / 21-mo EMA bull-support-band cross-check ($3,813-$3,830 @ 2026-07-31, see `docs/gold_seasonality.md`). See `docs/blockers/I-19-macro-2stage.md` for full methodology. |
 
 ### Per-asset extrema + forward ranges
@@ -238,14 +239,18 @@ that proxy is now **retired** — Bitfinex SOLUSD history back to
 2021-11-06 lets us extract an *actual* SOL C3 local top at
 2021-11-06 (544d from H3), two days before ETH and four before BTC.
 
-`borrowed_2_stage_from_BTC` still applies to SOL (and XRP) for the
-next-cycle zone map because *two* observed bear bottoms is not enough
-to power-law-fit an asset-native ratio series. The B4 *timing* is
-borrowed from BTC's projected B4 and shifted by SOL's own historical
-lag-vs-BTC-bottom; the B4 *price* from SOL's own prior-cycle drawdowns
-on SOL's observed C4 top. Once SOL completes its own C5 cycle
+SOL's next-cycle zone map borrows from **ETH** (`borrowed_2_stage_from_ETH`,
+ordinal-aligned) rather than from BTC: two observed bear bottoms is not
+enough to power-law-fit an asset-native ratio series, and SOL's own
+dd/mult series are dominated by its C3 first-cycle monster (mult=502x)
+which would otherwise publish an absurd C5 band. ETH's per-cycle ratios
+are borrowed aligned by asset-cycle ordinal (SOL C3~ETH C2, SOL C4~ETH C3,
+SOL C5~ETH C4), evaluating ETH's fitted curves at ordinal 3. The B4
+*timing* is still borrowed from BTC's projected B4 and shifted by SOL's
+own historical lag-vs-BTC-bottom; the B4 *price* = SOL's observed C4 top
+× (1 − ETH-ordinal-3 drawdown). Once SOL completes its own C5 cycle
 (post-2028), a third observed bear bottom will permit an asset-native
-Stage 1 fit and retire the borrowed-timing model.
+Stage 1 fit and retire the borrowed-shape model.
 
 ### Coverage matrix
 
