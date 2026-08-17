@@ -79,7 +79,7 @@ def box_line(left, top, right, bottom, color, tier, width=1) -> str:
         border_style = ""
     else:
         b_transp, f_transp = "outerBorderInput", "outerFillInput"
-        border_style = ", border_style=box.border_style_dashed"
+        border_style = ", border_style=line.style_dashed"
     return (
         f"box.new({ts(left)}, {num(top)}, {ts(right)}, {num(bottom)}, "
         f"xloc=xloc.bar_time, "
