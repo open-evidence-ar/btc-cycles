@@ -94,21 +94,26 @@ def test_smnas_start_at_min_periods():
 
 def test_last_row_matches_memo_jul_2026_reference():
     """Cowen July 2026 memo states: 200w SMA near $63,100; 50w SMA near $86,500;
-    spot near $65,300. Our snapshot is dated 2026-07-20 so allow tolerance.
-    200w should be in $60k-$66k; 50w in $82k-$90k; close in $60k-$70k."""
+    spot near $65,300. Cross-check is pinned to the memo snapshot row
+    (2026-07-20), not the running last row — the latest row drifts as data
+    refreshes and is covered by test_latest_position_reflects_fresh_data.
+    Bands: 200w $60k-$66k; 50w $82k-$90k; close $60k-$70k."""
     df = pd.read_csv(TARGET_CSV, dtype=str)
-    last = df.iloc[-1]
-    close = float(last["close"])
-    sma_50 = float(last["sma_50w"])
-    sma_200 = float(last["sma_200w"])
+    df["date_dt"] = pd.to_datetime(df["date"])
+    memo_row = df[df["date_dt"] == pd.Timestamp("2026-07-20")]
+    assert len(memo_row) == 1, "Memo reference row 2026-07-20 not found"
+    row = memo_row.iloc[0]
+    close = float(row["close"])
+    sma_50 = float(row["sma_50w"])
+    sma_200 = float(row["sma_200w"])
     assert 60_000 <= sma_200 <= 66_000, (
-        f"Latest sma_200w=${sma_200:,.0f} outside $60k-$66k band (memo ~$63,100)"
+        f"Memo sma_200w=${sma_200:,.0f} outside $60k-$66k band (memo ~$63,100)"
     )
     assert 82_000 <= sma_50 <= 90_000, (
-        f"Latest sma_50w=${sma_50:,.0f} outside $82k-$90k band (memo ~$86,500)"
+        f"Memo sma_50w=${sma_50:,.0f} outside $82k-$90k band (memo ~$86,500)"
     )
     assert 60_000 <= close <= 70_000, (
-        f"Latest close=${close:,.0f} outside $60k-$70k band (memo ~$65,300)"
+        f"Memo close=${close:,.0f} outside $60k-$70k band (memo ~$65,300)"
     )
 
 

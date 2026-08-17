@@ -139,6 +139,11 @@ def build_pipeline(skip_fetch: bool = False) -> list[Stage]:
                 label="Alt next-cycle zones",
             ),
             Step(
+                name="tv_pine",
+                cmd=[sys.executable, str(SCRIPTS_DIR / "export_tradingview_pine.py")],
+                label="TradingView Pine exports",
+            ),
+            Step(
                 name="align",
                 cmd=[sys.executable, str(SCRIPTS_DIR / "align_to_halving.py")],
                 label="Align returns to halving calendar",
