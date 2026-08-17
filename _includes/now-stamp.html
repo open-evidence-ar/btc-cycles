@@ -10,11 +10,24 @@
     </span>
     <span class="now-stamp-state-badge" aria-hidden="true">—</span>
     <button id="now-stamp-toggle" class="now-stamp-toggle" type="button" aria-expanded="false" aria-controls="now-stamp-chart" title="Show price + cycle-window chart">⤢ chart</button>
+    <button id="pine-tools-btn" class="pine-tools-chip" type="button" aria-expanded="false" aria-controls="pine-tools-pop" title="TradingView Pine overlay — copy script">⧉ Pine</button>
   </div>
   <div class="now-stamp-asset-bar" id="now-stamp-asset-bar" role="tablist" aria-label="Asset timeline selector"></div>
   <div id="now-stamp-chart" class="now-stamp-chart" hidden aria-hidden="true">
     <svg class="cycle-strip" viewBox="0 0 600 120" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Log-scale price line (history from 2024 onward) overlaid with cycle-window bands: last observed top (C4 top), next cycle bottom window (B4), next top window (C5), and exit window (B5). Dashed projection line through B4 -> C5 -> B5 centers; today marked with a dashed vertical line."></svg>
     <div class="cycle-strip-legend"></div>
+  </div>
+  <div id="pine-tools-pop" class="pine-tools-pop" hidden>
+    <button type="button" class="pine-tools-close" aria-label="Close Pine overlay tools" title="Close">×</button>
+    <div class="pine-tools-title">TradingView overlay</div>
+    <p class="pine-tools-desc">Open <code>BITSTAMP:BTCUSD</code> / <code>COINBASE:ETHUSD</code> / <code>BINANCE:XRPUSDT</code> / <code>BINANCE:SOLUSDT</code> (1D), paste into the Pine editor, and the matching zone map draws itself.</p>
+    <button id="pine-tools-copy" class="pine-tools-copy" type="button">⧉ Copy script</button>
+    <span id="pine-tools-status" class="pine-tools-status" role="status"></span>
+    <div class="pine-tools-links">
+      <a href="{{ '/assets/pine/crypto_zones.pine' | relative_url }}" target="_blank" rel="noopener">View raw</a>
+      <span class="pine-tools-links-sep">·</span>
+      <a href="https://github.com/open-evidence-ar/btc-cycles/blob/main/assets/pine/crypto_zones.pine" target="_blank" rel="noopener">GitHub</a>
+    </div>
   </div>
   <script type="application/json" id="cycle-status-data">{{ site.data.cycle_status | jsonify }}</script>
   <noscript>
@@ -659,5 +672,79 @@
   // ---- init ----
   buildAssetBar();
   renderAsset();
+})();
+</script>
+<script>
+// Pine overlay accessory: quick copy-to-clipboard + links for the published
+// TradingView script. Self-contained; no framework dependencies.
+(function() {
+  var btn = document.getElementById('pine-tools-btn');
+  var pop = document.getElementById('pine-tools-pop');
+  var copyBtn = document.getElementById('pine-tools-copy');
+  var statusEl = document.getElementById('pine-tools-status');
+  if (!btn || !pop || !copyBtn) return;
+
+  function setOpen(open) {
+    if (open) {
+      pop.removeAttribute('hidden');
+      btn.setAttribute('aria-expanded', 'true');
+    } else {
+      pop.setAttribute('hidden', '');
+      btn.setAttribute('aria-expanded', 'false');
+    }
+  }
+  btn.addEventListener('click', function() {
+    setOpen(pop.hasAttribute('hidden'));
+  });
+
+  function setStatus(msg) {
+    if (!statusEl) return;
+    statusEl.textContent = msg;
+    clearTimeout(setStatus._t);
+    if (msg) setStatus._t = setTimeout(function() { statusEl.textContent = ''; }, 2600);
+  }
+
+  function copyText(text) {
+    if (navigator.clipboard && window.isSecureContext) {
+      return navigator.clipboard.writeText(text);
+    }
+    return new Promise(function(resolve, reject) {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        var ok = document.execCommand('copy');
+        document.body.removeChild(ta);
+        ok ? resolve() : reject(new Error('copy failed'));
+      } catch (e) {
+        document.body.removeChild(ta);
+        reject(e);
+      }
+    });
+  }
+
+  copyBtn.addEventListener('click', function() {
+    var url = copyBtn.getAttribute('data-src');
+    if (!url) url = '{{ '/assets/pine/crypto_zones.pine' | relative_url }}';
+    setStatus('Copying…');
+    fetch(url)
+      .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
+      .then(function(t) { return copyText(t); })
+      .then(function() { setStatus('Copied ✓ — paste into Pine editor'); })
+      .catch(function() { setStatus('Copy failed — use View raw'); });
+  });
+
+  document.addEventListener('click', function(e) {
+    if (!pop.hasAttribute('hidden') && !pop.contains(e.target) && e.target !== btn) {
+      setOpen(false);
+    }
+  });
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && !pop.hasAttribute('hidden')) setOpen(false);
+  });
 })();
 </script>
