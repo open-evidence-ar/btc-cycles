@@ -118,7 +118,7 @@ def asset_block(asset: str, zones: dict) -> list[str]:
         f"label.new({ts(c4_date)}, {num(c4_price)}, "
         f"\"C4 top (obs) {fmt_price(c4_price)}\\n{c4_date}\", "
         "xloc=xloc.bar_time, yloc=yloc.price, "
-        "style=label.style_label_down, color=color.new(color.red, labelsInput), textcolor=color.white, size=size.small)"
+        "style=label.style_label_down, color=color.new(color.red, labelsInput), textcolor=color.new(color.white, labelsTextInput), size=size.small)"
     )
     A("")
     A(f"// {asset.upper()}: reference levels (model centers)")
@@ -130,12 +130,12 @@ def asset_block(asset: str, zones: dict) -> list[str]:
     A(
         f"label.new({ts(mid_date(bear['base_start'], bear['base_end']))}, {num(b4_center)}, "
         f"\"B4 {fmt_price(b4_center)}\", xloc=xloc.bar_time, yloc=yloc.price, "
-        "style=label.style_diamond, color=color.new(color.blue, labelsInput), textcolor=color.white, size=size.small)"
+        "style=label.style_diamond, color=color.new(color.blue, labelsInput), textcolor=color.new(color.white, labelsTextInput), size=size.small)"
     )
     A(
         f"label.new({ts(mid_date(dist['base_start'], dist['base_end']))}, {num(c5_mid)}, "
         f"\"C5 {fmt_price(c5_mid)}\", xloc=xloc.bar_time, yloc=yloc.price, "
-        "style=label.style_diamond, color=color.new(color.orange, labelsInput), textcolor=color.white, size=size.small)"
+        "style=label.style_diamond, color=color.new(color.orange, labelsInput), textcolor=color.new(color.white, labelsTextInput), size=size.small)"
     )
     A("")
 
@@ -166,7 +166,7 @@ def asset_block(asset: str, zones: dict) -> list[str]:
             f"label.new({ts(e)}, {num(label_y)}, \"{text}\", "
             "xloc=xloc.bar_time, yloc=yloc.price, "
             f"style=label.style_label_down, color=color.new(color.{col}, labelsInput), "
-            "textcolor=color.white, size=size.small)"
+            "textcolor=color.new(color.white, labelsTextInput), size=size.small)"
         )
         A("")
 
@@ -208,6 +208,7 @@ def main() -> int:
         "int boxesBorderInput = input.int(85, \"Zone border transparency (0 = solid)\", minval = 0, maxval = 100, group = OPACITY_GROUP)",
         "int linesInput = input.int(0, \"Reference lines transparency (0 = solid)\", minval = 0, maxval = 100, group = OPACITY_GROUP)",
         "int labelsInput = input.int(0, \"Labels transparency (0 = solid)\", minval = 0, maxval = 100, group = OPACITY_GROUP)",
+        "int labelsTextInput = input.int(0, \"Label text transparency (0 = solid)\", minval = 0, maxval = 100, group = OPACITY_GROUP)",
         "",
     ]
 
