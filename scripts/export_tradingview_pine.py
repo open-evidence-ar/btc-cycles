@@ -76,13 +76,15 @@ def mid_date(start: str, end: str) -> str:
 def box_line(left, top, right, bottom, color, tier, width=1) -> str:
     if tier == "base":
         b_transp, f_transp = "boxesBorderInput", "boxesFillInput"
+        border_style = ""
     else:
-        b_transp, f_transp = "97", "99"
+        b_transp, f_transp = "outerBorderInput", "outerFillInput"
+        border_style = ", border_style=box.border_style_dashed"
     return (
         f"box.new({ts(left)}, {num(top)}, {ts(right)}, {num(bottom)}, "
         f"xloc=xloc.bar_time, "
-        f"border_color=color.new(color.{color}, {b_transp}), border_width={width}, "
-        f"bgcolor=color.new(color.{color}, {f_transp})"
+        f"border_color=color.new(color.{color}, {b_transp}), border_width={width}"
+        f"{border_style}, bgcolor=color.new(color.{color}, {f_transp})"
         ")"
     )
 
@@ -206,6 +208,8 @@ def main() -> int:
         "const string OPACITY_GROUP = \"Element opacity (Style tab not available for drawings)\"",
         "int boxesFillInput = input.int(95, \"Zone fill transparency (0 = solid)\", minval = 0, maxval = 100, group = OPACITY_GROUP)",
         "int boxesBorderInput = input.int(85, \"Zone border transparency (0 = solid)\", minval = 0, maxval = 100, group = OPACITY_GROUP)",
+        "int outerFillInput = input.int(98, \"Outer (extended) zone fill transparency (0 = solid)\", minval = 0, maxval = 100, group = OPACITY_GROUP)",
+        "int outerBorderInput = input.int(85, \"Outer (extended) zone border transparency (0 = solid)\", minval = 0, maxval = 100, group = OPACITY_GROUP)",
         "int linesInput = input.int(0, \"Reference lines transparency (0 = solid)\", minval = 0, maxval = 100, group = OPACITY_GROUP)",
         "int labelsInput = input.int(0, \"Labels transparency (0 = solid)\", minval = 0, maxval = 100, group = OPACITY_GROUP)",
         "int labelsTextInput = input.int(0, \"Label text transparency (0 = solid)\", minval = 0, maxval = 100, group = OPACITY_GROUP)",
