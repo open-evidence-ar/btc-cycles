@@ -1179,17 +1179,27 @@ def build_c6():
     dist_zone = zones[zones['zone'] == 'distribution'].iloc[0]
     exit_zone = zones[zones['zone'] == 'exit'].iloc[0]
 
-    # --- C5 TOP band rectangle (orange, spans distribution zone dates) ---
+    # --- C5 TOP band rectangle (orange) ---
+    # Dual-layer like the Pine overlay: faint dashed OUTER (full uncertainty
+    # range) behind the solid BASE rectangle (IQR window).
     fig.add_shape(
         type='rect', xref='x', yref='y',
         x0=dist_zone['outer_start'], x1=dist_zone['outer_end'],
+        y0=c5_top_low, y1=c5_top_high,
+        fillcolor='rgba(251,146,60,0.06)',
+        line=dict(color='rgb(251,146,60)', width=1, dash='dash'),
+        layer='below',
+    )
+    fig.add_shape(
+        type='rect', xref='x', yref='y',
+        x0=dist_zone['base_start'], x1=dist_zone['base_end'],
         y0=c5_top_low, y1=c5_top_high,
         fillcolor='rgba(251,146,60,0.25)',
         line=dict(color='rgb(251,146,60)', width=2),
         layer='below',
     )
     fig.add_trace(go.Scatter(
-        x=[dist_zone['outer_start'], dist_zone['outer_end']],
+        x=[dist_zone['base_start'], dist_zone['base_end']],
         y=[c5_top_center, c5_top_center],
         mode='lines', name='C5 TOP center',
         line=dict(color='rgb(251,146,60)', width=2),
@@ -1214,7 +1224,9 @@ def build_c6():
         xref='x', yref='y',
         text=(f"<b>C5 TOP</b><br>"
               f"${c5_top_low:,.0f} – ${c5_top_high:,.0f}<br>"
-              f"(center ${c5_top_center:,.0f})"),
+              f"(center ${c5_top_center:,.0f})<br>"
+              f"<span style='font-size:9px'>{dist_zone['base_start']} → {dist_zone['base_end']}"
+              f" (outer {dist_zone['outer_start']} → {dist_zone['outer_end']})</span>"),
         showarrow=True, arrowhead=2, arrowcolor='rgb(251,146,60)',
         ax=-60, ay=0,
         font=dict(size=10, color='#ffffff'),
@@ -1223,17 +1235,26 @@ def build_c6():
         xanchor='right', yanchor='middle',
     )
 
-    # --- B5 BOTTOM band rectangle (blue, spans exit zone dates) ---
+    # --- B5 BOTTOM band rectangle (blue) ---
+    # Dual-layer: faint dashed OUTER behind the solid BASE rectangle.
     fig.add_shape(
         type='rect', xref='x', yref='y',
         x0=exit_zone['outer_start'], x1=exit_zone['outer_end'],
+        y0=b5_low, y1=b5_high,
+        fillcolor='rgba(96,165,250,0.06)',
+        line=dict(color='rgb(96,165,250)', width=1, dash='dash'),
+        layer='below',
+    )
+    fig.add_shape(
+        type='rect', xref='x', yref='y',
+        x0=exit_zone['base_start'], x1=exit_zone['base_end'],
         y0=b5_low, y1=b5_high,
         fillcolor='rgba(96,165,250,0.25)',
         line=dict(color='rgb(96,165,250)', width=2),
         layer='below',
     )
     fig.add_trace(go.Scatter(
-        x=[exit_zone['outer_start'], exit_zone['outer_end']],
+        x=[exit_zone['base_start'], exit_zone['base_end']],
         y=[b5_center, b5_center],
         mode='lines', name='B5 center',
         line=dict(color='rgb(96,165,250)', width=2),
@@ -1245,7 +1266,9 @@ def build_c6():
         xref='x', yref='y',
         text=(f"<b>B5 (post-C5 bottom)</b><br>"
               f"${b5_low:,.0f} – ${b5_high:,.0f}<br>"
-              f"(center ${b5_center:,.0f})"),
+              f"(center ${b5_center:,.0f})<br>"
+              f"<span style='font-size:9px'>{exit_zone['base_start']} → {exit_zone['base_end']}"
+              f" (outer {exit_zone['outer_start']} → {exit_zone['outer_end']})</span>"),
         showarrow=True, arrowhead=2, arrowcolor='rgb(96,165,250)',
         ax=-60, ay=0,
         font=dict(size=10, color='#ffffff'),
@@ -1670,6 +1693,8 @@ def _build_alt_chart(asset, filename, title, subtitle):
             continue
         x0 = str(z['outer_start'])
         x1 = str(z['outer_end'])
+        b_s = str(z.get('base_start', '') or '')
+        b_e = str(z.get('base_end', '') or '')
         if not x0 or not x1 or x0 == 'nan' or x1 == 'nan':
             continue
         if p_lo > y_high or p_hi < y_low:
@@ -1679,19 +1704,31 @@ def _build_alt_chart(asset, filename, title, subtitle):
             zone, ('#888', 'circle', 10, zone, '#888'))
 
         p_mid = (p_lo + p_hi) / 2
+        r_, g_, b_ = int(color[1:3], 16), int(color[3:5], 16), int(color[5:7], 16)
 
-        # Band rectangle
+        # Outer window: faint dashed rect behind the base band (same layering as
+        # the TradingView Pine overlay — outer = full uncertainty range).
         fig.add_shape(type='rect', x0=x0, x1=x1, y0=p_lo, y1=p_hi,
-                      fillcolor=f'rgba({int(color[1:3],16)},{int(color[3:5],16)},{int(color[5:7],16)},0.25)',
+                      fillcolor=f'rgba({r_},{g_},{b_},0.06)',
+                      line=dict(color=color, width=1, dash='dash'), layer='below')
+
+        # Base band: solid rectangle on the IQR window (fallback to outer when
+        # the base window is missing/invalid).
+        if b_s and b_e and b_s != 'nan' and b_e != 'nan' and b_s <= b_e:
+            band_x0, band_x1 = b_s, b_e
+        else:
+            band_x0, band_x1 = x0, x1
+        fig.add_shape(type='rect', x0=band_x0, x1=band_x1, y0=p_lo, y1=p_hi,
+                      fillcolor=f'rgba({r_},{g_},{b_},0.25)',
                       line=dict(color=color, width=2), layer='below')
 
-        # Center line
-        fig.add_trace(go.Scatter(x=[x0, x1], y=[p_mid, p_mid], mode='lines',
+        # Center line across the base window
+        fig.add_trace(go.Scatter(x=[band_x0, band_x1], y=[p_mid, p_mid], mode='lines',
                       line=dict(color=color, width=2), showlegend=False,
                       hovertemplate=f'{band_label}<br>${p_mid:,.2f}<extra></extra>'))
 
-        # Triangle marker at zone midpoint
-        mid_dt = (pd.to_datetime(x0) + (pd.to_datetime(x1) - pd.to_datetime(x0)) / 2)
+        # Triangle marker at base window midpoint
+        mid_dt = (pd.to_datetime(band_x0) + (pd.to_datetime(band_x1) - pd.to_datetime(band_x0)) / 2)
         mid_str = mid_dt.strftime('%Y-%m-%d')
         fig.add_trace(go.Scatter(
             x=[mid_str], y=[p_mid], mode='markers', name=band_label,
@@ -1701,7 +1738,7 @@ def _build_alt_chart(asset, filename, title, subtitle):
                           f'band {fmt_price(p_lo)}–{fmt_price(p_hi)}<extra></extra>',
             showlegend=False))
 
-        # Arrow annotation at band right edge
+        # Arrow annotation at band right edge (base window)
         fit_used = z.get('compression_fit_used', '')
         fit_note = ''
         if fit_used == 'naive_median':
@@ -1710,11 +1747,15 @@ def _build_alt_chart(asset, filename, title, subtitle):
         chk_note = ''
         if cross_chk in ('True', 'False'):
             chk_note = f" <i>x-check {'OK' if cross_chk=='True' else 'FAIL'}</i>"
+        date_note = f"<span style='font-size:9px'>{band_x0} → {band_x1}"
+        if (band_x0, band_x1) != (x0, x1):
+            date_note += f" (outer {x0} → {x1})"
+        date_note += "</span>"
         fig.add_annotation(
-            x=x1, y=p_mid, xref='x', yref='y',
+            x=band_x1, y=p_mid, xref='x', yref='y',
             text=(f"<b>{band_label}</b><br>"
                   f"{fmt_price(p_lo)} – {fmt_price(p_hi)}<br>"
-                  f"(center {fmt_price(p_mid)}){fit_note}{chk_note}"),
+                  f"(center {fmt_price(p_mid)}){fit_note}{chk_note}<br>{date_note}"),
             showarrow=True, arrowhead=2, arrowcolor=arrow_col,
             ax=-55, ay=0,
             font=dict(size=10, color='#ffffff'),
@@ -2142,6 +2183,8 @@ def build_c8_macro():
                 continue
             x0 = str(z['outer_start'])
             x1 = str(z['outer_end'])
+            b_s = str(z.get('base_start', '') or '')
+            b_e = str(z.get('base_end', '') or '')
             if not x0 or not x1 or x0 == 'nan' or x1 == 'nan':
                 continue
             if p_lo > y_high or p_hi < y_low:
@@ -2152,18 +2195,28 @@ def build_c8_macro():
             p_mid = (p_lo + p_hi) / 2
             r_, g_, b_ = int(color[1:3], 16), int(color[3:5], 16), int(color[5:7], 16)
 
-            # Band rectangle (per-subplot via xref/yref)
+            # Outer window: faint dashed rect behind the base band (same
+            # dual-layer approach as the Pine overlay and the crypto C8 charts).
             fig.add_shape(type='rect', xref=xref, yref=yref,
                           x0=x0, x1=x1, y0=p_lo, y1=p_hi,
+                          fillcolor=f'rgba({r_},{g_},{b_},0.06)',
+                          line=dict(color=color, width=1, dash='dash'), layer='below')
+            # Base band: solid rectangle on the IQR window (fallback to outer).
+            if b_s and b_e and b_s != 'nan' and b_e != 'nan' and b_s <= b_e:
+                band_x0, band_x1 = b_s, b_e
+            else:
+                band_x0, band_x1 = x0, x1
+            fig.add_shape(type='rect', xref=xref, yref=yref,
+                          x0=band_x0, x1=band_x1, y0=p_lo, y1=p_hi,
                           fillcolor=f'rgba({r_},{g_},{b_},0.25)',
                           line=dict(color=color, width=2), layer='below')
-            # Center line
-            fig.add_trace(go.Scatter(x=[x0, x1], y=[p_mid, p_mid], mode='lines',
+            # Center line across the base window
+            fig.add_trace(go.Scatter(x=[band_x0, band_x1], y=[p_mid, p_mid], mode='lines',
                           line=dict(color=color, width=2), showlegend=False,
                           hovertemplate=f'{band_label}<br>${p_mid:,.2f}<extra></extra>',
                           xaxis=xref, yaxis=yref))
-            # Triangle marker at zone midpoint
-            mid_dt = (pd.to_datetime(x0) + (pd.to_datetime(x1) - pd.to_datetime(x0)) / 2)
+            # Triangle marker at base window midpoint
+            mid_dt = (pd.to_datetime(band_x0) + (pd.to_datetime(band_x1) - pd.to_datetime(band_x0)) / 2)
             mid_str = mid_dt.strftime('%Y-%m-%d')
             fig.add_trace(go.Scatter(
                 x=[mid_str], y=[p_mid], mode='markers', name=band_label,
@@ -2172,12 +2225,16 @@ def build_c8_macro():
                 hovertemplate=f'{band_label}<br>{mid_str}<br>${p_mid:,.2f}<br>'
                               f'band {fmt_price_macro(p_lo)}-{fmt_price_macro(p_hi)}<extra></extra>',
                 showlegend=False, xaxis=xref, yaxis=yref))
-            # Arrow annotation at band right edge
+            # Arrow annotation at band right edge (base window)
+            date_note = f"<span style='font-size:9px'>{band_x0} → {band_x1}"
+            if (band_x0, band_x1) != (x0, x1):
+                date_note += f" (outer {x0} → {x1})"
+            date_note += "</span>"
             fig.add_annotation(
-                x=x1, y=p_mid, xref=xref, yref=yref,
+                x=band_x1, y=p_mid, xref=xref, yref=yref,
                 text=(f"<b>{band_label}</b><br>"
                       f"{fmt_price_macro(p_lo)} - {fmt_price_macro(p_hi)}<br>"
-                      f"(center {fmt_price_macro(p_mid)})"),
+                      f"(center {fmt_price_macro(p_mid)})<br>{date_note}"),
                 showarrow=True, arrowhead=2, arrowcolor=color,
                 ax=-55, ay=0,
                 font=dict(size=10, color='#ffffff'),
