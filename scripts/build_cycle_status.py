@@ -258,6 +258,24 @@ def collect_price_history(asset_lower_or_btc, start=None, end=None,
                 out_rows.append({"date": d_str, "close": round(close, 4)})
                 seen_dates.add(d_str)
                 last_sampled_date = d
+    # Always append the very latest close from the raw file so the banner
+    # captures recent spikes (e.g. ETH Aug 19-20 jump) regardless of the
+    # bi-weekly sampling interval.
+    with open(path, "r", encoding="utf-8", newline="") as f:
+        reader = csv.DictReader(f)
+        last_row = None
+        for row in reader:
+            last_row = row
+    if last_row:
+        d_str = last_row.get("date", "").strip()
+        try:
+            close = float(last_row.get("close", 0))
+        except (TypeError, ValueError, KeyError):
+            close = None
+        if d_str and close is not None and close > 0:
+            # Only append if this date is not already the last sampled point.
+            if not out_rows or out_rows[-1].get("date") != d_str:
+                out_rows.append({"date": d_str, "close": round(close, 4)})
     return out_rows
 
 

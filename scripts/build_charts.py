@@ -149,7 +149,13 @@ def _load_h5_date():
 H5_DATE = _load_h5_date()
 
 metrics = pd.read_csv('data/processed/btc_cycle_metrics.csv')
-btc = pd.read_csv('data/raw/btc_bitstamp_2026-07-20.csv', parse_dates=['date'])
+# Resolve latest BTC raw snapshot (mirror alt-chart glob pattern)
+_raw_dir = Path(__file__).resolve().parent.parent / 'data' / 'raw'
+btc_cands = sorted(_raw_dir.glob('btc_bitstamp_*.csv'))
+if not btc_cands:
+    raise FileNotFoundError("No BTC raw snapshot found in data/raw/")
+btc_path = str(btc_cands[-1])
+btc = pd.read_csv(btc_path, parse_dates=['date'])
 corr_phase = pd.read_csv('data/processed/correlations_phase.csv')
 corr_rolling = pd.read_csv('data/processed/correlations_rolling.csv')
 fwd = pd.read_csv('data/processed/forward_ranges.csv')
@@ -1795,6 +1801,55 @@ def _build_alt_chart(asset, filename, title, subtitle):
             except (ValueError, TypeError):
                 pass
 
+    # I-21.6: regime multiplier overlay on the B4 band (when active).
+    # The unconditional B4 band stays solid; the regime-adjusted band is
+    # drawn as a dashed magenta overlay when the anchor-regime multiplier
+    # differs from 1.0. A footnote on the B4 annotation reports the anchor
+    # regime state + multiplier + source (computed | fallback_to_1.0).
+    if not bb_row.empty:
+        rm = str(bb_row.iloc[0].get('regime_multiplier_b4', '') or '')
+        rstate = str(bb_row.iloc[0].get('regime_state_at_anchor', '') or '')
+        msrc = str(bb_row.iloc[0].get('multiplier_source', '') or '')
+        b4_lo_adj = str(bb_row.iloc[0].get('b4_price_low_regime_adjusted', '') or '')
+        b4_hi_adj = str(bb_row.iloc[0].get('b4_price_high_regime_adjusted', '') or '')
+        if rm and rstate:
+            try:
+                rm_f = float(rm)
+            except (ValueError, TypeError):
+                rm_f = 1.0
+            b4_os = str(bb_row.iloc[0].get('outer_start', '') or '')
+            b4_oe = str(bb_row.iloc[0].get('outer_end', '') or '')
+            if rm_f != 1.0 and b4_lo_adj and b4_hi_adj and b4_os and b4_oe:
+                try:
+                    adj_lo_f, adj_hi_f = float(b4_lo_adj), float(b4_hi_adj)
+                    fig.add_shape(type='rect', x0=b4_os, x1=b4_oe,
+                                  y0=adj_lo_f, y1=adj_hi_f,
+                                  fillcolor='rgba(232,121,249,0.08)',
+                                  line=dict(color='#e879f9', width=1.5, dash='dot'),
+                                  layer='below')
+                    adj_mid = (adj_lo_f + adj_hi_f) / 2
+                    fig.add_trace(go.Scatter(
+                        x=[b4_os, b4_oe], y=[adj_mid, adj_mid],
+                        mode='lines', name='B4 regime-adjusted',
+                        line=dict(color='#e879f9', width=1.5, dash='dot'),
+                        hovertemplate=f'B4 regime-adjusted (x{rm_f:.3f})<br>'
+                                      f'${adj_lo_f:,.2f} – ${adj_hi_f:,.2f}<extra></extra>',
+                        showlegend=False))
+                except (ValueError, TypeError):
+                    pass
+            regime_note = f"<span style='font-size:9px'><b>regime {rstate}</b> ×{rm_f:.3f} ({msrc})</span>"
+            # Append the regime footnote to the B4 band annotation block
+            # (find the B4 annotation and augment the note text is complex;
+            # instead we render a standalone regime footnote under the B4 band).
+            b4_bs = str(bb_row.iloc[0].get('base_start', '') or '')
+            b4_be = str(bb_row.iloc[0].get('base_end', '') or '')
+            if b4_bs and b4_be:
+                fig.add_annotation(
+                    x=b4_be, y=0.66, xref='x', yref='paper',
+                    text=regime_note, showarrow=False,
+                    font=dict(size=9, color='#e879f9'),
+                    bgcolor='rgba(10,14,26,0.85)', xanchor='right', borderpad=3)
+
     # Asset price line (zoomed to visible window — full pre-2022 history omitted)
     fig.add_trace(go.Scatter(
         x=df_zoom['date'].dt.strftime('%Y-%m-%d'), y=df_zoom['close'],
@@ -2269,6 +2324,54 @@ def build_c8_macro():
                     ax=40, ay=-20, font=dict(size=9, color=color),
                     bgcolor='rgba(10,14,26,0.85)', borderpad=2)
 
+        # I-21.6: regime multiplier overlay on the B4 band (when active).
+        # Same semantics as the crypto/gold charts: unconditional band stays
+        # solid, regime-adjusted band draws as a dashed magenta overlay when
+        # the anchor-regime multiplier differs from 1.0, and a footnote
+        # reports regime state + multiplier + source.
+        bb_row = sub[sub['zone'] == 'bear_bottom']
+        if not bb_row.empty:
+            rm = str(bb_row.iloc[0].get('regime_multiplier_b4', '') or '')
+            rstate = str(bb_row.iloc[0].get('regime_state_at_anchor', '') or '')
+            msrc = str(bb_row.iloc[0].get('multiplier_source', '') or '')
+            b4_lo_adj = str(bb_row.iloc[0].get('b4_price_low_regime_adjusted', '') or '')
+            b4_hi_adj = str(bb_row.iloc[0].get('b4_price_high_regime_adjusted', '') or '')
+            if rm and rstate:
+                try:
+                    rm_f = float(rm)
+                except (ValueError, TypeError):
+                    rm_f = 1.0
+                b4_os = str(bb_row.iloc[0].get('outer_start', '') or '')
+                b4_oe = str(bb_row.iloc[0].get('outer_end', '') or '')
+                if rm_f != 1.0 and b4_lo_adj and b4_hi_adj and b4_os and b4_oe:
+                    try:
+                        adj_lo_f, adj_hi_f = float(b4_lo_adj), float(b4_hi_adj)
+                        fig.add_shape(type='rect', xref=xref, yref=yref,
+                                      x0=b4_os, x1=b4_oe,
+                                      y0=adj_lo_f, y1=adj_hi_f,
+                                      fillcolor='rgba(232,121,249,0.08)',
+                                      line=dict(color='#e879f9', width=1.5, dash='dot'),
+                                      layer='below')
+                        adj_mid = (adj_lo_f + adj_hi_f) / 2
+                        fig.add_trace(go.Scatter(
+                            x=[b4_os, b4_oe], y=[adj_mid, adj_mid],
+                            mode='lines', name='B4 regime-adjusted',
+                            line=dict(color='#e879f9', width=1.5, dash='dot'),
+                            hovertemplate=f'B4 regime-adjusted (x{rm_f:.3f})<br>'
+                                          f'${adj_lo_f:,.2f} – ${adj_hi_f:,.2f}<extra></extra>',
+                            showlegend=False, xaxis=xref, yaxis=yref))
+                    except (ValueError, TypeError):
+                        pass
+                b4_bs = str(bb_row.iloc[0].get('base_start', '') or '')
+                b4_be = str(bb_row.iloc[0].get('base_end', '') or '')
+                if b4_bs and b4_be:
+                    fig.add_annotation(
+                        x=b4_be, y=0.62, xref=xref, yref='paper',
+                        text=(f"<span style='font-size:9px'><b>regime {rstate}</b> "
+                              f"×{rm_f:.3f} ({msrc})</span>"),
+                        showarrow=False, font=dict(size=9, color='#e879f9'),
+                        bgcolor='rgba(10,14,26,0.85)', xanchor='right', borderpad=3)
+
         # BTC event lines on each subplot
         for evt_date, evt_color, evt_dash, evt_label in btc_evts:
             fig.add_shape(type='line', xref=xref, yref='paper',
@@ -2325,6 +2428,21 @@ def build_c8_macro():
         "Economic floors relaxed to macro levels (dd>=5%, mult>=1.05x) and B4 band "
         "clamped to the macro's observed dd range. See docs/blockers/I-19-macro-2stage.md.",
     ]
+    # I-21.6: regime overlay footnote (anchor regime + per-asset multiplier).
+    try:
+        anchor_csv = pd.read_csv(
+            Path(__file__).resolve().parent.parent / 'data' / 'processed' / 'regime_anchor.csv',
+            keep_default_na=False)
+        if not anchor_csv.empty:
+            a = anchor_csv.iloc[0]
+            summary_lines.append(
+                f"<b>I-21 regime overlay:</b> anchor regime = {a['regime_state']} "
+                f"(since {a['anchor_date']}, {a['regime_state_days']} days; "
+                f"prev={a['prev_regime_state'] or 'n/a'}). Per-asset B4 multipliers "
+                "from regime_multipliers.csv (computed when n>=3, else 1.0 fallback)."
+            )
+    except Exception:
+        pass
     for a in assets:
         nb = notes_per_asset.get(a, {})
         zs = nb.get('zones', [])
