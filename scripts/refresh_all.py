@@ -7,9 +7,10 @@ Usage:
     python scripts/refresh_all.py --no-fetch # skip network fetches, rebuild derived only
 
 Pipeline order (each stage depends on the previous one):
-  1. FETCH   — pull latest OHLCV snapshots (BTC, alts, macro)
+  1. FETCH   — pull latest OHLCV snapshots (BTC, alts, macro) + US Treasury yield panel (I-21)
   2. CYCLE   — rebuild BTC + alt cycle metrics from raw snapshots
-  3. DERIVED — SMA floors, forward ranges, alt forward ranges, next-cycle zones
+  3. DERIVED — SMA floors, forward ranges, alt forward ranges, curve-state + regime multipliers
+              (I-21), next-cycle zones, alt zones (regime-adjusted B4), Pine exports, alignment
   4. HEAVY   — backtest, regime robustness, correlations, rolling corr (optional)
   5. CHARTS  — render all PNG charts (C1-C9, C-SMA)
 """
@@ -88,6 +89,11 @@ def build_pipeline(skip_fetch: bool = False) -> list[Stage]:
                 cmd=[sys.executable, str(SCRIPTS_DIR / "fetch_macro.py")],
                 label="Macro (SPX/NDX/DXY/TLT)",
             ),
+            Step(
+                name="yields",
+                cmd=[sys.executable, str(SCRIPTS_DIR / "fetch_yields.py")],
+                label="US Treasury yield panel (I-21: y10/y5/y13w/y30/y2)",
+            ),
         ]
         stages.append(Stage(name="FETCH", steps=fetch_steps, parallel=True))
 
@@ -134,9 +140,19 @@ def build_pipeline(skip_fetch: bool = False) -> list[Stage]:
                 label="BTC next-cycle zones",
             ),
             Step(
+                name="curve_state",
+                cmd=[sys.executable, str(SCRIPTS_DIR / "build_curve_state.py")],
+                label="Curve-state series (I-21.2/3)",
+            ),
+            Step(
+                name="regime_multipliers",
+                cmd=[sys.executable, str(SCRIPTS_DIR / "build_regime_multipliers.py")],
+                label="Regime multiplier table (I-21.4)",
+            ),
+            Step(
                 name="alt_zones",
                 cmd=[sys.executable, str(SCRIPTS_DIR / "build_alt_next_cycle_zones.py")],
-                label="Alt next-cycle zones",
+                label="Alt next-cycle zones (I-21.5 regime-adjusted B4)",
             ),
             Step(
                 name="tv_pine",

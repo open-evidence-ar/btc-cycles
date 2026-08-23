@@ -1801,54 +1801,53 @@ def _build_alt_chart(asset, filename, title, subtitle):
             except (ValueError, TypeError):
                 pass
 
-    # I-21.6: regime multiplier overlay on the B4 band (when active).
-    # The unconditional B4 band stays solid; the regime-adjusted band is
-    # drawn as a dashed magenta overlay when the anchor-regime multiplier
-    # differs from 1.0. A footnote on the B4 annotation reports the anchor
-    # regime state + multiplier + source (computed | fallback_to_1.0).
+    # I-21 R-9: regime multiplier on the B4 band (canonical).
+    # When a computed multiplier != 1.0 exists, price_low/high ARE the
+    # adjusted corridor (the solid zone). We render the UNADJUSTED band
+    # as a thin dotted gray reference plus an applied-note; fallback
+    # panels stay clean (mechanism documented on C8h in methodology).
     if not bb_row.empty:
         rm = str(bb_row.iloc[0].get('regime_multiplier_b4', '') or '')
         rstate = str(bb_row.iloc[0].get('regime_state_at_anchor', '') or '')
         msrc = str(bb_row.iloc[0].get('multiplier_source', '') or '')
-        b4_lo_adj = str(bb_row.iloc[0].get('b4_price_low_regime_adjusted', '') or '')
-        b4_hi_adj = str(bb_row.iloc[0].get('b4_price_high_regime_adjusted', '') or '')
+        b4_lo_unc = str(bb_row.iloc[0].get('b4_price_low_unconditional', '') or '')
+        b4_hi_unc = str(bb_row.iloc[0].get('b4_price_high_unconditional', '') or '')
+        overlay_active = False
         if rm and rstate:
             try:
                 rm_f = float(rm)
             except (ValueError, TypeError):
                 rm_f = 1.0
-            b4_os = str(bb_row.iloc[0].get('outer_start', '') or '')
-            b4_oe = str(bb_row.iloc[0].get('outer_end', '') or '')
-            if rm_f != 1.0 and b4_lo_adj and b4_hi_adj and b4_os and b4_oe:
-                try:
-                    adj_lo_f, adj_hi_f = float(b4_lo_adj), float(b4_hi_adj)
-                    fig.add_shape(type='rect', x0=b4_os, x1=b4_oe,
-                                  y0=adj_lo_f, y1=adj_hi_f,
-                                  fillcolor='rgba(232,121,249,0.08)',
-                                  line=dict(color='#e879f9', width=1.5, dash='dot'),
-                                  layer='below')
-                    adj_mid = (adj_lo_f + adj_hi_f) / 2
-                    fig.add_trace(go.Scatter(
-                        x=[b4_os, b4_oe], y=[adj_mid, adj_mid],
-                        mode='lines', name='B4 regime-adjusted',
-                        line=dict(color='#e879f9', width=1.5, dash='dot'),
-                        hovertemplate=f'B4 regime-adjusted (x{rm_f:.3f})<br>'
-                                      f'${adj_lo_f:,.2f} – ${adj_hi_f:,.2f}<extra></extra>',
-                        showlegend=False))
-                except (ValueError, TypeError):
-                    pass
-            regime_note = f"<span style='font-size:9px'><b>regime {rstate}</b> ×{rm_f:.3f} ({msrc})</span>"
-            # Append the regime footnote to the B4 band annotation block
-            # (find the B4 annotation and augment the note text is complex;
-            # instead we render a standalone regime footnote under the B4 band).
-            b4_bs = str(bb_row.iloc[0].get('base_start', '') or '')
-            b4_be = str(bb_row.iloc[0].get('base_end', '') or '')
-            if b4_bs and b4_be:
-                fig.add_annotation(
-                    x=b4_be, y=0.66, xref='x', yref='paper',
-                    text=regime_note, showarrow=False,
-                    font=dict(size=9, color='#e879f9'),
-                    bgcolor='rgba(10,14,26,0.85)', xanchor='right', borderpad=3)
+            overlay_active = (rm_f != 1.0 and msrc == 'computed')
+        if overlay_active:
+            try:
+                unc_lo_f, unc_hi_f = float(b4_lo_unc), float(b4_hi_unc)
+                b4_os = str(bb_row.iloc[0].get('outer_start', '') or '')
+                b4_oe = str(bb_row.iloc[0].get('outer_end', '') or '')
+                fig.add_shape(type='rect', x0=b4_os, x1=b4_oe,
+                              y0=unc_lo_f, y1=unc_hi_f,
+                              fillcolor='rgba(0,0,0,0)',
+                              line=dict(color='#9aa7b5', width=1, dash='dot'),
+                              layer='below')
+                unc_mid = (unc_lo_f + unc_hi_f) / 2
+                fig.add_trace(go.Scatter(
+                    x=[b4_os, b4_oe], y=[unc_mid, unc_mid],
+                    mode='lines', name=f'B4 unadjusted ({rstate} \u00d7{rm_f:.3f} applied)',
+                    line=dict(color='#9aa7b5', width=1, dash='dot'),
+                    hovertemplate=f'B4 unadjusted reference<br>'
+                                  f'${unc_lo_f:,.2f} \u2013 ${unc_hi_f:,.2f}<extra></extra>',
+                    showlegend=True))
+                regime_note = (f"<span style='font-size:10px'><b>regime {rstate}</b> "
+                               f"\u00d7{rm_f:.3f} applied \u2014 gray dotted = unadjusted</span>")
+                b4_be = str(bb_row.iloc[0].get('base_end', '') or '')
+                if b4_be:
+                    fig.add_annotation(
+                        x=b4_be, y=0.66, xref='x', yref='paper',
+                        text=regime_note, showarrow=False,
+                        font=dict(size=10, color='#e879f9'),
+                        bgcolor='rgba(10,14,26,0.85)', xanchor='right', borderpad=3)
+            except (ValueError, TypeError):
+                pass
 
     # Asset price line (zoomed to visible window — full pre-2022 history omitted)
     fig.add_trace(go.Scatter(
@@ -2324,53 +2323,52 @@ def build_c8_macro():
                     ax=40, ay=-20, font=dict(size=9, color=color),
                     bgcolor='rgba(10,14,26,0.85)', borderpad=2)
 
-        # I-21.6: regime multiplier overlay on the B4 band (when active).
-        # Same semantics as the crypto/gold charts: unconditional band stays
-        # solid, regime-adjusted band draws as a dashed magenta overlay when
-        # the anchor-regime multiplier differs from 1.0, and a footnote
-        # reports regime state + multiplier + source.
+        # I-21 R-9: canonical regime adjustment. When active, the solid
+        # zone IS adjusted; draw the unadjusted band as dotted gray
+        # reference + applied-note. Fallback panels stay clean.
         bb_row = sub[sub['zone'] == 'bear_bottom']
         if not bb_row.empty:
             rm = str(bb_row.iloc[0].get('regime_multiplier_b4', '') or '')
             rstate = str(bb_row.iloc[0].get('regime_state_at_anchor', '') or '')
             msrc = str(bb_row.iloc[0].get('multiplier_source', '') or '')
-            b4_lo_adj = str(bb_row.iloc[0].get('b4_price_low_regime_adjusted', '') or '')
-            b4_hi_adj = str(bb_row.iloc[0].get('b4_price_high_regime_adjusted', '') or '')
+            b4_lo_unc = str(bb_row.iloc[0].get('b4_price_low_unconditional', '') or '')
+            b4_hi_unc = str(bb_row.iloc[0].get('b4_price_high_unconditional', '') or '')
+            overlay_active = False
             if rm and rstate:
                 try:
                     rm_f = float(rm)
                 except (ValueError, TypeError):
                     rm_f = 1.0
-                b4_os = str(bb_row.iloc[0].get('outer_start', '') or '')
-                b4_oe = str(bb_row.iloc[0].get('outer_end', '') or '')
-                if rm_f != 1.0 and b4_lo_adj and b4_hi_adj and b4_os and b4_oe:
-                    try:
-                        adj_lo_f, adj_hi_f = float(b4_lo_adj), float(b4_hi_adj)
-                        fig.add_shape(type='rect', xref=xref, yref=yref,
-                                      x0=b4_os, x1=b4_oe,
-                                      y0=adj_lo_f, y1=adj_hi_f,
-                                      fillcolor='rgba(232,121,249,0.08)',
-                                      line=dict(color='#e879f9', width=1.5, dash='dot'),
-                                      layer='below')
-                        adj_mid = (adj_lo_f + adj_hi_f) / 2
-                        fig.add_trace(go.Scatter(
-                            x=[b4_os, b4_oe], y=[adj_mid, adj_mid],
-                            mode='lines', name='B4 regime-adjusted',
-                            line=dict(color='#e879f9', width=1.5, dash='dot'),
-                            hovertemplate=f'B4 regime-adjusted (x{rm_f:.3f})<br>'
-                                          f'${adj_lo_f:,.2f} – ${adj_hi_f:,.2f}<extra></extra>',
-                            showlegend=False, xaxis=xref, yaxis=yref))
-                    except (ValueError, TypeError):
-                        pass
-                b4_bs = str(bb_row.iloc[0].get('base_start', '') or '')
-                b4_be = str(bb_row.iloc[0].get('base_end', '') or '')
-                if b4_bs and b4_be:
-                    fig.add_annotation(
-                        x=b4_be, y=0.62, xref=xref, yref='paper',
-                        text=(f"<span style='font-size:9px'><b>regime {rstate}</b> "
-                              f"×{rm_f:.3f} ({msrc})</span>"),
-                        showarrow=False, font=dict(size=9, color='#e879f9'),
-                        bgcolor='rgba(10,14,26,0.85)', xanchor='right', borderpad=3)
+                overlay_active = (rm_f != 1.0 and msrc == 'computed')
+            if overlay_active:
+                try:
+                    unc_lo_f, unc_hi_f = float(b4_lo_unc), float(b4_hi_unc)
+                    b4_os = str(bb_row.iloc[0].get('outer_start', '') or '')
+                    b4_oe = str(bb_row.iloc[0].get('outer_end', '') or '')
+                    fig.add_shape(type='rect', xref=xref, yref=yref,
+                                  x0=b4_os, x1=b4_oe,
+                                  y0=unc_lo_f, y1=unc_hi_f,
+                                  fillcolor='rgba(0,0,0,0)',
+                                  line=dict(color='#9aa7b5', width=1, dash='dot'),
+                                  layer='below')
+                    unc_mid = (unc_lo_f + unc_hi_f) / 2
+                    fig.add_trace(go.Scatter(
+                        x=[b4_os, b4_oe], y=[unc_mid, unc_mid],
+                        mode='lines', name=f'B4 unadjusted ({rstate} \u00d7{rm_f:.3f} applied)',
+                        line=dict(color='#9aa7b5', width=1, dash='dot'),
+                        hovertemplate=f'B4 unadjusted reference<br>'
+                                      f'${unc_lo_f:,.2f} \u2013 ${unc_hi_f:,.2f}<extra></extra>',
+                        showlegend=True, xaxis=xref, yaxis=yref))
+                    b4_be = str(bb_row.iloc[0].get('base_end', '') or '')
+                    if b4_be:
+                        fig.add_annotation(
+                            x=b4_be, y=0.62, xref=xref, yref='paper',
+                            text=(f"<span style='font-size:10px'><b>regime {rstate}</b> "
+                                  f"\u00d7{rm_f:.3f} applied \u2014 gray dotted = unadjusted</span>"),
+                            showarrow=False, font=dict(size=10, color='#e879f9'),
+                            bgcolor='rgba(10,14,26,0.85)', xanchor='right', borderpad=3)
+                except (ValueError, TypeError):
+                    pass
 
         # BTC event lines on each subplot
         for evt_date, evt_color, evt_dash, evt_label in btc_evts:
@@ -2428,19 +2426,33 @@ def build_c8_macro():
         "Economic floors relaxed to macro levels (dd>=5%, mult>=1.05x) and B4 band "
         "clamped to the macro's observed dd range. See docs/blockers/I-19-macro-2stage.md.",
     ]
-    # I-21.6: regime overlay footnote (anchor regime + per-asset multiplier).
+    # I-21.6: regime overlay status line (single line, points to C8h).
     try:
         anchor_csv = pd.read_csv(
             Path(__file__).resolve().parent.parent / 'data' / 'processed' / 'regime_anchor.csv',
             keep_default_na=False)
         if not anchor_csv.empty:
             a = anchor_csv.iloc[0]
-            summary_lines.append(
-                f"<b>I-21 regime overlay:</b> anchor regime = {a['regime_state']} "
-                f"(since {a['anchor_date']}, {a['regime_state_days']} days; "
-                f"prev={a['prev_regime_state'] or 'n/a'}). Per-asset B4 multipliers "
-                "from regime_multipliers.csv (computed when n>=3, else 1.0 fallback)."
-            )
+            any_active = False
+            try:
+                bb = alt_zones[alt_zones['zone'] == 'bear_bottom']
+                for _, zr in bb.iterrows():
+                    if str(zr.get('multiplier_source', '')) == 'computed':
+                        if float(zr.get('regime_multiplier_b4', 1.0) or 1.0) != 1.0:
+                            any_active = True
+                            break
+            except (KeyError, TypeError, ValueError):
+                pass
+            state_line = (f"curve regime {a['regime_state']} ({a['regime_state_days']}d "
+                          f"since {a['anchor_date']})")
+            if any_active:
+                summary_lines.append(
+                    f"<b>I-21:</b> {state_line} \u2014 B4 corridors below are "
+                    "regime-ADJUSTED (canonical); dotted gray = unadjusted reference.")
+            else:
+                summary_lines.append(
+                    f"<b>I-21:</b> {state_line} \u2014 no adjustment active (all cells "
+                    "fallback n<3): corridors are unconditional. Mechanism: methodology \u00a7I-21.")
     except Exception:
         pass
     for a in assets:
@@ -2477,6 +2489,177 @@ def build_c8_macro():
 
 
 # --- C9: BTC log price with per-asset local-top overlays on halving calendar ---
+def build_c8h():
+    """C8h — US yield-curve regime dashboard (I-21).
+
+    Three stacked panels on a shared BTC-era x-axis (2010-01-01 -> latest):
+      1. 10y-2y slope line with zero line and the +/-40bps steepening
+         trigger levels (the classifier's slope-side thresholds; the
+         full rule also reads the 180d delta -- see curve_state.csv).
+      2. Raw daily classification strip (curve_shape_state).
+      3. Gated regime ribbon (regime_state, 5-day persistence gate)
+         with epoch duration labels, per-asset drawdown-onset markers
+         (local top dates from alt_cycle_metrics), and an anchor marker
+         at the current gated regime.
+
+    This is the chart that makes the I-21 mechanism visible: the reader
+    sees the signal, its persistence behavior, where each asset's
+    historical drawdowns started relative to curve regimes, and where
+    "now" is.
+    """
+    cs_path = Path(__file__).resolve().parent.parent / 'data' / 'processed' / 'curve_state.csv'
+    if not cs_path.exists():
+        print("  C8h skipped (curve_state.csv missing)")
+        return
+    cs = pd.read_csv(cs_path, parse_dates=['date']).sort_values('date')
+    cs = cs[cs['date'] >= '2010-01-01'].reset_index(drop=True)
+
+    anchor = None
+    anchor_path = Path(__file__).resolve().parent.parent / 'data' / 'processed' / 'regime_anchor.csv'
+    if anchor_path.exists():
+        try:
+            a = pd.read_csv(anchor_path, keep_default_na=False).iloc[0]
+            anchor = {
+                'date': str(a['anchor_date']),
+                'state': str(a['regime_state']),
+                'days': int(a['regime_state_days']),
+            }
+        except (IndexError, ValueError, TypeError):
+            anchor = None
+
+    CLASS_ORDER = ['normal', 'bull_steep', 'bear_steep', 'inverted_flat', 'unclassified']
+    CLASS_COLORS = {
+        'normal': '#38bdf8',
+        'bull_steep': '#34d399',
+        'bear_steep': '#fbbf24',
+        'inverted_flat': '#f87171',
+        'unclassified': '#4b5563',
+    }
+    code = {c: i for i, c in enumerate(CLASS_ORDER)}
+    dstr = cs['date'].dt.strftime('%Y-%m-%d').tolist()
+
+    fig = make_subplots(
+        rows=3, cols=1, shared_xaxes=True,
+        row_heights=[0.42, 0.17, 0.41], vertical_spacing=0.07,
+        subplot_titles=(
+            '10y\u22122y slope (%)',
+            'Raw classification (daily)',
+            'Gated regime (5-day persistence) + drawdown onsets'))
+
+    # --- Panel 1: slope line ---
+    fig.add_trace(go.Scatter(
+        x=cs['date'].dt.strftime('%Y-%m-%d'), y=cs['curve_slope_10_2'],
+        mode='lines', name='10y\u22122y',
+        line=dict(color='#93c5fd', width=1.4),
+        hovertemplate='%{x}: %{y:.2f}%<extra></extra>'), row=1, col=1)
+    for yv, lab, col in [(0.0, '0', '#64748b'), (0.4, '+40bps', '#fbbf24'), (-0.4, '\u221240bps', '#34d399')]:
+        fig.add_shape(type='line', xref='x', yref='y',
+                      x0=dstr[0], x1=dstr[-1],
+                      y0=yv, y1=yv,
+                      line=dict(color=col, width=1, dash='dash' if yv else 'solid'),
+                      layer='below', row=1, col=1)
+        fig.add_annotation(xref='paper', x=1.0, yref='y', y=yv,
+                           text=lab, showarrow=False, font=dict(size=8, color=col),
+                           xanchor='left', xshift=2)
+    fig.update_yaxes(row=1, col=1, gridcolor='#2a3349', zeroline=False)
+
+    # --- Panels 2 & 3: classification strips as single-row heatmaps ---
+    def _strip(row, colname, rowaxis):
+        z = [[code.get(v, code['unclassified']) for v in cs[colname]]]
+        colorscale = []
+        n = len(CLASS_ORDER)
+        for i, c in enumerate(CLASS_ORDER):
+            colorscale.append([i / n, CLASS_COLORS[c]])
+            colorscale.append([(i + 1) / n, CLASS_COLORS[c]])
+        fig.add_trace(go.Heatmap(
+            z=z, x=cs['date'].dt.strftime('%Y-%m-%d'), y=[0],
+            zmin=-0.5, zmax=n - 0.5, colorscale=colorscale,
+            showscale=False, hoverinfo='skip'), row=row, col=1)
+        fig.update_yaxes(row=rowaxis, col=1, visible=False, range=[-0.7, 0.7])
+
+    _strip(2, 'curve_shape_state', 2)
+    _strip(3, 'regime_state', 3)
+    # widen row-3 band upward so onset markers can sit above it
+    fig.update_yaxes(row=3, col=1, visible=False, range=[-0.7, 2.6])
+
+    # class legend entries (dummy traces; heatmaps do not populate legend)
+    for c in ['normal', 'bull_steep', 'bear_steep', 'inverted_flat']:
+        fig.add_trace(go.Scatter(
+            x=[None], y=[None], mode='markers', name=c,
+            marker=dict(symbol='square', size=9, color=CLASS_COLORS[c])), row=3, col=1)
+
+    # --- Epoch duration labels on the gated ribbon (>=180d only) ---
+    rs = cs['regime_state'].tolist()
+    runs = []
+    start = 0
+    for i in range(1, len(rs) + 1):
+        if i == len(rs) or rs[i] != rs[start]:
+            runs.append((start, i - 1, rs[start]))
+            start = i
+    for s, e, state in runs:
+        ndays = e - s + 1
+        if ndays >= 180 and state != 'unclassified':
+            fig.add_annotation(
+                x=dstr[(s + e) // 2], y=0, xref='x', yref='y3',
+                text=f"{state} \u00b7 {ndays}d", showarrow=False,
+                font=dict(size=8, color='#0a0e1a' if state != 'normal' else '#0a0e1a'))
+
+    # --- Per-asset drawdown-onset markers (all assets, above the ribbon) ---
+    tops = alt_metrics[(alt_metrics['asset_local_top_date'] != '')
+                       & (alt_metrics['drawdown_asset_pct'] != '')].copy()
+    tops = tops[~tops['cycle_source'].astype(str).str.startswith('ETH_proxy')]
+    for asset in ASSET_DISPLAY:
+        sub = tops[tops['asset'] == asset]
+        if sub.empty:
+            continue
+        label, color = ASSET_DISPLAY[asset]
+        hov = [f"{label} {r['cycle_id']}: top {r['asset_local_top_date']}, "
+               f"dd {float(r['drawdown_asset_pct']) * 100:.0f}%"
+               for _, r in sub.iterrows()]
+        fig.add_trace(go.Scatter(
+            x=sub['asset_local_top_date'].tolist(), y=[1.35] * len(sub),
+            mode='markers', name=label,
+            marker=dict(symbol='line-ew-open', size=9, color=color, line=dict(width=2)),
+            text=hov, hoverinfo='text',
+            hoverlabel=dict(font=dict(size=9))), row=3, col=1)
+
+    # --- Anchor ("now") marker across panels ---
+    last_date = dstr[-1]
+    if anchor:
+        ax_date = min(anchor['date'], last_date)
+        fig.add_shape(type='line', xref='x', yref='paper', x0=ax_date, x1=ax_date,
+                      y0=0, y1=1, line=dict(color='#f472b6', width=2), layer='above')
+        fig.add_annotation(x=ax_date, y=1, yref='paper', xanchor='right', xshift=-4,
+                           text=(f"now: {anchor['state']} \u00b7 {anchor['days']}d "
+                                 f"(anchor {anchor['date']})"),
+                           showarrow=False, font=dict(size=9, color='#f472b6'),
+                           bgcolor='rgba(10,14,26,0.85)', borderpad=3)
+
+    # --- Decision-rule box ---
+    fig.add_annotation(
+        x=0, y=-0.16, xref='paper', yref='paper', xanchor='left',
+        text=("<b>I-21 rule:</b> the gated curve regime scales each asset's B4 price corridor "
+              "only (\u00d7 mean-dd ratio, n\u22653 else fallback \u00d71.000) \u2014 windows unchanged \u00b7 "
+              "gate: 5 consecutive days \u00b7 pipeline re-run auto-adjusts \u00b7 "
+              "table: cross-asset-timing \u00a7I-21"),
+        showarrow=False, font=dict(size=9, color='#94a3b8'),
+        bgcolor='rgba(10,14,26,0.85)', borderpad=3)
+
+    fig.update_layout(
+        title='C8h \u2014 US yield-curve regime dashboard (10y\u22122y, I-21)',
+        template='plotly_dark', height=760,
+        xaxis=dict(range=['2010-01-01', last_date]),
+        xaxis3=dict(range=['2010-01-01', last_date], dtick='M24', tickformat='%Y',
+                    tickangle=-45, gridcolor='#2a3349', tickfont=dict(size=9, color='#b0bdc7')),
+        legend=dict(orientation='h', yanchor='bottom', y=-0.22, xanchor='center', x=0.5,
+                    font=dict(size=9)),
+        margin=dict(t=60, b=110),
+    )
+    _safe_write_html(fig, CHARTS_DIR / 'C8h.html', config={'responsive': True})
+    _safe_write_image(fig, CHARTS_DIR / 'C8h.png', scale=2)
+    print("  C8h done")
+
+
 def build_c9():
     """C9 — BTC log price (background) with vertical markers showing each panel
     asset's detected halving-cycle-local-top date, colored by asset, with
@@ -2662,6 +2845,7 @@ if __name__ == "__main__":
     build_c8_wgmi()
     build_c8_macro()
     build_c8_gold()
+    build_c8h()
     build_c9()
     build_c_sma()
     print("All charts built in assets/charts/")

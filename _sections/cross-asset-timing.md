@@ -44,6 +44,26 @@ Table: 10-asset per-asset decision windows — B4 and C5 windows for each asset 
   <li><sup>8</sup> **GOLD (GC=F).** Method: <code>macro_2_stage_own_shape</code> (I-19b). Anchor = own observed C4 top (Jan-2026 ATH, Rule-T detected). Gold-specific cross-check: 20-mo SMA / 21-mo EMA bull-market support band ($3,813–$3,830 @ 2026-07-31, validated in docs/gold_seasonality.md) — the projected B4 must respect this floor. See chart C8g.</li>
 </ol>
 
+## I-21 — automatic regime adjustment of the B4 corridors
+
+The US yield-curve regime (10y−2y classifier, 5-day persistence gate) can
+**automatically adjust** each asset's B4 bear-bottom corridor:
+
+> **Active rule:** when a *computed* multiplier exists for the asset in
+> the anchor regime (n ≥ 3 observed drawdowns), the published corridor —
+> here, on the charts, and in the Pine export — **already is** the
+> regime-adjusted band. Charts mark it (`regime ×mult applied`, dotted
+> gray = unadjusted reference). No action needed; no dual numbers.
+>
+> **Today: INACTIVE.** Every multiplier cell is `fallback` (n < 3) — all
+> corridors below are unconditional. Nothing to do.
+
+Mechanism details, the full sensitivity table, and the signal dashboard
+(C8h) live in [Appendix A — Methodology](#methodology) §"I-21 curve-regime
+mechanism". Evidence base: H9/H10 in
+`docs/blockers/I-21-eurodollar-proxies-exploration-2.md` (H8 rejected —
+this is decision-context, not a top-timer).
+
 ### ETH — 2-stage model with B4 projection
 
 **ETH** - Open ~Jun 2026 ($298-$1,000).

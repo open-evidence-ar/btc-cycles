@@ -4,7 +4,7 @@ from pathlib import Path
 
 CHARTS_DIR = Path('assets/charts')
 SNAPSHOT_FILE = Path('tests/chart_snapshots.json')
-CHART_IDS = ['C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7', 'C8', 'C8b', 'C8c', 'C8d', 'C8g', 'C9', 'C-SMA']
+CHART_IDS = ['C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7', 'C8', 'C8b', 'C8c', 'C8d', 'C8g', 'C8h', 'C9', 'C-SMA']
 
 
 def _sha256(path):

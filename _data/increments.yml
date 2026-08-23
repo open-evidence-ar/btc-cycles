@@ -58,3 +58,12 @@
 - id: I-18b
   title: Folklore bull-rhythm cross-check (D_bottom_to_next_top)
   status: done
+- id: I-19
+  title: Macro cycle-tied prediction (2-stage own shape)
+  status: done
+- id: I-19b
+  title: Gold (GC=F) in macro set + bull-support-band cross-check
+  status: done
+- id: I-21
+  title: Curve-regime multiplier overlay on B4 bands (proper 10y-2y)
+  status: done

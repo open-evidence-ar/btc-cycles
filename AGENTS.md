@@ -49,16 +49,17 @@ python scripts/refresh_all.py --dry-run    # preview what would run
 ```
 
 Pipeline stages (dependency order enforced):
-1. **FETCH** — BTC (Bitstamp), ETH/XRP/SOL (CDD+Yahoo), macro (SPX/NDX/DXY/TLT/GOLD). Parallel.
+1. **FETCH** — BTC (Bitstamp), ETH/XRP/SOL (CDD+Yahoo), macro (SPX/NDX/DXY/TLT/GOLD), US Treasury yield panel (I-21: y10/y5/y13w/y30 via Yahoo, y2 via Eco3min DGS2 mirror). Parallel.
 2. **CYCLE** — `build_cycle_metrics.py` + `build_alt_cycle_metrics.py`. Parallel.
-3. **DERIVED** — SMA floors, forward ranges, alt forward ranges, BTC zones, alt zones. Serial (zones depend on ranges).
+3. **DERIVED** — SMA floors, forward ranges, alt forward ranges, BTC zones, **curve-state + regime multipliers (I-21)**, alt zones (regime-adjusted B4). Serial (zones depend on ranges; alt zones depend on regime tables).
 4. **HEAVY** — backtest, regime robustness, correlations, rolling corr. Parallel.
-5. **CHARTS** — `build_charts.py` (all C1-C9 + C-SMA). Serial.
+5. **CHARTS** — `build_charts.py` (all C1-C9 + C8h + C-SMA). Serial.
 
 Key data flow notes:
 - `fetch_alts.py --source auto` pulls CDD first, Yahoo fallback if CDD unavailable.
 - `build_alt_next_cycle_zones.py` reads BTC projected B4 from `next_cycle_zones.csv` for alt B4 timing anchoring.
 - `build_next_cycle_zones.py` reads `forward_ranges.csv::D_bottom_to_next_top` for the folklore cross-check band on C6 (qualitative cross-reference, not independent validation — see DESIGN.md §9.4 R-4).
+- I-21 curve-regime chain: `fetch_yields.py` (raw y2/y10/y5/y13w/y30) → `build_curve_state.py` (`curve_state.csv`: 10y-2y slope, §4.1 classifier, 5-day persistence gate) → `build_regime_multipliers.py` (`regime_multipliers.csv` + `regime_anchor.csv`, per-asset mean-ratio, n<3 → 1.0 fallback) → `build_alt_next_cycle_zones.py` (additive regime-adjusted B4 columns, anchor-date regime, auto re-adjust on regime change). Regime adjustment is CANONICAL (R-9): computed multiplier != 1.0 overrides bear_bottom price_low/high in both zones CSVs (audit in b4_price_*_unconditional); fallback leaves corridors untouched. Charts render unadjusted-as-dotted-gray only when active; mechanism docs (C8h + `_includes/regime-sensitivity.html`, emitted by `build_regime_multipliers.py`) live in methodology.md appendix.
 
 ## Increment status
 
@@ -86,6 +87,7 @@ Key data flow notes:
 | I-18b | Folklore bull-rhythm cross-check | `tests/test_forward_ranges.py::test_d_bottom_to_next_top_values` | **done** |
 | I-19 | Macro cycle-tied prediction | `tests/test_alt_timing.py::test_macro_assets_use_cycle_tied_projection` (+ 2 companions) | **done** |
 | I-19b | Gold (GC=F) in macro set + bull-support-band cross-check | `tests/test_alt_timing.py::test_gold_support_band_populated` (+ C8g presence/snapshot; `tests/test_macro_provenance.py` gold gates) | **done** |
+| I-21 | Curve-regime multiplier overlay on B4 bands (proper 10y-2y) | `tests/test_yield_provenance.py`, `tests/test_curve_state.py`, `tests/test_regime_mult.py`, `tests/test_regime_integration.py` | **done** |
 
 Rule T tuning note (I-05): window upper bound was tightened from
 `halving + 1500d` (DESIGN.md §5.1 literal) to

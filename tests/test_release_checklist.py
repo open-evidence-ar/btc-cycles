@@ -76,7 +76,10 @@ def test_manifest_lists_eight_series():
     manifest = (ROOT / "data" / "raw" / "manifest.txt").read_text(encoding="utf-8")
     lines = [ln for ln in manifest.splitlines() if ln.strip() and not ln.startswith("symbol")]
     assert len(lines) >= 12, f"manifest must list all panel + proxy series, found {len(lines)}"
-    required = {"btc", "eth", "xrp", "sol", "mstr", "wgmi", "riot", "mara", "spx", "ndx", "dxy", "tlt", "gold"}
+    # I-21.1: US Treasury yield panel (y10/y5/y13w/y30 via Yahoo, y2 via
+    # Eco3min DGS2 mirror) joined the manifest as legitimate series.
+    required = {"btc", "eth", "xrp", "sol", "mstr", "wgmi", "riot", "mara", "spx", "ndx", "dxy", "tlt", "gold",
+                "y2", "y10", "y5", "y13w", "y30"}
     present = {ln.split("\t")[0] for ln in lines}
     missing = required - present
     assert not missing, f"manifest missing series: {missing}"

@@ -72,6 +72,29 @@ def test_no_broken_internal_links():
         assert 'href=""' not in content, f"{path.name} has empty href"
 
 
+def test_regime_sensitivity_embedded():
+    """I-21 R-9: mechanism demoted to methodology appendix. The
+    auto-generated sensitivity include + C8h dashboard must live in
+    methodology.md; cross-asset-timing.md must carry the action-framed
+    rule and NOT duplicate the mechanism artifacts."""
+    inc = Path('_includes') / 'regime-sensitivity.html'
+    assert inc.exists(), f"Missing generated include: {inc}"
+    content = inc.read_text(encoding='utf-8')
+    assert 'AUTO-GENERATED' in content, f"{inc} missing generator guard"
+    assert 'rs-anchor-col' in content, f"{inc} missing anchor-column highlight"
+    meth = (SECTIONS_DIR / 'methodology.md').read_text(encoding='utf-8')
+    assert '{% include regime-sensitivity.html %}' in meth, \
+        "methodology.md must embed the sensitivity table"
+    assert 'id="C8h"' in meth, "methodology.md must reference chart C8h"
+    timing = (SECTIONS_DIR / 'cross-asset-timing.md').read_text(encoding='utf-8')
+    assert 'regime-sensitivity' not in timing, \
+        "timing page must not duplicate the sensitivity table (appendix only)"
+    assert 'id="C8h"' not in timing, \
+        "timing page must not embed C8h (appendix only)"
+    assert 'INACTIVE' in timing or 'ACTIVE' in timing, \
+        "timing page must state the current adjustment status"
+
+
 if __name__ == '__main__':
     test_sections_exist()
     print("PASS: test_sections_exist")
@@ -83,6 +106,8 @@ if __name__ == '__main__':
     print("PASS: test_provenance_footer_present")
     test_no_broken_internal_links()
     print("PASS: test_no_broken_internal_links")
+    test_regime_sensitivity_embedded()
+    print("PASS: test_regime_sensitivity_embedded")
     test_jekyll_build()
     print("PASS: test_jekyll_build")
     print("\nALL TESTS PASSED!")

@@ -70,6 +70,8 @@ INPUT_METRICS = ROOT / "data" / "processed" / "alt_cycle_metrics.csv"
 INPUT_FWD = ROOT / "data" / "processed" / "alt_forward_ranges.csv"
 INPUT_EVENTS = ROOT / "data" / "events.csv"
 OUTPUT = ROOT / "data" / "processed" / "alt_next_cycle_zones.csv"
+INPUT_REGIME_MULT = ROOT / "data" / "processed" / "regime_multipliers.csv"
+INPUT_REGIME_ANCHOR = ROOT / "data" / "processed" / "regime_anchor.csv"
 RAW_DIR = ROOT / "data" / "raw"
 
 H5_DATE = None  # set inside main() from events.csv
@@ -223,6 +225,53 @@ def _gold_support_band():
         "ema21": float(ema21),
         "date": last_date,
     }
+
+
+def _load_regime_context():
+    """Load the I-21.4 regime multiplier table + anchor regime.
+
+    Returns:
+        (mult_df, anchor) where mult_df is the regime_multipliers.csv
+        DataFrame and anchor is a dict with regime_state / anchor_date /
+        prev_regime_state / regime_state_days, or (None, None) if the
+        tables are missing (graceful degradation: no regime overlay).
+    """
+    if not INPUT_REGIME_MULT.exists() or not INPUT_REGIME_ANCHOR.exists():
+        return None, None
+    mult_df = pd.read_csv(INPUT_REGIME_MULT, keep_default_na=False)
+    anchor_df = pd.read_csv(INPUT_REGIME_ANCHOR, keep_default_na=False)
+    if anchor_df.empty:
+        return mult_df, None
+    a = anchor_df.iloc[0]
+    return mult_df, {
+        "regime_state": str(a.get("regime_state", "")),
+        "anchor_date": str(a.get("anchor_date", "")),
+        "prev_regime_state": str(a.get("prev_regime_state", "") or ""),
+        "regime_state_days": int(a.get("regime_state_days", 0) or 0),
+    }
+
+
+def _regime_multiplier_for(mult_df, anchor, asset):
+    """Look up the anchor-regime multiplier for an asset.
+
+    Returns (multiplier, source) or (None, "") when no regime context is
+    available. multiplier_source is 'computed', 'fallback_to_1.0', or
+    '' (no regime context).
+    """
+    if mult_df is None or anchor is None:
+        return None, ""
+    anchor_state = anchor.get("regime_state", "")
+    if not anchor_state:
+        return None, ""
+    row = mult_df[(mult_df["asset"] == asset)
+                  & (mult_df["regime_state"] == anchor_state)]
+    if row.empty:
+        return None, ""
+    r = row.iloc[0]
+    mult = r.get("multiplier")
+    if mult is None or not isinstance(mult, (int, float)):
+        return 1.0, "fallback_to_1.0"
+    return float(mult), str(r.get("multiplier_source", "fallback_to_1.0"))
 
 
 def _alt_vs_btc_lag_days(metrics_df, asset):
@@ -1294,6 +1343,9 @@ def main() -> None:
     # cross-check on the drawdown-projected B4. See docs/gold_seasonality.md.
     _GOLD_SUPPORT_BAND = _gold_support_band()
 
+    # I-21.5: regime multiplier overlay (per-asset, anchor-date regime).
+    mult_df, regime_anchor = _load_regime_context()
+
     zone_rows = []
 
     for asset in ASSETS:
@@ -1314,6 +1366,13 @@ def main() -> None:
                     "base_start": "", "base_end": "",
                     "outer_start": "", "outer_end": "",
                     "price_low": "", "price_high": "",
+                    "regime_state_at_anchor": "",
+                    "regime_multiplier_b4": "",
+                    "b4_price_low_unconditional": "",
+                    "b4_price_high_unconditional": "",
+                    "b4_price_low_regime_adjusted": "",
+                    "b4_price_high_regime_adjusted": "",
+                    "multiplier_source": "",
                     "anchor_event": "", "anchor_price": "",
                     "compression_fit_used": "no_data",
                     "support_band_low": "",
@@ -1544,12 +1603,75 @@ def main() -> None:
             sb_low = "%.4f" % gold_band["band_low"]
             sb_high = "%.4f" % gold_band["band_high"]
 
+        # --- I-21.5 regime multiplier on the B4 price band (CANONICAL) ---
+        #
+        # Per-asset, anchor-date regime multiplier applied ONLY to the B4
+        # bear-bottom band. R-9 semantics (user decision): when the
+        # multiplier is COMPUTED (n>=3) and != 1.0, the adjusted values
+        # BECOME the canonical price_low/price_high -- every downstream
+        # consumer (timing table, charts, Pine export) automatically
+        # shows the regime-adjusted corridor. The pre-multiplier values
+        # are preserved in b4_price_*_unconditional for audit/rollback.
+        # Fallback cells never touch the canonical columns.
+        # multiplier scales the band distance from the C4 top: deeper
+        # regime drawdowns (> 1.0) push the band DOWN, shallower (< 1.0)
+        # UP. Columns:
+        #   regime_state_at_anchor        -- gated regime on the anchor date
+        #   regime_multiplier_b4          -- the multiplier applied
+        #   b4_price_low_unconditional    -- pre-multiplier low
+        #   b4_price_high_unconditional   -- pre-multiplier high
+        #   b4_price_low_regime_adjusted  -- post-multiplier low
+        #   b4_price_high_regime_adjusted -- post-multiplier high
+        #   multiplier_source             -- computed | fallback_to_1.0 | ""
+        regime_state_at_anchor = regime_anchor.get("regime_state", "") if regime_anchor else ""
+        regime_multiplier_b4 = ""
+        b4_price_low_unconditional = ""
+        b4_price_high_unconditional = ""
+        b4_price_low_regime_adjusted = ""
+        b4_price_high_regime_adjusted = ""
+        multiplier_source = ""
+        if (crypto_with_proj and regime_anchor and b4_price_low is not None
+                and b4_price_high is not None and obs_c4_price is not None
+                and obs_c4_price > 0):
+            b4_price_low_unconditional = "%.4f" % b4_price_low
+            b4_price_high_unconditional = "%.4f" % b4_price_high
+            mult, src = _regime_multiplier_for(mult_df, regime_anchor, asset)
+            if mult is not None and mult != 1.0:
+                # Scale the band distance-from-C4-top by the multiplier:
+                # price_adj = c4_top - mult * (c4_top - price_uncond).
+                adj_low = obs_c4_price - mult * (obs_c4_price - b4_price_low)
+                adj_high = obs_c4_price - mult * (obs_c4_price - b4_price_high)
+                # Never let the adjusted band cross zero or invert.
+                adj_low = max(0.0, min(adj_low, b4_price_high))
+                adj_high = max(adj_low, min(adj_high, obs_c4_price))
+                b4_price_low_regime_adjusted = "%.4f" % adj_low
+                b4_price_high_regime_adjusted = "%.4f" % adj_high
+                regime_multiplier_b4 = "%.6f" % mult
+                multiplier_source = src
+                if src == "computed":
+                    # Canonical override (R-9): adjusted IS the corridor.
+                    b4_price_low = adj_low
+                    b4_price_high = adj_high
+            elif mult is not None:
+                # multiplier == 1.0: adjusted band == unconditional band.
+                b4_price_low_regime_adjusted = b4_price_low_unconditional
+                b4_price_high_regime_adjusted = b4_price_high_unconditional
+                regime_multiplier_b4 = "1.000000"
+                multiplier_source = src
+
         zone_rows.append({
             "asset": asset, "zone": "bear_bottom",
             "base_start": b4_base_start, "base_end": b4_base_end,
             "outer_start": b4_outer_start, "outer_end": b4_outer_end,
             "price_low": "" if b4_price_low is None or not math.isfinite(b4_price_low) else "%.4f" % b4_price_low,
             "price_high": "" if b4_price_high is None or not math.isfinite(b4_price_high) else "%.4f" % b4_price_high,
+            "regime_state_at_anchor": regime_state_at_anchor,
+            "regime_multiplier_b4": regime_multiplier_b4,
+            "b4_price_low_unconditional": b4_price_low_unconditional,
+            "b4_price_high_unconditional": b4_price_high_unconditional,
+            "b4_price_low_regime_adjusted": b4_price_low_regime_adjusted,
+            "b4_price_high_regime_adjusted": b4_price_high_regime_adjusted,
+            "multiplier_source": multiplier_source,
             "anchor_event":
                 "BTC ratio-of-ratios B4" if (crypto_with_proj and eth_ror_proj is not None and eth_ror_proj.get('available')) else
                 "Stage 1 ratio-path B4" if (crypto_with_proj and b4_proj is not None and b4_proj.get('b4_band_low') is not None and math.isfinite(b4_proj.get('b4_band_low', float('nan')))) else

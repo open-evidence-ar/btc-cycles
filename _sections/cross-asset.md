@@ -66,7 +66,7 @@ bottom-to-top multiplier) fit on the macro's OWN series (n=3 from
 C1-C3). B4 band drawdown clamped to the macro's observed dd range.
 See `docs/blockers/I-19-macro-2stage.md` for full methodology.
 
-{% include chart.html id="C8d" height="2000px" caption="C8d — Macro assets with cycle-tied 2-stage projection (I-19). Anchor = own observed C4 top; shape (drawdown depth at C4, bottom-to-top multiplier at C5) fit on the macro's OWN series (n=3 from C1-C3). B4 band drawdown clamped to the macro's observed dd range. See docs/blockers/I-19-macro-2stage.md." %}
+{% include chart.html id="C8d" height="2000px" caption="C8d — Macro assets with cycle-tied 2-stage projection (I-19). Anchor = own observed C4 top; shape (drawdown depth at C4, bottom-to-top multiplier at C5) fit on the macro's OWN series (n=3 from C1-C3). B4 band drawdown clamped to the macro's observed dd range. I-21 regime status line at bottom (adjustments apply automatically when computed). See docs/blockers/I-19-macro-2stage.md." %}
 
 ## BTC calendar with alt local-top overlays
 

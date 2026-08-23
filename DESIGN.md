@@ -499,6 +499,7 @@ The framework is constructed as a sequence of **independent increments**. Each i
 | **I-17** | Per-asset halving-cycle timing | I-05, I-06 | `data/processed/alt_cycle_metrics.csv`, `alt_forward_ranges.csv`, `alt_next_cycle_zones.csv`, charts C8/C9, `_sections/cross-asset-timing.md` | All asset extrema detected within BTC-cycle window on shared halving timeline; ETH LOOCO date errors < 200d on `D_asset_halving_to_top`; charts C8/C9 render deterministically | done |
 | **I-19** | Macro cycle-tied prediction | I-17 artifacts, `btc_cycle_metrics.csv` | `alt_next_cycle_zones.csv` macro rows (mode `macro_2_stage_own_shape`), C8d chart | `tests/test_alt_timing.py` I-19 gates: no macro emits `macro_not_cycle_tied`; each macro has distribution price band + bear-bottom date bands | done |
 | **I-19b** | Gold (GC=F) in macro set + support-band cross-check | I-19, `data/raw/gold_yahoo_*.csv`, `docs/gold_seasonality.md` | Gold rows in `alt_cycle_metrics.csv` / `alt_forward_ranges.csv` / `alt_next_cycle_zones.csv` (`support_band_low/high` cols), chart C8g, section text | `tests/test_macro_provenance.py` gold gates; `tests/test_alt_timing.py` `test_gold_support_band_populated` + C8g presence/snapshot; gold emits `macro_2_stage_own_shape` | done |
+| **I-21** | Curve-regime multiplier overlay on B4 bands (proper 10y-2y) | I-04/I-17/I-19 artifacts + new yield panel (`y10`/`y5`/`y13w`/`y30` Yahoo Cboe indices + `y2` Eco3min mirror of FRED DGS2) | `data/raw/manifest.txt` yield entries; `data/processed/curve_state.csv` + `regime_multipliers.csv` + `regime_anchor.csv`; regime-adjusted B4 columns in `alt_next_cycle_zones.csv`; regime footnotes on C8/C8b-f/C8d/C8g charts; section text | `tests/test_yield_provenance.py` (`test_y2_available`); `tests/test_curve_state.py` (determinism + §4.1 thresholds + gate streak); `tests/test_regime_mult.py` (band + fallback flags); `tests/test_regime_integration.py` (B4 columns, ordering, no regression); C8d/C8g snapshots | done |
 
 ### 9.2 Dependency graph
 
@@ -631,6 +632,123 @@ New chart C8g renders the gold projection with the support band overlay.
 
 Row-count consequences (tests updated): `alt_cycle_metrics.csv` 42 → 46
 rows, `alt_forward_ranges.csv` 45 → 50, `alt_next_cycle_zones.csv` 36 → 40.
+
+##### R-7.  Curve-regime multiplier overlay on B4 bands (I-21)
+
+The I-21 exploration (`docs/blockers/I-21-eurodollar-proxies-exploration.md`,
+`-2.md`) ran a two-round falsification of the "eurodollar proxies" idea
+(the hypothesis that US Treasury curve shape foreshadows cycle extrema for
+BTC and the macro assets). Pre-committed hypothesis gates (round-1) and a
+second, pre-registered round (round-2) produced: **H7 rejected** (curve
+regime at tops/bottoms matches EU-expected states for only 4/5 assets,
+DXY 1/8), **H8 rejected** (Spearman ρ = +0.311 vs ≥ 0.4 gate; 15/17 tops
+in `normal`), **H9 pass** (regime distributions diverge from unconditional
+near extrema, JS ≥ 0.1 for 5/5 assets), **H10 pass** (forward returns at
+macro landmarks differ by regime: `normal` +11.9% vs `bull_steep` −12.1%
+for BTC). The promotion gate (H7 AND (H8 OR H9)) was NOT triggered — but
+the user directed a partial merge: the surviving *decision-context*
+component (regime-conditional forward outcomes) is integrated as a
+**multiplier overlay on the B4 bear-bottom price band**, not as a new
+prediction path.
+
+Architecture (I-21.1..I-21.8):
+
+1. **Yield panel (I-21.1).** New manifest-tracked raw series: `y10`
+   (^TNX), `y5` (^FVX), `y13w` (^IRX), `y30` (^TYX) via the Yahoo v8 chart
+   endpoint and `y2` via the **Eco3min mirror of FRED DGS2**
+   (1976-06-01 → present). This resolves the round-1 honest limit
+   ("FRED unreachable, 10y-5y substituted") with the **proper 10y-2y
+   slope**; the §4.1 thresholds are slope-agnostic (slope ≤ 0, Δ > +40bps,
+   Δ < −40bps) so no re-tuning was needed.
+2. **Curve-state series (I-21.2).** `scripts/build_curve_state.py` →
+   `data/processed/curve_state.csv`: daily `curve_slope_10_2`, 180-row
+   delta, `curve_shape_state` per the pre-committed §4.1 classifier.
+3. **Regime gate (I-21.3).** A regime change requires **5 consecutive
+   days** of the new curve-shape state; the gated `regime_state` (with
+   `prev_regime_state`, `regime_state_days`) is the decision input.
+4. **Multiplier table (I-21.4).** `scripts/build_regime_multipliers.py` →
+   `data/processed/regime_multipliers.csv`: per asset, per regime,
+   `mean(drawdown | regime=R) / mean(all drawdowns)` (drawdown attributed
+   at the asset's local top date — the round-2 H8/H10 convention).
+   **Per-asset, no pooling** (user decision). Multiplier only *computed*
+   when **n ≥ 3** observed drawdowns start in that regime, else `1.0`
+   with source `fallback_to_1.0` (flagged, never silently assumed);
+   computed values clamped to [0.5, 2.0]. `regime_anchor.csv` holds the
+   anchor-date regime (today `normal`, in effect since 2025-09-03).
+5. **Projection integration (I-21.5).** `build_alt_next_cycle_zones.py`
+   applies the **anchor-date regime multiplier** to each asset's B4
+   price band, additively: `price_low`/`price_high` stay unconditional
+   (existing tests unchanged); new columns `regime_state_at_anchor`,
+   `regime_multiplier_b4`, `b4_price_low/high_unconditional`,
+   `b4_price_low/high_regime_adjusted`, `multiplier_source`. Re-running
+   the pipeline after a gate-fired regime change re-adjusts all bands
+   automatically.
+6. **Charts + text (I-21.6/I-21.7).** C8/C8b-f/C8d/C8g render the dashed
+    magenta regime-adjusted band **only when a computed multiplier ≠ 1.0
+    exists**; inactive panels stay clean (see R-8).
+7. **Honest current state.** Only 1 of 29 multiplier cells is computed
+   today (NDX `normal`, value 1.0 — its three drawdowns all started in
+   `normal`); every other cell is an explicit `fallback_to_1.0`. The
+   machinery is live and auto-adjusting, but no adjustment is applied
+   until the data earns one. The H8 rejection (ρ = 0.311, weak) is
+   documented as a caveat: the overlay is context, not a top-timer.
+
+##### R-8.  Regime communication redesign (I-21 refinement)
+
+Post-gate review found the original regime rendering (a `×1.000
+(fallback_to_1.0)` footnote stamped on every C8 panel) failed as data
+visualization: it repeated a global signal per-panel, encoded a time
+series as one static word, and never showed how the mechanism connects
+to the decision intervals. Redesign (user-approved):
+
+1. **New chart C8h** (`build_c8h` in `scripts/build_charts.py`) — the
+   curve-regime dashboard: 10y−2y slope with trigger levels, raw daily
+   classification strip, gated-regime ribbon with epoch duration labels,
+   **all assets' drawdown-onset markers**, and the anchor marker. This
+   makes the mechanism-to-cycle-anatomy bridge visible.
+2. **Sensitivity table include** — `build_regime_multipliers.py` now
+   also emits `_includes/regime-sensitivity.html`: the full asset ×
+   regime counterfactual grid (multiplier, n, computed/fallback badge,
+   anchor column highlighted), embedded in the I-21 section. Answers
+   "what happens to my B4 corridor if the curve flips?" at a glance.
+3. **Dead-state suppression** — per-panel footnotes/bands render only
+   when `multiplier_source == 'computed'` and mult ≠ 1.0; C8d carries a
+   single status line pointing at C8h.
+4. Section text rewritten around an IF/THEN rule + three-part mechanism
+   (signal → counterfactuals → action rule). Gates: `test_charts.py`
+   CHART_IDS includes C8h; `test_jekyll_build.py::
+   test_regime_sensitivity_embedded`.
+
+##### R-9.  Regime adjustment becomes canonical and automatic (I-21 refinement 2)
+
+User decision after review: an adjustment that never touches the
+published numbers is not decision support. Semantics changed from
+"additive overlay columns" to **canonical override**:
+
+1. **BTC included.** `build_regime_multipliers.py` now also attributes
+   BTC's completed drawdowns (`btc_cycle_metrics.csv::final_top_date`,
+   `drawdown_pct`) to curve regimes; `btc` rows exist in the multiplier
+   table under the same n≥3/fallback rules.
+2. **Canonical override.** When `multiplier_source == 'computed'` and
+   multiplier ≠ 1.0, the adjusted values are written directly into
+   `price_low`/`price_high` of the bear_bottom rows (both
+   `alt_next_cycle_zones.csv` and `next_cycle_zones.csv`). Every
+   downstream consumer — timing-page table, charts, Pine export —
+   automatically shows the adjusted corridor with zero manual steps.
+   Pre-multiplier values remain in `b4_price_*_unconditional`
+   (audit/rollback). Fallback cells never touch canonical columns.
+3. **Chart semantics inverted.** When active, the solid zone IS the
+   adjusted corridor; the *unadjusted* band renders as a thin dotted
+   gray reference with a `regime ×mult applied` note. When inactive,
+   nothing renders on decision surfaces.
+4. **Mechanism demoted to appendix** (user option C): C8h + the
+   sensitivity table moved to methodology.md §"I-21 curve-regime
+   mechanism"; timing page carries one action-framed status block
+   (ACTIVE/INACTIVE).
+5. Honest state unchanged today: all cells fallback → all corridors
+   unconditional. Gates: `test_regime_integration.py` updated invariants;
+   `test_jekyll_build.py::test_regime_sensitivity_embedded` enforces the
+   appendix placement and status statement.
 
 ### 9.5 Post-v1 extensions
 

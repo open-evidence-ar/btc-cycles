@@ -137,18 +137,23 @@ def test_memo_reference_position_below_50w_above_200w():
 
 
 def test_latest_position_reflects_fresh_data():
-    """Live position as of the latest weekly row (2026-08-10 refresh):
-    price re-broke below the 200w SMA (close $63,704 vs sma_200w $64,000),
-    still below the 50w. This is a moving state — update when data changes.
+    """Live position as of the latest weekly row (2026-08-17 week):
+    price reclaimed above the 200w SMA (close $72,838 vs sma_200w $64,262,
+    event_reclaim_200w=True) but remains below the 50w SMA ($81,699).
+    This is a moving state — update when data changes.
     See docs/blockers/I-18a-sma-position-rebreak.md."""
     df = pd.read_csv(TARGET_CSV, dtype=str)
     last = df.iloc[-1]
     assert last["below_sma_50w"] == "True", (
         f"Expected latest close below sma_50w; got below_sma_50w={last['below_sma_50w']!r}"
     )
-    assert last["below_sma_200w"] == "True", (
-        f"Expected latest close below sma_200w (post-memo re-break); "
+    assert last["below_sma_200w"] == "False", (
+        f"Expected latest close back above sma_200w (2026-08-17 reclaim); "
         f"got below_sma_200w={last['below_sma_200w']!r}"
+    )
+    assert last["event_reclaim_200w"] == "True", (
+        f"Expected a 200w reclaim transition on the latest row; "
+        f"got event_reclaim_200w={last['event_reclaim_200w']!r}"
     )
 
 

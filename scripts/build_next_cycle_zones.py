@@ -298,6 +298,47 @@ def main():
                 f"{int(float(d_ht['q75']) - float(d_ht['q25']))}d wide.]"
             )
 
+    # --- I-21 R-9: canonical regime adjustment on BTC's B4 band ---
+    # When the anchor-regime multiplier is COMPUTED (n>=3) and != 1.0,
+    # the adjusted values BECOME price_low/price_high here too -- same
+    # semantics as build_alt_next_cycle_zones.py. Fallback never touches
+    # the canonical columns.
+    regime_state_at_anchor = ""
+    regime_multiplier_b4 = ""
+    b4_price_low_unconditional = ""
+    b4_price_high_unconditional = ""
+    multiplier_source = ""
+    mult_path = OUTPUT.parent / 'regime_multipliers.csv'
+    anchor_path = OUTPUT.parent / 'regime_anchor.csv'
+    if (proj.get('available') and b4_low is not None and b4_high is not None
+            and mult_path.exists() and anchor_path.exists()):
+        try:
+            mdf = pd.read_csv(mult_path, keep_default_na=False)
+            adf = pd.read_csv(anchor_path, keep_default_na=False)
+            if not mdf.empty and not adf.empty:
+                a = adf.iloc[0]
+                regime_state_at_anchor = str(a['regime_state'])
+                b4_price_low_unconditional = f"{b4_low:.0f}"
+                b4_price_high_unconditional = f"{b4_high:.0f}"
+                mrow = mdf[(mdf['asset'] == 'btc')
+                           & (mdf['regime_state'] == regime_state_at_anchor)]
+                if not mrow.empty:
+                    m = mrow.iloc[0]
+                    mult_f = float(m['multiplier'])
+                    src = str(m['multiplier_source'])
+                    regime_multiplier_b4 = f"{mult_f:.6f}"
+                    multiplier_source = src
+                    c4_top = float(observed_c4_top_price)
+                    if src == 'computed' and mult_f != 1.0:
+                        adj_low = max(0.0, min(c4_top - mult_f * (c4_top - b4_low),
+                                               b4_high))
+                        adj_high = max(adj_low, min(c4_top - mult_f * (c4_top - b4_high),
+                                                    c4_top))
+                        b4_price_low_s = f"{adj_low:.0f}"
+                        b4_price_high_s = f"{adj_high:.0f}"
+        except (KeyError, ValueError, TypeError):
+            pass
+
     zones.append({
         'zone': 'bear_bottom',
         'base_start': b4_base_start,
@@ -316,6 +357,11 @@ def main():
             else f"{proj['b4_via_drawdown']:.0f}",
         'cross_check_ok': str(cross_check_ok),
         'compression_fit_note': b4_fit_note,
+        'regime_state_at_anchor': regime_state_at_anchor,
+        'regime_multiplier_b4': regime_multiplier_b4,
+        'b4_price_low_unconditional': b4_price_low_unconditional,
+        'b4_price_high_unconditional': b4_price_high_unconditional,
+        'multiplier_source': multiplier_source,
     })
 
     # 2) Accumulation zone: from B4 to H5 -- the "buy and hold" window.

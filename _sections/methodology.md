@@ -270,6 +270,27 @@ Stage 1 fit and retire the borrowed-shape model.
 (`actual_C4_open` means the asset has C4 live data but the bear bottom
 hasn't been observed yet — the metric is provisional.)
 
+## Appendix — I-21 curve-regime mechanism (reference)
+
+**Action summary lives on the decision pages.** The rule in one line:
+when the gated US yield-curve regime at the projection anchor has a
+*computed* multiplier for an asset (n ≥ 3 observed drawdowns onsetting
+in that regime), that asset's published B4 corridor **is automatically**
+the regime-adjusted band — the numbers you read everywhere already
+include it, and charts mark it (`×mult applied`, dotted gray = what it
+would have been unadjusted). When every cell is `fallback` (today), no
+corridor changes and nothing is displayed on decision surfaces.
+
+This appendix carries the mechanism detail so the timing pages stay clean.
+
+### Sensitivity table (all counterfactuals)
+
+{% include regime-sensitivity.html %}
+
+### Signal dashboard (C8h)
+
+{% include chart.html id="C8h" height="760px" caption="C8h (appendix) — US yield-curve regime dashboard: 10y−2y slope with classifier trigger levels, raw daily classification, gated regime ribbon (5-day persistence) with every asset's drawdown-onset markers and the current-regime anchor." %}
+
 ---
 *Data snapshots: `data/raw/manifest.txt` · Cycle metrics: `data/processed/btc_cycle_metrics.csv`*
 *Canonical event table `data/events.csv` SHA-256: `be24b84859d71ea8598c6a0fc16ebf2262291cd20b87e691090243e717e6289a`*
