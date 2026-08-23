@@ -35,8 +35,28 @@ pytest -q tests/          # run all increment gates
 bundle exec jekyll build  # site build check
 ```
 
-Local GitHub / push / init workflow commands are documented at
-`docs/github-workflow.md`.
+## Git push (READ THIS before pushing)
+
+**All push/init/Pages commands live in [`docs/github-workflow.md`](docs/github-workflow.md) — read it first.**
+Plain `git push` FAILS in this environment (no TTY, no credential helper).
+The documented method authenticates with the PAT from the gitignored `.env`
+via `GIT_ASKPASS` + temporary remote URL, then restores the clean URL:
+
+```powershell
+# 1. Read PAT from .env (gitignored)
+$pat = (Get-Content .env | Select-String "PAT=(.+)" | % { $_.Matches.Groups[1].Value }).Trim()
+# 2. Askpass shim so the PAT never hits shell history
+$askpass = "C:\Users\German\AppData\Local\Temp\opencode\askpass.cmd"
+Set-Content -Path $askpass -Value "@echo off`necho $pat"
+# 3. Auth env + temporary remote URL, push, restore clean URL
+$env:GIT_ASKPASS = $askpass; $env:GIT_TERMINAL_PROMPT = "0"
+git remote set-url origin "https://open-evidence-ar:${pat}@github.com/open-evidence-ar/btc-cycles.git"
+git push -u origin main
+git remote set-url origin "https://github.com/open-evidence-ar/btc-cycles.git"
+Remove-Item $askpass
+```
+
+Full reference (init/reset/Pages/renormalize): `docs/github-workflow.md`.
 
 ## Quick refresh workflow
 
