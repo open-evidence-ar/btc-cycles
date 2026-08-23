@@ -15,7 +15,7 @@
       "b4_base_end": "2026-07-18",
       "b4_base_start": "2026-03-20",
       "b4_price_high": "$0.992",
-      "b4_price_low": "$0.5943",
+      "b4_price_low": "$0.5938",
       "lead_vs_btc_days": -206,
       "method": "naive_median_own_dd"
     },
@@ -32,8 +32,8 @@
       "asset": "SOL",
       "b4_base_end": "2027-01-28",
       "b4_base_start": "2026-09-30",
-      "b4_price_high": "$86.05",
-      "b4_price_low": "$77.90",
+      "b4_price_high": "$85.96",
+      "b4_price_low": "$77.93",
       "lead_vs_btc_days": -12,
       "method": "borrowed_2_stage_from_ETH"
     },
@@ -540,8 +540,8 @@
           "date": "2026-08-13"
         },
         {
-          "close": 72838.42,
-          "date": "2026-08-20"
+          "close": 77342.06,
+          "date": "2026-08-23"
         }
       ]
     },
@@ -552,7 +552,7 @@
         "exec_label": "Last observed top",
         "label": "C4 top",
         "note": "ETH C4 top — anchor for the 2-stage B4/C5 projection.",
-        "price": "$4,831"
+        "price": "$4,836"
       },
       "later_windows": [
         {
@@ -568,8 +568,8 @@
           "label": "C5 distribution (top)",
           "outer_end": "2029-10-06",
           "outer_start": "2029-08-03",
-          "price_center": "$5,268",
-          "price_high": "$7,406",
+          "price_center": "$5,264",
+          "price_high": "$7,398",
           "price_low": "$3,130",
           "role": "attention peak - top watch"
         },
@@ -580,9 +580,9 @@
           "label": "B5 - post-C5-top exit",
           "outer_end": "2030-09-07",
           "outer_start": "2030-03-13",
-          "price_center": "$1,942",
-          "price_high": "$2,730",
-          "price_low": "$1,154",
+          "price_center": "$1,939",
+          "price_high": "$2,725",
+          "price_low": "$1,153",
           "role": "next attention peak - exit watch"
         }
       ],
@@ -1086,8 +1086,12 @@
           "date": "2026-08-08"
         },
         {
-          "close": 2347.0701,
-          "date": "2026-08-20"
+          "close": 2424.2512,
+          "date": "2026-08-22"
+        },
+        {
+          "close": 2446.22,
+          "date": "2026-08-23"
         }
       ]
     },
@@ -1632,8 +1636,8 @@
           "date": "2026-08-18"
         },
         {
-          "close": 112.2856,
-          "date": "2026-08-20"
+          "close": 119.25,
+          "date": "2026-08-21"
         }
       ]
     },
@@ -1644,7 +1648,7 @@
         "exec_label": "Last observed top",
         "label": "C4 top",
         "note": "SOL C4 top — anchor for the 2-stage B4/C5 projection.",
-        "price": "$261.82"
+        "price": "$261.87"
       },
       "later_windows": [
         {
@@ -1660,9 +1664,9 @@
           "label": "C5 distribution (top)",
           "outer_end": "2029-09-27",
           "outer_start": "2028-12-30",
-          "price_center": "$899.37",
-          "price_high": "$1,584",
-          "price_low": "$214.69",
+          "price_center": "$897.31",
+          "price_high": "$1,580",
+          "price_low": "$214.54",
           "role": "attention peak - top watch"
         },
         {
@@ -1672,9 +1676,9 @@
           "label": "B5 - post-C5-top exit",
           "outer_end": "2031-02-13",
           "outer_start": "2030-02-21",
-          "price_center": "$281.58",
-          "price_high": "$495.95",
-          "price_low": "$67.22",
+          "price_center": "$280.78",
+          "price_high": "$494.43",
+          "price_low": "$67.13",
           "role": "next attention peak - exit watch"
         }
       ],
@@ -1687,9 +1691,9 @@
         "label": "B4 - post-C4-top bear bottom",
         "outer_end": "2027-03-29",
         "outer_start": "2026-08-01",
-        "price_center": "$81.97",
-        "price_high": "$86.05",
-        "price_low": "$77.90",
+        "price_center": "$81.94",
+        "price_high": "$85.96",
+        "price_low": "$77.93",
         "role": "attention peak - bottom watch"
       },
       "price_history": [
@@ -2178,8 +2182,12 @@
           "date": "2026-08-08"
         },
         {
-          "close": 87.73,
-          "date": "2026-08-20"
+          "close": 93.9125,
+          "date": "2026-08-22"
+        },
+        {
+          "close": 95.26,
+          "date": "2026-08-23"
         }
       ]
     },
@@ -2716,19 +2724,19 @@
           "date": "2026-08-18"
         },
         {
-          "close": 46.13,
-          "date": "2026-08-20"
+          "close": 45.73,
+          "date": "2026-08-21"
         }
       ]
     },
     "XRP": {
       "anchored_on": "observed C4 top",
       "last_observed_event": {
-        "date": "2025-07-21",
+        "date": "2025-07-22",
         "exec_label": "Last observed top",
         "label": "C4 top",
         "note": "XRP C4 top — anchor for the 2-stage B4/C5 projection.",
-        "price": "$3.56"
+        "price": "$3.55"
       },
       "later_windows": [
         {
@@ -2738,26 +2746,26 @@
           "role": "patience window end"
         },
         {
-          "base_end": "2029-06-02",
-          "base_start": "2029-04-03",
+          "base_end": "2029-06-03",
+          "base_start": "2029-04-04",
           "exec_label": "Next cycle top",
           "label": "C5 distribution (top)",
-          "outer_end": "2029-07-02",
+          "outer_end": "2029-07-03",
           "outer_start": "2029-03-05",
           "price_center": "$9.70",
           "price_high": "$13.07",
-          "price_low": "$6.34",
+          "price_low": "$6.33",
           "role": "attention peak - top watch"
         },
         {
-          "base_end": "2030-06-27",
-          "base_start": "2030-06-07",
+          "base_end": "2030-06-28",
+          "base_start": "2030-06-08",
           "exec_label": "Post-top exit",
           "label": "B5 - post-C5-top exit",
-          "outer_end": "2030-09-05",
-          "outer_start": "2030-03-31",
+          "outer_end": "2030-09-06",
+          "outer_start": "2030-03-30",
           "price_center": "$2.16",
-          "price_high": "$2.91",
+          "price_high": "$2.92",
           "price_low": "$1.41",
           "role": "next attention peak - exit watch"
         }
@@ -2771,9 +2779,9 @@
         "label": "B4 - post-C4-top bear bottom",
         "outer_end": "2026-09-16",
         "outer_start": "2026-01-19",
-        "price_center": "$0.7932",
+        "price_center": "$0.7929",
         "price_high": "$0.992",
-        "price_low": "$0.5943",
+        "price_low": "$0.5938",
         "role": "attention peak - bottom watch"
       },
       "price_history": [
@@ -3262,8 +3270,12 @@
           "date": "2026-08-08"
         },
         {
-          "close": 1.3146,
-          "date": "2026-08-20"
+          "close": 1.4637,
+          "date": "2026-08-22"
+        },
+        {
+          "close": 1.5063,
+          "date": "2026-08-23"
         }
       ]
     }
@@ -3742,8 +3754,8 @@
         "date": "2026-08-13"
       },
       {
-        "close": 72838.42,
-        "date": "2026-08-20"
+        "close": 77342.06,
+        "date": "2026-08-23"
       }
     ]
   },

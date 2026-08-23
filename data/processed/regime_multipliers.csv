@@ -1,10 +1,13 @@
 asset,regime_state,drawdown_cond_mean,drawdown_uncond_mean,multiplier,n_samples,multiplier_source
+btc,bear_steep,0.848579,0.816502,1.0,1,fallback_to_1.0
+btc,bull_steep,0.834293,0.816502,1.0,1,fallback_to_1.0
+btc,normal,0.766634,0.816502,1.0,1,fallback_to_1.0
 dxy,bear_steep,0.124955,0.117422,1.0,1,fallback_to_1.0
 dxy,bull_steep,0.101208,0.117422,1.0,2,fallback_to_1.0
 dxy,normal,0.142318,0.117422,1.0,1,fallback_to_1.0
-eth,bear_steep,0.676112,0.802698,1.0,1,fallback_to_1.0
-eth,bull_steep,0.938807,0.802698,1.0,1,fallback_to_1.0
-eth,normal,0.793175,0.802698,1.0,1,fallback_to_1.0
+eth,bear_steep,0.676437,0.802737,1.0,1,fallback_to_1.0
+eth,bull_steep,0.938807,0.802737,1.0,1,fallback_to_1.0
+eth,normal,0.792969,0.802737,1.0,1,fallback_to_1.0
 gold,bear_steep,0.260312,0.145268,1.0,1,fallback_to_1.0
 gold,inverted_flat,0.112988,0.145268,1.0,1,fallback_to_1.0
 gold,normal,0.062504,0.145268,1.0,1,fallback_to_1.0
@@ -17,8 +20,8 @@ ndx,normal,0.213196,0.213196,1.0,3,computed
 riot,bear_steep,0.957766,0.970463,1.0,1,fallback_to_1.0
 riot,bull_steep,0.983161,0.970463,1.0,1,fallback_to_1.0
 riot,normal,0.0,0.970463,1.0,0,fallback_to_1.0
-sol,bear_steep,0.762471,0.862599,1.0,1,fallback_to_1.0
-sol,normal,0.962727,0.862599,1.0,1,fallback_to_1.0
+sol,bear_steep,0.762516,0.862622,1.0,1,fallback_to_1.0
+sol,normal,0.962727,0.862622,1.0,1,fallback_to_1.0
 spx,bull_steep,0.254251,0.218811,1.0,1,fallback_to_1.0
 spx,normal,0.201091,0.218811,1.0,2,fallback_to_1.0
 tlt,bear_steep,0.309182,0.217103,1.0,2,fallback_to_1.0
@@ -26,5 +29,5 @@ tlt,bull_steep,0.166691,0.217103,1.0,1,fallback_to_1.0
 tlt,normal,0.083356,0.217103,1.0,1,fallback_to_1.0
 wgmi,bull_steep,0.861427,0.936097,1.0,1,fallback_to_1.0
 wgmi,normal,0.973432,0.936097,1.0,2,fallback_to_1.0
-xrp,bear_steep,0.832855,0.776939,1.0,1,fallback_to_1.0
-xrp,normal,0.721024,0.776939,1.0,1,fallback_to_1.0
+xrp,bear_steep,0.832855,0.776811,1.0,1,fallback_to_1.0
+xrp,normal,0.720768,0.776811,1.0,1,fallback_to_1.0
