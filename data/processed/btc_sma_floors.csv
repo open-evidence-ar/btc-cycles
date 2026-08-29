@@ -783,4 +783,4 @@ date,close,sma_50w,sma_200w,below_sma_50w,below_sma_200w,event_first_below_50w,e
 2026-08-03,64857.27,83374.16,63778.0,True,False,False,False,False,False
 2026-08-10,62831.66,82465.41,63995.84,True,True,False,False,False,False
 2026-08-17,77716.48,81796.86,64286.55,True,False,False,False,False,True
-2026-08-24,78160.0,81053.22,64574.21,True,False,False,False,False,False
+2026-08-24,78149.32,81053.01,64574.16,True,False,False,False,False,False

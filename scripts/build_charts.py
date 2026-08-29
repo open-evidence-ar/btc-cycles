@@ -171,6 +171,9 @@ else:
 # I-17 per-asset artifacts
 alt_metrics = pd.read_csv('data/processed/alt_cycle_metrics.csv', keep_default_na=False)
 alt_zones = pd.read_csv('data/processed/alt_next_cycle_zones.csv', keep_default_na=False)
+# I-18a-alt per-asset SMA floors
+_alt_sma_path = Path('data/processed/alt_sma_floors.csv')
+alt_sma_floors = pd.read_csv(_alt_sma_path, dtype={'date': str}) if _alt_sma_path.is_file() else None
 
 def fit_cycle_compression(values, cycle_indices, project_to_idx, floor=2.0):
     """Fit **power-law decay** to per-cycle multipliers / drawdowns:
@@ -1173,6 +1176,7 @@ def build_c6():
         'accumulation': 'rgba(74,222,128,0.06)',
         'distribution': 'rgba(251,146,60,0.10)',
         'exit': 'rgba(96,165,250,0.10)',
+        'bear_bottom': 'rgba(34,211,238,0.06)',
     }
     for _, z in zones.iterrows():
         fig.add_vrect(x0=z['outer_start'], x1=z['outer_end'],
@@ -1181,6 +1185,64 @@ def build_c6():
         fig.add_annotation(x=z['base_start'], y=0.97, yref='paper',
                            text=f"<b>{z['zone'].upper()}</b>", showarrow=False,
                            font=dict(size=7, color='white'), xanchor='left', xshift=2)
+
+    # --- BTC bear_bottom band (unified with alt-chart style: outer/base
+    #     price-band rects + midpoint triangle + detailed annotation). ---
+    _bb = zones[zones['zone'] == 'bear_bottom']
+    if not _bb.empty:
+        _bb = _bb.iloc[0]
+        _bb_lo = float(_bb['price_low'])
+        _bb_hi = float(_bb['price_high'])
+        _bb_pmid = (_bb_lo + _bb_hi) / 2
+        _bb_x0 = str(_bb['outer_start'])
+        _bb_x1 = str(_bb['outer_end'])
+        _bb_b0 = str(_bb.get('base_start') or '')
+        _bb_b1 = str(_bb.get('base_end') or '')
+        _bb_band_x0 = (_bb_b0 and _bb_b1 and _bb_b0 <= _bb_b1) and _bb_b0 or _bb_x0
+        _bb_band_x1 = (_bb_b0 and _bb_b1 and _bb_b0 <= _bb_b1) and _bb_b1 or _bb_x1
+        fig.add_shape(type='rect', xref='x', yref='y',
+                      x0=_bb_x0, x1=_bb_x1, y0=_bb_lo, y1=_bb_hi,
+                      fillcolor='rgba(34,211,238,0.06)',
+                      line=dict(color='rgb(34,211,238)', width=1, dash='dash'),
+                      layer='below')
+        fig.add_shape(type='rect', xref='x', yref='y',
+                      x0=_bb_band_x0, x1=_bb_band_x1, y0=_bb_lo, y1=_bb_hi,
+                      fillcolor='rgba(34,211,238,0.25)',
+                      line=dict(color='rgb(34,211,238)', width=2),
+                      layer='below')
+        fig.add_trace(go.Scatter(
+            x=[_bb_band_x0, _bb_band_x1], y=[_bb_pmid, _bb_pmid],
+            mode='lines', name='B4 center',
+            line=dict(color='rgb(34,211,238)', width=2), showlegend=False,
+            hovertemplate=f'B4 center<br>$%{{y:,.0f}}<extra></extra>'))
+        fig.add_trace(go.Scatter(
+            x=[_bb_band_x1], y=[_bb_pmid], mode='markers', name='B4 (proj bear bottom)',
+            marker=dict(symbol='triangle-up', size=14, color='rgb(34,211,238)',
+                        line=dict(color='white', width=1.5)),
+            hovertemplate=f'B4 (proj bear bottom)<br>{_bb_band_x1}<br>${_bb_pmid:,.0f}<br>'
+                          f'band ${_bb_lo:,.0f}–${_bb_hi:,.0f}<extra></extra>',
+            showlegend=False))
+        _fit_note = ''
+        _cn = str(_bb.get('compression_fit_note') or '')
+        if 'naive_median' in _cn.lower():
+            _fit_note = ' <i>(naive med)</i>'
+        _cc = str(_bb.get('cross_check_ok') or '')
+        _chk_note = ''
+        if _cc in ('True', 'False'):
+            _chk_note = f" <i>x-check {'OK' if _cc=='True' else 'FAIL'}</i>"
+        _date_note = (f"<span style='font-size:9px'>{_bb_band_x0} → {_bb_band_x1}"
+                      f"{' (outer '+_bb_x0+' → '+_bb_x1+')' if (_bb_x0, _bb_x1) != (_bb_band_x0, _bb_band_x1) else ''}"
+                      f"</span>")
+        fig.add_annotation(
+            x=_bb_band_x1, y=_bb_pmid, xref='x', yref='y',
+            text=(f"<b>B4 (proj bear bottom)</b><br>"
+                  f"${_bb_lo:,.0f} – ${_bb_hi:,.0f}<br>"
+                  f"(center ${_bb_pmid:,.0f}){_fit_note}{_chk_note}<br>{_date_note}"),
+            showarrow=True, arrowhead=2, arrowcolor='rgb(34,211,238)',
+            ax=-55, ay=0,
+            font=dict(size=10, color='#ffffff'),
+            bgcolor='rgba(10,14,26,0.90)', borderpad=4,
+            xanchor='right', yanchor='middle')
 
     dist_zone = zones[zones['zone'] == 'distribution'].iloc[0]
     exit_zone = zones[zones['zone'] == 'exit'].iloc[0]
@@ -1303,7 +1365,8 @@ def build_c6():
         borderpad=3,
     )
 
-    # --- Projected B4 marker ---
+        # --- Projected B4 date (kept for folklore band + event lines + cross-ref note;
+    #     the bear_bottom band above now carries the B4 marker + annotation). ---
     b4_zone = None
     if 'bear_bottom' in set(zones['zone'].values):
         b4_zone = zones[zones['zone'] == 'bear_bottom'].iloc[0]
@@ -1316,25 +1379,6 @@ def build_c6():
         legacy_end = pd.to_datetime(legacy_exit['base_end'])
         projected_b4_date = legacy_start + (legacy_end - legacy_start) / 2
     projected_b4_date_str = projected_b4_date.strftime('%Y-%m-%d')
-    fig.add_trace(go.Scatter(
-        x=[projected_b4_date_str], y=[b4_proj],
-        mode='markers', name='Projected B4',
-        marker=dict(symbol='triangle-up', size=14, color='#22d3ee',
-                    line=dict(color='white', width=1.5)),
-        hovertemplate=f'Projected B4<br>%{{x}}<br>$%{{y:,.0f}}<br>band ${b4_proj_low:,.0f}-${b4_proj_high:,.0f}<extra></extra>',
-        showlegend=False,
-    ))
-    fig.add_annotation(
-        x=projected_b4_date_str, y=b4_proj,
-        xref='x', yref='y',
-        text=(f'<b>B4 ${b4_proj:,.0f}</b><br>'
-              f'<span style="font-size:8px">band ${b4_proj_low:,.0f}–${b4_proj_high:,.0f}</span>'),
-        showarrow=True, arrowhead=2, arrowcolor='#22d3ee',
-        ax=-45, ay=-25,
-        font=dict(size=10, color='#22d3ee'),
-        bgcolor='rgba(10,14,26,0.85)',
-        borderpad=3,
-    )
 
     # --- B5 marker at exit zone midpoint ---
     exit_start = pd.to_datetime(exit_zone['base_start'])
@@ -1848,6 +1892,28 @@ def _build_alt_chart(asset, filename, title, subtitle):
                         bgcolor='rgba(10,14,26,0.85)', xanchor='right', borderpad=3)
             except (ValueError, TypeError):
                 pass
+
+    # I-18a-alt: SMA overlay (50w / 200w) — same muted dotted style as BTC C6.
+    if alt_sma_floors is not None and not alt_sma_floors.empty:
+        _asm = alt_sma_floors[alt_sma_floors['asset'] == asset].copy()
+        if not _asm.empty:
+            _asm['date_parsed'] = pd.to_datetime(_asm['date'], errors='coerce')
+            _asm_z = _asm[(_asm['date_parsed'] >= '2022-01-01') & (_asm['date_parsed'] <= '2031-12-31')]
+            for _sma_col, _label, _color in [
+                ('sma_50w', '50w SMA', '#6b7280'),
+                ('sma_200w', '200w SMA', '#9ca3af'),
+            ]:
+                _sub = _asm_z[['date_parsed', _sma_col]].dropna()
+                if len(_sub) > 1:
+                    fig.add_trace(go.Scatter(
+                        x=_sub['date_parsed'].dt.strftime('%Y-%m-%d'),
+                        y=_sub[_sma_col],
+                        mode='lines', name=_label,
+                        line=dict(color=_color, width=1, dash='dot'),
+                        opacity=0.5,
+                        hovertemplate=f'{_label}<br>%{{x}}<br>$%{{y:,.0f}}<extra></extra>',
+                        showlegend=False,
+                    ))
 
     # Asset price line (zoomed to visible window — full pre-2022 history omitted)
     fig.add_trace(go.Scatter(

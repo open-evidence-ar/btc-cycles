@@ -67,3 +67,28 @@ was mis-scoped to the last row.
   re-reclaims.
 - Chart SHAs will keep changing on every data refresh by design; the
   snapshot file must be re-stored as part of the refresh workflow.
+
+## Reconciliation — refresh 2026-08-29 (chart style unification + alt SMA)
+
+- **New artifact** `data/processed/alt_sma_floors.csv` + builder
+  `scripts/build_alt_sma_floors.py`: 50w/200w SMA per crypto altcoin
+  (eth, xrp, sol, mstr, wgmi), same schema as `btc_sma_floors.csv`.
+- **Pipeline** (`scripts/refresh_all.py`): added `alt_sma_floors` step in
+  DERIVED stage (after `sma_floors`). `tests/test_refresh_all.py`
+  updated to gate the new artifact.
+- **Chart style unification** (`scripts/build_charts.py`):
+  - `C6` BTC bear_bottom zone now matches the alt-chart style — cyan
+    `rgba(34,211,238,0.06)` fill + dual-layer outer/base price-band
+    rects + midpoint triangle + detailed annotation ("B4 (proj
+    bear bottom)" with range/center/fit-note/cross-check/date-range).
+    The redundant separate projected-B4 point marker/annotation block
+    was removed.
+  - `_build_alt_chart` now overlays `sma_50w` (`#6b7280`) and
+    `sma_200w` (`#9ca3af`) dotted lines, identical to the BTC C6
+    overlay.
+- `tests/chart_snapshots.json` re-stored from freshly rendered PNGs
+  (C8, C8b, C8c, C8e, C8f + C-SMA SHAs changed).
+- Full gate suite: 211 passed. No upstream increment or pipeline script
+  touched.
+
+## Residual uncertainty / known limitations

@@ -65,6 +65,7 @@ def test_refresh_all_produces_output_files():
     expected_files = [
         PROCESSED / "btc_cycle_metrics.csv",
         PROCESSED / "btc_sma_floors.csv",
+        PROCESSED / "alt_sma_floors.csv",
         PROCESSED / "forward_ranges.csv",
         PROCESSED / "next_cycle_zones.csv",
         PROCESSED / "backtest_by_cycle.csv",

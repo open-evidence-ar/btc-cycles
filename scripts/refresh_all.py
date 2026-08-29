@@ -9,8 +9,8 @@ Usage:
 Pipeline order (each stage depends on the previous one):
   1. FETCH   — pull latest OHLCV snapshots (BTC, alts, macro) + US Treasury yield panel (I-21)
   2. CYCLE   — rebuild BTC + alt cycle metrics from raw snapshots
-  3. DERIVED — SMA floors, forward ranges, alt forward ranges, curve-state + regime multipliers
-              (I-21), next-cycle zones, alt zones (regime-adjusted B4), Pine exports, alignment
+  3. DERIVED — SMA floors, alt SMA floors, forward ranges, alt forward ranges, curve-state + regime multipliers
+               (I-21), next-cycle zones, alt zones (regime-adjusted B4), Pine exports, alignment
   4. HEAVY   — backtest, regime robustness, correlations, rolling corr (optional)
   5. CHARTS  — render all PNG charts (C1-C9, C-SMA)
 """
@@ -123,6 +123,11 @@ def build_pipeline(skip_fetch: bool = False) -> list[Stage]:
                 name="sma_floors",
                 cmd=[sys.executable, str(SCRIPTS_DIR / "build_sma_floors.py")],
                 label="SMA floors (I-18a)",
+            ),
+            Step(
+                name="alt_sma_floors",
+                cmd=[sys.executable, str(SCRIPTS_DIR / "build_alt_sma_floors.py")],
+                label="Alt SMA floors (I-18a-alt)",
             ),
             Step(
                 name="fwd_ranges",
