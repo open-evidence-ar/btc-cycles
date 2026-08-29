@@ -44,6 +44,22 @@ was mis-scoped to the last row.
    untouched; `btc_sma_floors.csv` is the output of the unchanged I-18a
    build).
 
+## Reconciliation — refresh 2026-08-29 (new week 2026-08-24 added)
+
+- `data/processed/btc_sma_floors.csv` last row now 2026-08-24: close
+  $78,160, sma_50w $81,053, sma_200w $64,574 → below 50w (True), above
+  200w (False). The 200w reclaim transition fired on the 2026-08-17 row
+  (`event_reclaim_200w=True`); the latest row persists above the 200w so
+  `event_reclaim_200w=False` there.
+- `tests/test_sma_floors.py::test_latest_position_reflects_fresh_data`
+  re-anchored: asserts latest row below 50w / above 200w with no new
+  reclaim transition, and that the 2026-08-17 row carries the transition.
+- `tests/chart_snapshots.json` re-stored from freshly rendered PNGs
+  (sanctioned first-run mechanism in `test_png_determinism`): C-SMA, C1,
+  C2, C4, C5, C6, C8, C8b, C8c, C8e, C8f, C9 SHAs updated on fresh data.
+- Full gate suite: 211 passed. No upstream increment or pipeline script
+  touched.
+
 ## Residual uncertainty / known limitations
 
 - The 200w reclaim is not yet confirmed as durable: 2026-08-10 sits ~0.5%
