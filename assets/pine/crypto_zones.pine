@@ -1,5 +1,5 @@
 // TradingView Pine Script - Crypto next-cycle (C5) zones (BTC/ETH/XRP/SOL)
-// Generated: 2026-08-29 by scripts/export_tradingview_pine.py
+// Generated: 2026-09-04 by scripts/export_tradingview_pine.py
 // Sources: data/processed/next_cycle_zones.csv, data/processed/alt_next_cycle_zones.csv
 // Open chart: BITSTAMP:BTCUSD / COINBASE:ETHUSD / BINANCE:XRPUSDT / BINANCE:SOLUSDT (1D)
 // Zones auto-select via syminfo.basecurrency; non-model symbols draw nothing.
@@ -50,55 +50,55 @@ if barstate.islast
         label.new(timestamp(2025,8,22), 4831.3486, "C4 top (obs) $4.83k\n2025-08-22", xloc=xloc.bar_time, yloc=yloc.price, style=label.style_label_down, color=color.new(color.red, labelsInput), textcolor=color.new(color.white, labelsTextInput), size=size.small)
 
         // ETH: reference levels (model centers)
-        line.new(timestamp(2009,1,1), 1679.5389, timestamp(2036,1,1), 1679.5389, xloc=xloc.bar_time, style=line.style_dotted, color=color.new(color.blue, linesInput), width=1)
-        line.new(timestamp(2009,1,1), 5266.2338, timestamp(2036,1,1), 5266.2338, xloc=xloc.bar_time, style=line.style_dotted, color=color.new(color.orange, linesInput), width=1)
+        line.new(timestamp(2009,1,1), 1682.2826, timestamp(2036,1,1), 1682.2826, xloc=xloc.bar_time, style=line.style_dotted, color=color.new(color.blue, linesInput), width=1)
+        line.new(timestamp(2009,1,1), 5271.9765, timestamp(2036,1,1), 5271.9765, xloc=xloc.bar_time, style=line.style_dotted, color=color.new(color.orange, linesInput), width=1)
 
         // ETH: average prediction markers
-        label.new(timestamp(2026,8,5), 1679.5389, "B4 $1.68k", xloc=xloc.bar_time, yloc=yloc.price, style=label.style_diamond, color=color.new(color.blue, labelsInput), textcolor=color.new(color.white, labelsTextInput), size=size.small)
-        label.new(timestamp(2029,9,16), 5266.2338, "C5 $5.27k", xloc=xloc.bar_time, yloc=yloc.price, style=label.style_diamond, color=color.new(color.orange, labelsInput), textcolor=color.new(color.white, labelsTextInput), size=size.small)
+        label.new(timestamp(2026,8,5), 1682.2826, "B4 $1.68k", xloc=xloc.bar_time, yloc=yloc.price, style=label.style_diamond, color=color.new(color.blue, labelsInput), textcolor=color.new(color.white, labelsTextInput), size=size.small)
+        label.new(timestamp(2029,9,16), 5271.9765, "C5 $5.27k", xloc=xloc.bar_time, yloc=yloc.price, style=label.style_diamond, color=color.new(color.orange, labelsInput), textcolor=color.new(color.white, labelsTextInput), size=size.small)
 
         // ETH: bear_bottom (base + outer window)
-        box.new(timestamp(2026,5,19), 2092.4744, timestamp(2026,10,21), 1153.818, xloc=xloc.bar_time, border_color=color.new(color.blue, outerBorderInput), border_width=1, border_style=line.style_dashed, bgcolor=color.new(color.blue, outerFillInput))
-        box.new(timestamp(2026,6,27), 2092.4744, timestamp(2026,9,13), 1153.818, xloc=xloc.bar_time, border_color=color.new(color.blue, boxesBorderInput), border_width=1, bgcolor=color.new(color.blue, boxesFillInput))
-        label.new(timestamp(2026,9,13), 2134.3239, "B4 BEAR BOTTOM\n$1.68k (band $1.15k-$2.09k)\n2026-06-27 -> 2026-09-13", xloc=xloc.bar_time, yloc=yloc.price, style=label.style_label_down, color=color.new(color.blue, labelsInput), textcolor=color.new(color.white, labelsTextInput), size=size.small)
+        box.new(timestamp(2026,5,19), 2095.8927, timestamp(2026,10,21), 1155.7029, xloc=xloc.bar_time, border_color=color.new(color.blue, outerBorderInput), border_width=1, border_style=line.style_dashed, bgcolor=color.new(color.blue, outerFillInput))
+        box.new(timestamp(2026,6,27), 2095.8927, timestamp(2026,9,13), 1155.7029, xloc=xloc.bar_time, border_color=color.new(color.blue, boxesBorderInput), border_width=1, bgcolor=color.new(color.blue, boxesFillInput))
+        label.new(timestamp(2026,9,13), 2137.8106, "B4 BEAR BOTTOM\n$1.68k (band $1.16k-$2.10k)\n2026-06-27 -> 2026-09-13", xloc=xloc.bar_time, yloc=yloc.price, style=label.style_label_down, color=color.new(color.blue, labelsInput), textcolor=color.new(color.white, labelsTextInput), size=size.small)
 
         // ETH: distribution (base + outer window)
-        box.new(timestamp(2029,8,3), 7402.8344, timestamp(2029,10,6), 3129.6333, xloc=xloc.bar_time, border_color=color.new(color.orange, outerBorderInput), border_width=1, border_style=line.style_dashed, bgcolor=color.new(color.orange, outerFillInput))
-        box.new(timestamp(2029,8,31), 7402.8344, timestamp(2029,10,2), 3129.6333, xloc=xloc.bar_time, border_color=color.new(color.orange, boxesBorderInput), border_width=1, bgcolor=color.new(color.orange, boxesFillInput))
-        label.new(timestamp(2029,10,2), 7550.8911, "C5 TOP (band)\n$3.13k-$7.40k\n2029-08-31 -> 2029-10-02", xloc=xloc.bar_time, yloc=yloc.price, style=label.style_label_down, color=color.new(color.orange, labelsInput), textcolor=color.new(color.white, labelsTextInput), size=size.small)
+        box.new(timestamp(2029,8,3), 7414.3197, timestamp(2029,10,6), 3129.6333, xloc=xloc.bar_time, border_color=color.new(color.orange, outerBorderInput), border_width=1, border_style=line.style_dashed, bgcolor=color.new(color.orange, outerFillInput))
+        box.new(timestamp(2029,8,31), 7414.3197, timestamp(2029,10,2), 3129.6333, xloc=xloc.bar_time, border_color=color.new(color.orange, boxesBorderInput), border_width=1, bgcolor=color.new(color.orange, boxesFillInput))
+        label.new(timestamp(2029,10,2), 7562.6061, "C5 TOP (band)\n$3.13k-$7.41k\n2029-08-31 -> 2029-10-02", xloc=xloc.bar_time, yloc=yloc.price, style=label.style_label_down, color=color.new(color.orange, labelsInput), textcolor=color.new(color.white, labelsTextInput), size=size.small)
 
         // ETH: exit (base + outer window)
-        box.new(timestamp(2030,3,13), 2728.3818, timestamp(2030,9,6), 1153.4548, xloc=xloc.bar_time, border_color=color.new(color.purple, outerBorderInput), border_width=1, border_style=line.style_dashed, bgcolor=color.new(color.purple, outerFillInput))
-        box.new(timestamp(2030,6,20), 2728.3818, timestamp(2030,8,16), 1153.4548, xloc=xloc.bar_time, border_color=color.new(color.purple, boxesBorderInput), border_width=1, bgcolor=color.new(color.purple, boxesFillInput))
-        label.new(timestamp(2030,8,16), 2782.9494, "EXIT / B5\n$1.15k-$2.73k\n2030-06-20 -> 2030-08-16", xloc=xloc.bar_time, yloc=yloc.price, style=label.style_label_down, color=color.new(color.purple, labelsInput), textcolor=color.new(color.white, labelsTextInput), size=size.small)
+        box.new(timestamp(2030,3,13), 2732.9692, timestamp(2030,9,6), 1153.6043, xloc=xloc.bar_time, border_color=color.new(color.purple, outerBorderInput), border_width=1, border_style=line.style_dashed, bgcolor=color.new(color.purple, outerFillInput))
+        box.new(timestamp(2030,6,20), 2732.9692, timestamp(2030,8,16), 1153.6043, xloc=xloc.bar_time, border_color=color.new(color.purple, boxesBorderInput), border_width=1, bgcolor=color.new(color.purple, boxesFillInput))
+        label.new(timestamp(2030,8,16), 2787.6286, "EXIT / B5\n$1.15k-$2.73k\n2030-06-20 -> 2030-08-16", xloc=xloc.bar_time, yloc=yloc.price, style=label.style_label_down, color=color.new(color.purple, labelsInput), textcolor=color.new(color.white, labelsTextInput), size=size.small)
 
     if syminfo.basecurrency == "XRP"
         // XRP: observed C4 top (projection anchor)
-        line.new(timestamp(2009,1,1), 3.5517, timestamp(2036,1,1), 3.5517, xloc=xloc.bar_time, style=line.style_dotted, color=color.new(color.red, linesInput), width=1)
-        label.new(timestamp(2025,7,22), 3.5517, "C4 top (obs) $3.55\n2025-07-22", xloc=xloc.bar_time, yloc=yloc.price, style=label.style_label_down, color=color.new(color.red, labelsInput), textcolor=color.new(color.white, labelsTextInput), size=size.small)
+        line.new(timestamp(2009,1,1), 3.5558, timestamp(2036,1,1), 3.5558, xloc=xloc.bar_time, style=line.style_dotted, color=color.new(color.red, linesInput), width=1)
+        label.new(timestamp(2025,7,21), 3.5558, "C4 top (obs) $3.56\n2025-07-21", xloc=xloc.bar_time, yloc=yloc.price, style=label.style_label_down, color=color.new(color.red, labelsInput), textcolor=color.new(color.white, labelsTextInput), size=size.small)
 
         // XRP: reference levels (model centers)
-        line.new(timestamp(2009,1,1), 0.7935, timestamp(2036,1,1), 0.7935, xloc=xloc.bar_time, style=line.style_dotted, color=color.new(color.blue, linesInput), width=1)
-        line.new(timestamp(2009,1,1), 9.8102, timestamp(2036,1,1), 9.8102, xloc=xloc.bar_time, style=line.style_dotted, color=color.new(color.orange, linesInput), width=1)
+        line.new(timestamp(2009,1,1), 0.7946, timestamp(2036,1,1), 0.7946, xloc=xloc.bar_time, style=line.style_dotted, color=color.new(color.blue, linesInput), width=1)
+        line.new(timestamp(2009,1,1), 9.811, timestamp(2036,1,1), 9.811, xloc=xloc.bar_time, style=line.style_dotted, color=color.new(color.orange, linesInput), width=1)
 
         // XRP: average prediction markers
-        label.new(timestamp(2026,5,19), 0.7935, "B4 $0.7935", xloc=xloc.bar_time, yloc=yloc.price, style=label.style_diamond, color=color.new(color.blue, labelsInput), textcolor=color.new(color.white, labelsTextInput), size=size.small)
-        label.new(timestamp(2029,5,4), 9.8102, "C5 $9.81", xloc=xloc.bar_time, yloc=yloc.price, style=label.style_diamond, color=color.new(color.orange, labelsInput), textcolor=color.new(color.white, labelsTextInput), size=size.small)
+        label.new(timestamp(2026,5,19), 0.7946, "B4 $0.7946", xloc=xloc.bar_time, yloc=yloc.price, style=label.style_diamond, color=color.new(color.blue, labelsInput), textcolor=color.new(color.white, labelsTextInput), size=size.small)
+        label.new(timestamp(2029,5,3), 9.811, "C5 $9.81", xloc=xloc.bar_time, yloc=yloc.price, style=label.style_diamond, color=color.new(color.orange, labelsInput), textcolor=color.new(color.white, labelsTextInput), size=size.small)
 
         // XRP: bear_bottom (base + outer window)
-        box.new(timestamp(2026,1,19), 0.992, timestamp(2026,9,16), 0.5949, xloc=xloc.bar_time, border_color=color.new(color.blue, outerBorderInput), border_width=1, border_style=line.style_dashed, bgcolor=color.new(color.blue, outerFillInput))
-        box.new(timestamp(2026,3,20), 0.992, timestamp(2026,7,18), 0.5949, xloc=xloc.bar_time, border_color=color.new(color.blue, boxesBorderInput), border_width=1, bgcolor=color.new(color.blue, boxesFillInput))
-        label.new(timestamp(2026,7,18), 1.0118, "B4 BEAR BOTTOM\n$0.7935 (band $0.5949-$0.9920)\n2026-03-20 -> 2026-07-18", xloc=xloc.bar_time, yloc=yloc.price, style=label.style_label_down, color=color.new(color.blue, labelsInput), textcolor=color.new(color.white, labelsTextInput), size=size.small)
+        box.new(timestamp(2026,1,19), 0.992, timestamp(2026,9,16), 0.5971, xloc=xloc.bar_time, border_color=color.new(color.blue, outerBorderInput), border_width=1, border_style=line.style_dashed, bgcolor=color.new(color.blue, outerFillInput))
+        box.new(timestamp(2026,3,20), 0.992, timestamp(2026,7,18), 0.5971, xloc=xloc.bar_time, border_color=color.new(color.blue, boxesBorderInput), border_width=1, bgcolor=color.new(color.blue, boxesFillInput))
+        label.new(timestamp(2026,7,18), 1.0118, "B4 BEAR BOTTOM\n$0.7946 (band $0.5971-$0.9920)\n2026-03-20 -> 2026-07-18", xloc=xloc.bar_time, yloc=yloc.price, style=label.style_label_down, color=color.new(color.blue, labelsInput), textcolor=color.new(color.white, labelsTextInput), size=size.small)
 
         // XRP: distribution (base + outer window)
-        box.new(timestamp(2029,3,5), 13.2785, timestamp(2029,7,3), 6.342, xloc=xloc.bar_time, border_color=color.new(color.orange, outerBorderInput), border_width=1, border_style=line.style_dashed, bgcolor=color.new(color.orange, outerFillInput))
-        box.new(timestamp(2029,4,4), 13.2785, timestamp(2029,6,3), 6.342, xloc=xloc.bar_time, border_color=color.new(color.orange, boxesBorderInput), border_width=1, bgcolor=color.new(color.orange, boxesFillInput))
-        label.new(timestamp(2029,6,3), 13.5441, "C5 TOP (band)\n$6.34-$13.28\n2029-04-04 -> 2029-06-03", xloc=xloc.bar_time, yloc=yloc.price, style=label.style_label_down, color=color.new(color.orange, labelsInput), textcolor=color.new(color.white, labelsTextInput), size=size.small)
+        box.new(timestamp(2029,3,5), 13.2451, timestamp(2029,7,2), 6.3769, xloc=xloc.bar_time, border_color=color.new(color.orange, outerBorderInput), border_width=1, border_style=line.style_dashed, bgcolor=color.new(color.orange, outerFillInput))
+        box.new(timestamp(2029,4,3), 13.2451, timestamp(2029,6,2), 6.3769, xloc=xloc.bar_time, border_color=color.new(color.orange, boxesBorderInput), border_width=1, bgcolor=color.new(color.orange, boxesFillInput))
+        label.new(timestamp(2029,6,2), 13.51, "C5 TOP (band)\n$6.38-$13.25\n2029-04-03 -> 2029-06-02", xloc=xloc.bar_time, yloc=yloc.price, style=label.style_label_down, color=color.new(color.orange, labelsInput), textcolor=color.new(color.white, labelsTextInput), size=size.small)
 
         // XRP: exit (base + outer window)
-        box.new(timestamp(2030,3,30), 2.9665, timestamp(2030,9,6), 1.4168, xloc=xloc.bar_time, border_color=color.new(color.purple, outerBorderInput), border_width=1, border_style=line.style_dashed, bgcolor=color.new(color.purple, outerFillInput))
-        box.new(timestamp(2030,6,8), 2.9665, timestamp(2030,6,28), 1.4168, xloc=xloc.bar_time, border_color=color.new(color.purple, boxesBorderInput), border_width=1, bgcolor=color.new(color.purple, boxesFillInput))
-        label.new(timestamp(2030,6,28), 3.0258, "EXIT / B5\n$1.42-$2.97\n2030-06-08 -> 2030-06-28", xloc=xloc.bar_time, yloc=yloc.price, style=label.style_label_down, color=color.new(color.purple, labelsInput), textcolor=color.new(color.white, labelsTextInput), size=size.small)
+        box.new(timestamp(2030,3,31), 2.9597, timestamp(2030,9,5), 1.4249, xloc=xloc.bar_time, border_color=color.new(color.purple, outerBorderInput), border_width=1, border_style=line.style_dashed, bgcolor=color.new(color.purple, outerFillInput))
+        box.new(timestamp(2030,6,7), 2.9597, timestamp(2030,6,27), 1.4249, xloc=xloc.bar_time, border_color=color.new(color.purple, boxesBorderInput), border_width=1, bgcolor=color.new(color.purple, boxesFillInput))
+        label.new(timestamp(2030,6,27), 3.0189, "EXIT / B5\n$1.42-$2.96\n2030-06-07 -> 2030-06-27", xloc=xloc.bar_time, yloc=yloc.price, style=label.style_label_down, color=color.new(color.purple, labelsInput), textcolor=color.new(color.white, labelsTextInput), size=size.small)
 
     if syminfo.basecurrency == "SOL"
         // SOL: observed C4 top (projection anchor)
@@ -106,25 +106,25 @@ if barstate.islast
         label.new(timestamp(2025,1,18), 261.8698, "C4 top (obs) $261.87\n2025-01-18", xloc=xloc.bar_time, yloc=yloc.price, style=label.style_label_down, color=color.new(color.red, labelsInput), textcolor=color.new(color.white, labelsTextInput), size=size.small)
 
         // SOL: reference levels (model centers)
-        line.new(timestamp(2009,1,1), 81.9788, timestamp(2036,1,1), 81.9788, xloc=xloc.bar_time, style=line.style_dotted, color=color.new(color.blue, linesInput), width=1)
-        line.new(timestamp(2009,1,1), 900.0795, timestamp(2036,1,1), 900.0795, xloc=xloc.bar_time, style=line.style_dotted, color=color.new(color.orange, linesInput), width=1)
+        line.new(timestamp(2009,1,1), 81.9911, timestamp(2036,1,1), 81.9911, xloc=xloc.bar_time, style=line.style_dotted, color=color.new(color.blue, linesInput), width=1)
+        line.new(timestamp(2009,1,1), 900.9919, timestamp(2036,1,1), 900.9919, xloc=xloc.bar_time, style=line.style_dotted, color=color.new(color.orange, linesInput), width=1)
 
         // SOL: average prediction markers
-        label.new(timestamp(2026,11,29), 81.9788, "B4 $81.98", xloc=xloc.bar_time, yloc=yloc.price, style=label.style_diamond, color=color.new(color.blue, labelsInput), textcolor=color.new(color.white, labelsTextInput), size=size.small)
-        label.new(timestamp(2029,5,14), 900.0795, "C5 $900.08", xloc=xloc.bar_time, yloc=yloc.price, style=label.style_diamond, color=color.new(color.orange, labelsInput), textcolor=color.new(color.white, labelsTextInput), size=size.small)
+        label.new(timestamp(2026,11,29), 81.9911, "B4 $81.99", xloc=xloc.bar_time, yloc=yloc.price, style=label.style_diamond, color=color.new(color.blue, labelsInput), textcolor=color.new(color.white, labelsTextInput), size=size.small)
+        label.new(timestamp(2029,5,14), 900.9919, "C5 $900.99", xloc=xloc.bar_time, yloc=yloc.price, style=label.style_diamond, color=color.new(color.orange, labelsInput), textcolor=color.new(color.white, labelsTextInput), size=size.small)
 
         // SOL: bear_bottom (base + outer window)
-        box.new(timestamp(2026,8,1), 86.0661, timestamp(2027,3,29), 77.8916, xloc=xloc.bar_time, border_color=color.new(color.blue, outerBorderInput), border_width=1, border_style=line.style_dashed, bgcolor=color.new(color.blue, outerFillInput))
-        box.new(timestamp(2026,9,30), 86.0661, timestamp(2027,1,28), 77.8916, xloc=xloc.bar_time, border_color=color.new(color.blue, boxesBorderInput), border_width=1, bgcolor=color.new(color.blue, boxesFillInput))
-        label.new(timestamp(2027,1,28), 87.7874, "B4 BEAR BOTTOM\n$81.98 (band $77.89-$86.07)\n2026-09-30 -> 2027-01-28", xloc=xloc.bar_time, yloc=yloc.price, style=label.style_label_down, color=color.new(color.blue, labelsInput), textcolor=color.new(color.white, labelsTextInput), size=size.small)
+        box.new(timestamp(2026,8,1), 86.0608, timestamp(2027,3,29), 77.9214, xloc=xloc.bar_time, border_color=color.new(color.blue, outerBorderInput), border_width=1, border_style=line.style_dashed, bgcolor=color.new(color.blue, outerFillInput))
+        box.new(timestamp(2026,9,30), 86.0608, timestamp(2027,1,28), 77.9214, xloc=xloc.bar_time, border_color=color.new(color.blue, boxesBorderInput), border_width=1, bgcolor=color.new(color.blue, boxesFillInput))
+        label.new(timestamp(2027,1,28), 87.782, "B4 BEAR BOTTOM\n$81.99 (band $77.92-$86.06)\n2026-09-30 -> 2027-01-28", xloc=xloc.bar_time, yloc=yloc.price, style=label.style_label_down, color=color.new(color.blue, labelsInput), textcolor=color.new(color.white, labelsTextInput), size=size.small)
 
         // SOL: distribution (base + outer window)
-        box.new(timestamp(2028,12,30), 1585.5384, timestamp(2029,9,27), 214.6206, xloc=xloc.bar_time, border_color=color.new(color.orange, outerBorderInput), border_width=1, border_style=line.style_dashed, bgcolor=color.new(color.orange, outerFillInput))
-        box.new(timestamp(2029,3,7), 1585.5384, timestamp(2029,7,21), 214.6206, xloc=xloc.bar_time, border_color=color.new(color.orange, boxesBorderInput), border_width=1, bgcolor=color.new(color.orange, boxesFillInput))
-        label.new(timestamp(2029,7,21), 1617.2492, "C5 TOP (band)\n$214.62-$1.59k\n2029-03-07 -> 2029-07-21", xloc=xloc.bar_time, yloc=yloc.price, style=label.style_label_down, color=color.new(color.orange, labelsInput), textcolor=color.new(color.white, labelsTextInput), size=size.small)
+        box.new(timestamp(2028,12,30), 1587.3655, timestamp(2029,9,27), 214.6182, xloc=xloc.bar_time, border_color=color.new(color.orange, outerBorderInput), border_width=1, border_style=line.style_dashed, bgcolor=color.new(color.orange, outerFillInput))
+        box.new(timestamp(2029,3,7), 1587.3655, timestamp(2029,7,21), 214.6182, xloc=xloc.bar_time, border_color=color.new(color.orange, boxesBorderInput), border_width=1, bgcolor=color.new(color.orange, boxesFillInput))
+        label.new(timestamp(2029,7,21), 1619.1128, "C5 TOP (band)\n$214.62-$1.59k\n2029-03-07 -> 2029-07-21", xloc=xloc.bar_time, yloc=yloc.price, style=label.style_label_down, color=color.new(color.orange, labelsInput), textcolor=color.new(color.white, labelsTextInput), size=size.small)
 
         // SOL: exit (base + outer window)
-        box.new(timestamp(2030,2,21), 496.3558, timestamp(2031,2,13), 67.1874, xloc=xloc.bar_time, border_color=color.new(color.purple, outerBorderInput), border_width=1, border_style=line.style_dashed, bgcolor=color.new(color.purple, outerFillInput))
-        box.new(timestamp(2030,7,27), 496.3558, timestamp(2030,9,8), 67.1874, xloc=xloc.bar_time, border_color=color.new(color.purple, boxesBorderInput), border_width=1, bgcolor=color.new(color.purple, boxesFillInput))
-        label.new(timestamp(2030,9,8), 506.2829, "EXIT / B5\n$67.19-$496.36\n2030-07-27 -> 2030-09-08", xloc=xloc.bar_time, yloc=yloc.price, style=label.style_label_down, color=color.new(color.purple, labelsInput), textcolor=color.new(color.white, labelsTextInput), size=size.small)
+        box.new(timestamp(2030,2,21), 497.0022, timestamp(2031,2,13), 67.1967, xloc=xloc.bar_time, border_color=color.new(color.purple, outerBorderInput), border_width=1, border_style=line.style_dashed, bgcolor=color.new(color.purple, outerFillInput))
+        box.new(timestamp(2030,7,27), 497.0022, timestamp(2030,9,8), 67.1967, xloc=xloc.bar_time, border_color=color.new(color.purple, boxesBorderInput), border_width=1, bgcolor=color.new(color.purple, boxesFillInput))
+        label.new(timestamp(2030,9,8), 506.9422, "EXIT / B5\n$67.20-$497.00\n2030-07-27 -> 2030-09-08", xloc=xloc.bar_time, yloc=yloc.price, style=label.style_label_down, color=color.new(color.purple, labelsInput), textcolor=color.new(color.white, labelsTextInput), size=size.small)
 

@@ -5,9 +5,9 @@ btc,normal,0.766634,0.816502,1.0,1,fallback_to_1.0
 dxy,bear_steep,0.124955,0.117422,1.0,1,fallback_to_1.0
 dxy,bull_steep,0.101208,0.117422,1.0,2,fallback_to_1.0
 dxy,normal,0.142318,0.117422,1.0,1,fallback_to_1.0
-eth,bear_steep,0.676112,0.802774,1.0,1,fallback_to_1.0
-eth,bull_steep,0.938903,0.802774,1.0,1,fallback_to_1.0
-eth,normal,0.793307,0.802774,1.0,1,fallback_to_1.0
+eth,bear_steep,0.676112,0.80273,1.0,1,fallback_to_1.0
+eth,bull_steep,0.938903,0.80273,1.0,1,fallback_to_1.0
+eth,normal,0.793175,0.80273,1.0,1,fallback_to_1.0
 gold,bear_steep,0.260312,0.145268,1.0,1,fallback_to_1.0
 gold,inverted_flat,0.112988,0.145268,1.0,1,fallback_to_1.0
 gold,normal,0.062504,0.145268,1.0,1,fallback_to_1.0
@@ -29,5 +29,5 @@ tlt,bull_steep,0.166691,0.217103,1.0,1,fallback_to_1.0
 tlt,normal,0.083356,0.217103,1.0,1,fallback_to_1.0
 wgmi,bull_steep,0.861427,0.936097,1.0,1,fallback_to_1.0
 wgmi,normal,0.973432,0.936097,1.0,2,fallback_to_1.0
-xrp,bear_steep,0.83249,0.776597,1.0,1,fallback_to_1.0
-xrp,normal,0.720703,0.776597,1.0,1,fallback_to_1.0
+xrp,bear_steep,0.832067,0.776545,1.0,1,fallback_to_1.0
+xrp,normal,0.721024,0.776545,1.0,1,fallback_to_1.0
