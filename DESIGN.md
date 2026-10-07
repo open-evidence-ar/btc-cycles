@@ -609,6 +609,91 @@ distribution → exit` -- are mutually non-overlapping. `test_zones.py`
 and `test_alt_timing.py` were updated to expect 4 (resp. 7×4=28) rows
 instead of 3 (resp. 7×3=21).
 
+**R-5 enforcement gap, closed (I-22a).** The mutual-non-overlap promise was not
+actually held. The exit band is built independently as
+`H5 + median(D_halving_to_top) + D_top_to_next_bottom[q25..q75]` while the
+distribution band is `H5 + D_halving_to_top[q25..q75]`, so the two collide
+whenever `median(ht) + tnb_q25 < ht_q75` — true for any asset whose top-window
+IQR exceeds its lower-quartile post-top-to-bottom duration (gold: top-window
+IQR 549d vs `tnb` q25 119d). Measured in shipped output: **2 assets with
+overlapping BASE bands** (gold +109d, tlt +224d) and **6 with overlapping
+OUTER bands** (tlt +801d, gold +770d, dxy +400d, ndx +351d, spx +269d,
+wgmi +264d).
+
+This was **not** a downstream symptom of the provisional-bottom contamination
+fixed in R-10: removing those observations moved the boundaries by only 5–8d
+and left every overlap intact. The fix is a translation, not a truncation —
+`_shift_after()` moves the exit band forward to open the day after the
+distribution band closes while preserving its width, so the published IQR
+spread is unchanged and only placement moves. The outer band is clamped first,
+then the base band against `max(dist_base_end + 1d, outer_start)`; clamping base
+against `dist_base_end` alone pushed NDX's `base_start` (2031-03-26) ahead of
+its own `outer_start` (2031-04-19), breaking base-within-outer. Applied to
+`build_alt_next_cycle_zones.py` and `build_next_cycle_zones.py` (a no-op for
+BTC today, 363d of margin, but the formula was equally unguarded).
+
+Gate gap also closed: `test_alt_timing.py::test_alt_next_cycle_zones_no_overlap`
+was *named* for this contract but asserted only
+`distribution.base_start >= accumulation.base_end` — one of six adjacent pairs,
+base bands only. It now checks all six pairs across both band types, plus a new
+chronological-order gate. `test_zones.py` gains the base-band and order gates
+(it already checked BTC's outer bands, which is why only the alt panel broke).
+Result: 0 base and 0 outer overlaps across all 10 alt assets.
+
+##### R-11.  Zone keys are direction-neutral; "exit" no longer names a bottom (I-22b)
+
+The published zone keys were effectively inverted from a trader's reading. The
+zone keyed `exit` was the bear BOTTOM following the C5 top (B5), while the zone
+keyed `distribution` was that top. "Exit" means sell, so the set invited the
+reader to exit at a low and never named the zone where you actually sell.
+
+Renamed to direction-neutral event names:
+
+| old key | new key | event | direction | action |
+|---|---|---|---|---|
+| `bear_bottom` | `bottom` | B4 | low | entry |
+| `accumulation` | `accumulation` | H5 | none | hold |
+| `distribution` | `top` | C5 | high | **exit** |
+| `exit` | `b5_bottom` | B5 | low | re-entry |
+
+The action vocabulary now lives only in prose, never in a zone key. The
+vocabulary is declared as a literal in the gate
+(`tests/test_zones.py::CANONICAL_ZONES` + `ZONE_SEMANTICS`) rather than in a
+shared module, deliberately: importing it from a new `scripts/` module puts an
+easily-uncommitted file on the critical path, and a pytest collection error
+aborts the entire session — that mistake turned all 234 tests red once. Each
+zone's price `direction` is what chart markers are drawn from.
+
+Three defects fixed alongside:
+
+1. **Marker orientation was inverted for every price zone.** `build_charts.py`
+   gave B4 and B5 `triangle-up` (both lows) and the C5 top `triangle-down` (the
+   single high). Corrected: bottoms point down, the top points up.
+2. **`build_cycle_status.py` published `"exec_label": "Post-top exit"` and
+   `role = "exit watch"` against a band ~4x below the top.** Now
+   "Post-top re-entry" / "re-entry watch"; the top zone's exec_label reads
+   "Next cycle top (exit window)".
+3. **The TradingView on-chart label read `EXIT / B5`** on a bear bottom
+   (`export_tradingview_pine.py`). Now `B5 BEAR BOTTOM (re-entry)`.
+
+Blast radius was smaller than it looked: Pine *variable* names are
+event-based (`b4_*`, `c5_*`, `ex_*`) and on-chart text is a hardcoded string, so
+the zone key only reached the published script as a comment. An
+already-pasted Pine script is unaffected apart from that comment.
+
+Gates added in `test_zones.py`: zone keys must match `ZONE_ORDER` in both CSVs;
+`top` centre must exceed `b5_bottom` centre for every asset (holds 11/11);
+price zones must have `0 < price_low <= price_high`; `accumulation` must be
+price-free; and label/direction consistency against `ZONE_SEMANTICS`.
+
+**Side observation, not fixed here.** DXY and TLT do not satisfy
+"successive bear bottoms rise": their projected B5 centre sits below the B4
+centre (dxy 85.41 vs 93.96; tlt 39.38 vs 61.35), and TLT's projected C5 top
+centre (59.66) is itself below its projected B4 centre — neither instrument has
+a rise-then-fall projected shape. The exception set is pinned in
+`test_rising_bear_bottoms_outside_documented_exceptions` so a NEW violation
+fails rather than being silently tolerated.
+
 ##### R-6.  Macro assets become cycle-tied; gold (GC=F) added (I-19, I-19b)
 
 R-4's assumption that macro assets (SPX/NDX/DXY/TLT) are NOT cycle-tied
@@ -749,6 +834,62 @@ published numbers is not decision support. Semantics changed from
    unconditional. Gates: `test_regime_integration.py` updated invariants;
    `test_jekyll_build.py::test_regime_sensitivity_embedded` enforces the
    appendix placement and status statement.
+
+##### R-10.  Open-cycle bottoms are provisional, never confirmed (I-22)
+
+User decision after review: a still-forming bottom must be **emitted and
+surfaced**, not suppressed — but it must never be published as a completed
+observation, and it must never enter a statistic that depends on it.
+
+The problem: Rule B's window for an open cycle runs to `next_halving − 30d`
+(for C4 that is 2028-03-02), far past the available data. A bottom found there
+is a **running minimum with no right edge** — it can only fall, never rise.
+It is therefore not an event, it is a tracking value. Proof from the pre-fix
+data: `tlt`'s C4 bottom was `2026-08-14`, exactly its `asset_last_data_date`
+— the last row of the file. **Refreshing data can never resolve this**; it
+only relocates the number each week without converging.
+
+Semantics:
+
+1. **`bottom_status`** (`confirmed` | `provisional_low_to_date` | `none`) plus
+   `bottom_as_of` on `alt_cycle_metrics.csv` and `btc_cycle_metrics.csv`. Cycle
+   closure is `next_halving ≤ data_cutoff`, not "is the bottom empty" — the
+   previous test was inverted and left 7 of 12 assets claiming a final C4
+   bottom.
+2. **Additive columns, confirmed fields empty.** The running minimum is written
+   to `b4_low_to_date` / `b4_low_to_date_price` /
+   `D_asset_low_to_date_to_top`. `asset_next_bear_bottom_*`,
+   `D_asset_top_to_next_bottom` and `drawdown_asset_pct` stay empty for open
+   cycles, so no consumer can pick a provisional value up by accident.
+3. **Eligibility is per-statistic, not per-asset.** Bottom-dependent statistics
+   (`D_asset_top_to_next_bottom`, `drawdown_asset_pct`) require a closed cycle.
+   Top-dependent statistics (`mult_asset_bottom_to_top`,
+   `D_asset_halving_to_top`, `D_asset_prev_bottom_to_halving`) legitimately
+   include the open cycle — `mult = top / pre_halving_bottom` needs only two
+   observed quantities. Enforced structurally in
+   `build_alt_forward_ranges.py::BOTTOM_DEPENDENT_STATS`.
+4. **Surfaced, always labelled.** `bottom_tracking` in
+   `_data/cycle_status.json` → the `now-stamp` banner (interactive row +
+   `noscript` fallback) reads "Lowest close since the C4 top *(provisional)*"
+   with its `as_of` date.
+5. **Window is a hard bound.** `rule_t` / `rule_b` now clamp the ±21d
+   neighbourhood re-pick to `[window_start, window_end]` and re-read the price
+   at the clamped date. Previously the re-pick could emit an extremum the
+   window never admitted (WGMI: a C4 "bottom" 75 days after its top, before
+   Rule B's `top+90d` start). Verified a no-op for BTC C1–C3.
+6. **Merge determinism.** `sort_values("date").drop_duplicates(keep="last")`
+   over multiple snapshots requires `kind="stable"`; pandas' default quicksort
+   is unstable, so the "later source wins" tie-break was arbitrary between
+   runs.
+
+Gates: `tests/test_bottom_status.py` (13 invariants, including an independent
+recomputation of the running minimum from the raw snapshots — not a
+self-consistency check). Blocker note: `docs/blockers/I-17-c4-provisional-bottom.md`.
+
+**Not addressed here (same defect class, different extremum):** open-cycle
+**tops** are running maxima over a window running to `H5 − 270d`, and several
+are effectively unconfirmed (SPX's C4 top is `2026-08-13` with data ending
+`2026-08-14`). Tracked as follow-up, not silently changed here.
 
 ### 9.5 Post-v1 extensions
 

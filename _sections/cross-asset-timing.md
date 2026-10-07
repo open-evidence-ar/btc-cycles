@@ -11,7 +11,7 @@ weight: 30
 ## The 10 per-asset decision windows
 
 **Calendar spine:** B4 (bottom) -> Accumulation (2026-2028) -> Distribution
-C5 (H2 2029) -> Exit B5.
+C5 top (2029) -> B5 re-entry.
 
 Watch order (B4 calendar): **XRP** (Mar 2026) -> **ETH** (Jun 2026) -> **BTC** (Oct 2026)
 -> **SOL** (Oct 2026 - Jan 2027) -> **MSTR** (Oct 2026 - Jan 2027) ->
@@ -68,37 +68,37 @@ this is decision-context, not a top-timer).
 
 **ETH** - Open ~Jun 2026 ($298-$1,000).
 
-{% include chart.html id="C8" height="700px" caption="C8 — ETH next-cycle projection (2-stage with observed C4 top $4,831). B4 bear-bottom zone (cyan, $298–$1,000, window Jun–Sep 2026). C5 top zone (orange, $3,130–$9,652, window Aug–Oct 2029). B5 exit zone (blue, $1,153–$3,557, window Jun–Aug 2030). Cross-check vs drawdown path: FAIL @ +15.3%." %}
+{% include chart.html id="C8" height="700px" caption="C8 — ETH next-cycle projection (2-stage with observed C4 top $4,831). B4 bear-bottom zone (cyan, $298–$1,000, window Jun–Sep 2026). C5 top zone (orange, $3,130–$9,652, window Aug–Oct 2029). B5 re-entry zone (blue, $1,153–$3,557, window Jun–Aug 2030). Cross-check vs drawdown path: FAIL @ +15.3%." %}
 
 ### XRP — borrowed 2-stage from BTC
 
 **XRP** - Open ~Mar 2026 ($0.54-$0.83).
 
-{% include chart.html id="C8b" height="700px" caption="C8b — XRP next-cycle projection (borrowed 2-stage from BTC). B4 bear-bottom zone (cyan, $0.54–$0.83, window Mar–Jul 2026 — BTC-anchored timing). C5 top zone (orange, $3.28–$8.20, window Apr–Jun 2029). B5 exit zone (blue, $0.78–$1.94, window May–Jun 2030)." %}
+{% include chart.html id="C8b" height="700px" caption="C8b — XRP next-cycle projection (borrowed 2-stage from BTC). B4 bear-bottom zone (cyan, $0.54–$0.83, window Mar–Jul 2026 — BTC-anchored timing). C5 top zone (orange, $3.28–$8.20, window Apr–Jun 2029). B5 re-entry zone (blue, $0.78–$1.94, window May–Jun 2030)." %}
 
 ### SOL — borrowed 2-stage from ETH (ordinal-aligned)
 
 **SOL** - Open ~Sep 2026 ($77.80-$85.96).
 
-{% include chart.html id="C8c" height="700px" caption="C8c — SOL next-cycle projection (borrowed 2-stage from ETH, ordinal-aligned: SOL C3~ETH C2, SOL C4~ETH C3, SOL C5~ETH C4; SOL C3 is actual data — proxy retired). B4 bear-bottom zone (cyan, $77.80–$85.96, window Sep 2026–Jan 2027). C5 top zone (orange, $213.96–$1,585.10, window Mar–Jul 2029). B5 exit zone (blue, $66.91–$495.72, window Jul–Sep 2030)." %}
+{% include chart.html id="C8c" height="700px" caption="C8c — SOL next-cycle projection (borrowed 2-stage from ETH, ordinal-aligned: SOL C3~ETH C2, SOL C4~ETH C3, SOL C5~ETH C4; SOL C3 is actual data — proxy retired). B4 bear-bottom zone (cyan, $77.80–$85.96, window Sep 2026–Jan 2027). C5 top zone (orange, $213.96–$1,585.10, window Mar–Jul 2029). B5 re-entry zone (blue, $66.91–$495.72, window Jul–Sep 2030)." %}
 
 ### MSTR — borrowed 2-stage from BTC
 
 **MSTR** - Open ~Sep 2026 ($103.42-$121.44).
 
-{% include chart.html id="C8e" height="700px" caption="C8e — MSTR next-cycle projection (borrowed 2-stage from BTC). B4 bear-bottom zone (cyan, $103–$121, window Sep 2026–Jan 2027). C5 top zone (orange, $438–$1,093, window Nov–Dec 2028). B5 exit zone (blue, $153–$383, window Jun–Jul 2030). MSTR leads BTC B4 by ~267d (historical: alts bottom 1–5 months before BTC)." %}
+{% include chart.html id="C8e" height="700px" caption="C8e — MSTR next-cycle projection (borrowed 2-stage from BTC). B4 bear-bottom zone (cyan, $103–$121, window Sep 2026–Jan 2027). C5 top zone (orange, $438–$1,093, window Nov–Dec 2028). B5 re-entry zone (blue, $153–$383, window Jun–Jul 2030). MSTR leads BTC B4 by ~267d (historical: alts bottom 1–5 months before BTC)." %}
 
 ### WGMI — borrowed 2-stage from BTC + MARA proxy
 
 **WGMI** - Open ~Apr 2027 ($15.74-$18.48).
 
-{% include chart.html id="C8f" height="700px" caption="C8f — WGMI next-cycle projection (borrowed 2-stage from BTC; MARA proxy for C1-C3). B4 bear-bottom zone (cyan, $15.74–$18.48, window Apr–Nov 2027). C5 top zone (orange, $66.57–$166.38, window Jul 2029–May 2030). B5 exit zone (blue, $15.80–$39.48, window Jan 2031–Mar 2032). WGMI's B4 is projected later than BTC's because its observed C4 top is very recent (June 2026) — the asset has not yet traced out a full C4-to-B4 path." %}
+{% include chart.html id="C8f" height="700px" caption="C8f — WGMI next-cycle projection (borrowed 2-stage from BTC; MARA proxy for C1-C3). B4 bear-bottom zone (cyan, $15.74–$18.48, window Apr–Nov 2027). C5 top zone (orange, $66.57–$166.38, window Jul 2029–May 2030). B5 re-entry zone (blue, $15.80–$39.48, window Jan 2031–Mar 2032). WGMI's B4 is projected later than BTC's because its observed C4 top is very recent (June 2026) — the asset has not yet traced out a full C4-to-B4 path." %}
 
 ### GOLD (GC=F) — I-19 macro 2-stage + bull support band (I-19b)
 
 **GOLD** - BTC-anchored (~Oct 2026, drawdown-projected, cross-checked vs support band).
 
-{% include chart.html id="C8g" height="700px" caption="C8g — GOLD next-cycle projection (I-19 macro 2-stage, own shape). B4 bear-bottom zone (cyan), C5 top zone (orange), B5 exit zone (blue). Gold horizontal band = validated 20-mo SMA / 21-mo EMA bull support ($3,813–$3,830 @ 2026-07-31): the projected B4 is cross-checked against this floor. See docs/gold_seasonality.md for the full validation." %}
+{% include chart.html id="C8g" height="700px" caption="C8g — GOLD next-cycle projection (I-19 macro 2-stage, own shape). B4 bear-bottom zone (cyan), C5 top zone (orange), B5 re-entry zone (blue). Gold horizontal band = validated 20-mo SMA / 21-mo EMA bull support ($3,813–$3,830 @ 2026-07-31): the projected B4 is cross-checked against this floor. See docs/gold_seasonality.md for the full validation." %}
 
 ---
 

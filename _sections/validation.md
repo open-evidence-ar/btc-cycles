@@ -16,7 +16,7 @@ weight: 30
 | **B4** (Bear bottom) | **Med** | ~100d (C3 LOOCO worst-case) | Stage-1 $43k vs Stage-2 $29.6k — band = union of both | C4 top printed apathetic (mult 7.97×); Stage-2 path below euphoric expectation. Use the **union** band ($29.6k – $53.7k), not the center. The `top_character` [model input modifier](#cycle-anatomy) widened the cross-check tolerance from a single-path estimate to the union of both paths. |
 | **Accumulation** | **High** | 488d mean (n=4, D_prev_bottom_to_halving) | n/a — not a price event | Tightest statistic in the framework (range 380–542). |
 | **C5 distribution (top)** | **High** | ~50d base band (H5-anchored IQR) ± ~8d folklore band (B4-anchored) | $186.9k – $338.9k (center $272k) | Strongest confluence in the framework. Multiplier power-law anchored on Euphoric Tops C1–C3; C4 was apathetic so multiplier band may be compressed-down biased. |
-| **B5 (Exit)** | **Low** | ~24d base band (Stage-1 ratio idx=5) | ± log_residual_std from B4 chain stages | 2nd-derivative — depends on B4 + C5 events being correctly observed first. Treat as preparation for the post-C5 watch, not as load-bearing for any position today. |
+| **B5 (Re-entry)** | **Low** | ~24d base band (Stage-1 ratio idx=5) | ± log_residual_std from B4 chain stages | 2nd-derivative — depends on B4 + C5 events being correctly observed first. Treat as preparation for the post-C5 watch, not as load-bearing for any position today. |
 
 ## LOOCO Backtest
 

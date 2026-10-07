@@ -81,6 +81,14 @@ def rule_t(
         best_date = btc_df.loc[nb_idx, "date"]
         best_price = float(btc_df.loc[nb_idx, "close"])
         verified = True
+    # The +/-21d neighbourhood re-pick can land OUTSIDE the Rule T window, which
+    # would emit a top the window never admitted. Clamp the date to the window,
+    # then re-read the price AT that date so the (date, price) pair is always a
+    # real observation rather than a date spliced onto a foreign price.
+    best_date = min(max(best_date, window_start), window_end)
+    _c = btc_df[btc_df["date"] == best_date]
+    if not _c.empty:
+        best_price = float(_c.iloc[0]["close"])
     return (best_date, best_price, window_start, window_end)
 
 
@@ -111,6 +119,14 @@ def rule_b(
         best_date = btc_df.loc[nb_idx, "date"]
         best_price = float(btc_df.loc[nb_idx, "close"])
         verified = True
+    # Clamp: the neighbourhood re-pick may land before window_start, emitting a
+    # "bottom" the window never admitted (which then looks like an impossibly
+    # short bottom-to-top cycle). Clamp the date, then re-read the price at that
+    # date so the emitted pair is a genuine observation inside the window.
+    best_date = min(max(best_date, window_start), window_end)
+    _c = btc_df[btc_df["date"] == best_date]
+    if not _c.empty:
+        best_price = float(_c.iloc[0]["close"])
     return (best_date, best_price, window_start, window_end)
 
 
@@ -274,6 +290,27 @@ def main() -> None:
             else:
                 top_character = "apathetic"
 
+        # Open-cycle provisional bottom (B4_low_to_date). When Rule B was
+        # suppressed because the canonical bottom is not_yet_observed, the
+        # lowest close since the top is still reported — in dedicated columns,
+        # with its own as-of date — so the tracking value is visible without
+        # ever being mistaken for a confirmed bear bottom. This mirrors
+        # build_alt_cycle_metrics.py.
+        btc_cutoff = btc["date"].max()
+        prov_date = None
+        prov_price = None
+        if t_date is not None and next_b_date is None:
+            prov_res = rule_b(btc, t_date, None)  # None => window_end = data max
+            if prov_res is not None:
+                prov_date, prov_price, _, _ = prov_res
+
+        if next_b_date is not None:
+            bottom_status = "confirmed"
+        elif prov_date is not None:
+            bottom_status = "provisional_low_to_date"
+        else:
+            bottom_status = "none"
+
         def _fmt_dt(d):
             return d.strftime("%Y-%m-%d") if (d is not None and pd.notna(d)) else ""
 
@@ -291,9 +328,17 @@ def main() -> None:
             "final_top_price": _fmt_num(t_price),
             "next_bear_bottom_date": _fmt_dt(next_b_date),
             "next_bear_bottom_price": _fmt_num(next_b_price),
+            "bottom_status": bottom_status,
+            "bottom_as_of": _fmt_dt(btc_cutoff),
+            "b4_low_to_date": _fmt_dt(prov_date),
+            "b4_low_to_date_price": _fmt_num(prov_price),
             "D_prev_bottom_to_halving": d_pb2h if d_pb2h is not None else "",
             "D_halving_to_top": d_h2t if d_h2t is not None else "",
             "D_top_to_next_bottom": d_t2nb if d_t2nb is not None else "",
+            "D_low_to_date_to_top": (
+                int((prov_date - t_date).days)
+                if (prov_date is not None and t_date is not None) else ""
+            ),
             "mult_bottom_to_top": _fmt_num(mult),
             "drawdown_pct": _fmt_num(dd),
             "first_high_date": _fmt_dt(fh_date),

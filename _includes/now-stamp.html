@@ -13,6 +13,13 @@
     <button id="pine-tools-btn" class="pine-tools-chip" type="button" aria-expanded="false" aria-controls="pine-tools-pop" title="TradingView Pine overlay — copy script">⧉ Pine</button>
   </div>
   <div class="now-stamp-asset-bar" id="now-stamp-asset-bar" role="tablist" aria-label="Asset timeline selector"></div>
+  <div class="now-stamp-row now-stamp-track-row" id="now-stamp-track" hidden>
+    <span class="now-stamp-text">
+      <span class="seg seg-track">Lowest close since the C4 top <strong>(provisional)</strong>: <span class="seg-val">—</span></span>
+      <span class="sep">·</span>
+      <span class="seg seg-track-note">running minimum, no right edge until H5 — it can only fall, and is not a confirmed bottom</span>
+    </span>
+  </div>
   <div id="now-stamp-chart" class="now-stamp-chart" hidden aria-hidden="true">
     <svg class="cycle-strip" viewBox="0 0 600 120" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Log-scale price line (history from 2024 onward) overlaid with cycle-window bands: last observed top (C4 top), next cycle bottom window (B4), next top window (C5), and exit window (B5). Dashed projection line through B4 -> C5 -> B5 centers; today marked with a dashed vertical line."></svg>
     <div class="cycle-strip-legend"></div>
@@ -36,7 +43,12 @@
       {% assign btc_ns = site.data.cycle_status.btc %}
       {% assign last_ns = btc_ns.last_observed_event %}
       {% assign next_ns = btc_ns.next_window %}
+      {% assign bt_ns = btc_ns.bottom_tracking %}
       Last observed event: <strong>{{ last_ns.label }}</strong> on {{ last_ns.date }} at {{ last_ns.price }} ({{ last_ns.note }}).
+      {% if bt_ns %}
+      Lowest close since the C4 top (<strong>provisional</strong>, not a confirmed bottom): <strong>{{ bt_ns.price }}</strong> on {{ bt_ns.date }} — {{ bt_ns.vs_band_text }} (data as of {{ bt_ns.as_of }}). This is a running minimum with no right edge until H5, so it can only fall.
+      {% if bt_ns.band_cross_check_note %}<strong>Forecast caveat:</strong> {{ bt_ns.band_cross_check_note }}{% endif %}
+      {% endif %}
       Next window: <strong>{{ next_ns.label }}</strong> — base {{ next_ns.base_start }} → {{ next_ns.base_end }} (outer {{ next_ns.outer_start }} → {{ next_ns.outer_end }}).
       Price corridor {{ next_ns.price_low }} – {{ next_ns.price_high }} (center {{ next_ns.price_center }}).
       Cross-check status: {{ next_ns.cross_check }}.
@@ -222,6 +234,7 @@
       lastEvt: lastEvt, nextWin: nextWin, laterWindows: laterWindows,
       lastMs: lastMs, baseStart: baseStart, baseEnd: baseEnd,
       outerStart: outerStart, outerEnd: outerEnd,
+      bottomTracking: block.bottom_tracking || null,
     };
   }
 
@@ -632,6 +645,35 @@
     stampEl.querySelector('.seg-phase').textContent = Status.phase;
     var badgeEl = stampEl.querySelector('.now-stamp-state-badge');
     if (badgeEl) { badgeEl.textContent = '[' + Status.stateBadgeText + ']'; }
+
+    // Provisional-bottom tracker. Shown only when the asset has a running
+    // minimum since its C4 top; always labelled provisional so a moving value
+    // is never mistaken for a confirmed bottom.
+    var trackEl = document.getElementById('now-stamp-track');
+    if (trackEl) {
+      var bt = Status.bottomTracking;
+      if (bt && bt.date) {
+        trackEl.hidden = false;
+        var trackVal = trackEl.querySelector('.seg-track .seg-val');
+        if (trackVal) {
+          // Lead with the relation to the published B4 corridor: without it the
+          // reader sees "lowest so far $58,526" next to "corridor $29,596-$53,673"
+          // with nothing connecting them, and has to work out on their own that
+          // price has not come near the band.
+          trackVal.textContent = bt.price + ' on ' + shortDate(bt.date) +
+            (bt.vs_band_text ? ' — ' + bt.vs_band_text : '') +
+            (bt.as_of ? ' (data as of ' + shortDate(bt.as_of) + ')' : '');
+        }
+        var trackNote = trackEl.querySelector('.seg-track-note');
+        if (trackNote) {
+          trackNote.textContent = bt.band_cross_check_note
+            ? bt.band_cross_check_note
+            : 'running minimum, no right edge until H5 — it can only fall, and is not a confirmed bottom';
+        }
+      } else {
+        trackEl.hidden = true;
+      }
+    }
 
     // Only draw the strip when the chart panel is expanded; it re-draws
     // on every asset switch + every expand of the toggle.

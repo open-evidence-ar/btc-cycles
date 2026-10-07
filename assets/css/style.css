@@ -633,6 +633,27 @@ h3:hover .anchor-link {
   flex-shrink: 0;
 }
 
+/* Provisional-bottom tracker row. Deliberately visually subordinate to the
+   status row and always labelled "provisional" — the value is a running
+   minimum with no right edge until H5, so it must never read as a confirmed
+   event. Hidden entirely when the asset has no provisional bottom. */
+.now-stamp-track-row {
+  border-top: 1px dashed var(--border-subtle, rgba(127, 127, 127, 0.25));
+  padding-top: 0.4rem;
+  padding-bottom: 0.4rem;
+}
+.now-stamp-track-row[hidden] { display: none; }
+.now-stamp-text .seg-track .seg-val {
+  color: var(--text-muted);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.now-stamp-text .seg-track-note {
+  color: var(--text-tertiary, var(--text-muted));
+  font-style: italic;
+  opacity: 0.8;
+}
+
 /* Toggle button - chip-styled, not OS-default */
 .now-stamp-toggle {
   flex-shrink: 0;

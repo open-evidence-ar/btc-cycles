@@ -8,7 +8,7 @@ title: Home
 A long-term research framework that studies Bitcoin's halving cycles and their
 cross-asset correlations with **ETH, SOL, XRP** (altcoins) and **SPX, NDX, DXY,
 TLT** (global macro). The goal is to forecast the **time ranges and
-entry/exit zones of the next BTC cycle** from a holistic perspective -- *not*
+entry/re-entry zones of the next BTC cycle** from a holistic perspective -- *not*
 to build an automated trading bot.
 
 This page is the **single-page narrative** of the white paper. Use the sidebar
@@ -28,7 +28,7 @@ the environment.
   `context`) used throughout the document.
 - **[The Prediction (BTC)](#predictive-ranges)** -- the load-bearing
   **decision windows** for the next BTC cycle (B4 / accumulation /
-  distribution / exit), 2-stage projection chain, and folklore cross-check.
+  top / re-entry), 2-stage projection chain, and folklore cross-check.
 - **[Per-Asset Decision Windows](#cross-asset-timing)** -- ETH / XRP / SOL
   halving-calendar attention windows in BTC-B4 calendar order, plus the
   macro context for SPX / NDX / DXY / TLT (post-v1 extension I-17).

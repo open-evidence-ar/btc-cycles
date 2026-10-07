@@ -184,7 +184,7 @@ Use the `macro_2_stage_own_shape` machinery (currently applied to SPX/NDX/DXY/TL
 
 **Target files**:
 - `scripts/build_alt_next_cycle_zones.py` -- add gold branch
-- `data/processed/alt_next_cycle_zones.csv` -- add gold B4/accumulation/distribution/exit zones
+- `data/processed/alt_next_cycle_zones.csv` -- add gold B4/accumulation/distribution/re-entry zones
 - `docs/blockers/I-19-macro-2stage.md` -- note gold added
 
 ### 3. Integrate 20-Month SMA / 21-Month EMA Support Band as a Cross-Check

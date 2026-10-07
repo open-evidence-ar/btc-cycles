@@ -32,9 +32,9 @@ PUBLISH_DIR = ROOT / "assets" / "pine"
 PUBLISHED = PUBLISH_DIR / "crypto_zones.pine"
 
 ZONE_COLORS = {
-    "bear_bottom": "blue",
-    "distribution": "orange",
-    "exit": "purple",
+    "bottom": "blue",
+    "top": "orange",
+    "b5_bottom": "purple",
 }
 
 
@@ -99,9 +99,9 @@ def level_line(y: float, color: str) -> str:
 
 def asset_block(asset: str, zones: dict) -> list[str]:
     """Render one asset's draws guarded by its syminfo.basecurrency match."""
-    bear = zones["bear_bottom"]
-    dist = zones["distribution"]
-    exit_ = zones["exit"]
+    bear = zones["bottom"]
+    dist = zones["top"]
+    b5_ = zones["b5_bottom"]
 
     b4_center = float(bear["anchor_price"])
     b4_low = float(bear["price_low"])
@@ -141,24 +141,26 @@ def asset_block(asset: str, zones: dict) -> list[str]:
     )
     A("")
 
-    for zone in ("bear_bottom", "distribution", "exit"):
+    for zone in ("bottom", "top", "b5_bottom"):
         row = zones[zone]
         col = ZONE_COLORS[zone]
         s, e = row["base_start"], row["base_end"]
         os_, oe = row["outer_start"], row["outer_end"]
 
-        if zone == "bear_bottom":
+        if zone == "bottom":
             top, bottom = b4_high, b4_low
             text = f"B4 BEAR BOTTOM\\n{fmt_price(b4_center)} (band {fmt_price(b4_low)}-{fmt_price(b4_high)})\\n{s} -> {e}"
             label_y = b4_high * 1.02
-        elif zone == "distribution":
+        elif zone == "top":
             top, bottom = c5_high, c5_low
             text = f"C5 TOP (band)\\n{fmt_price(c5_low)}-{fmt_price(c5_high)}\\n{s} -> {e}"
             label_y = c5_high * 1.02
         else:
-            ex_low, ex_high = float(exit_["price_low"]), float(exit_["price_high"])
+            ex_low, ex_high = float(b5_["price_low"]), float(b5_["price_high"])
             top, bottom = ex_high, ex_low
-            text = f"EXIT / B5\\n{fmt_price(ex_low)}-{fmt_price(ex_high)}\\n{s} -> {e}"
+            # Was "EXIT / B5". B5 is the bear BOTTOM that follows the C5 top, so
+            # it is a re-entry window -- "exit" on a low was inverted.
+            text = f"B5 BEAR BOTTOM (re-entry)\\n{fmt_price(ex_low)}-{fmt_price(ex_high)}\\n{s} -> {e}"
             label_y = ex_high * 1.02
 
         A(f"// {asset.upper()}: {zone} (base + outer window)")
@@ -188,7 +190,7 @@ def main() -> int:
             print(f"ERROR: no rows for {asset}", file=sys.stderr)
             return 1
         zones = {row["zone"]: row.to_dict() for _, row in df.iterrows()}
-        missing = [z for z in ("bear_bottom", "accumulation", "distribution", "exit")
+        missing = [z for z in ("bottom", "accumulation", "top", "b5_bottom")
                    if z not in zones]
         if missing:
             print(f"ERROR {asset}: missing zones {missing}", file=sys.stderr)

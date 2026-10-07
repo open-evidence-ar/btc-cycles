@@ -5,7 +5,7 @@
 A long-term research framework that studies Bitcoin's halving cycles and
 their cross-asset correlations with select altcoins (ETH, SOL, XRP) and
 global macro assets (SPX, NDX, DXY, TLT). Forecasts the **time ranges and
-entry/exit zones of the next BTC cycle** as uncertainty bands. Not an
+entry/re-entry zones of the next BTC cycle** as uncertainty bands. Not an
 automated trading bot, not financial advice.
 
 The full design (sources, procedure, deliverables, validation gates) lives

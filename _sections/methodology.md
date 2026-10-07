@@ -69,7 +69,7 @@ knows not to wait for them to change a number:
 | P1 | (-540, 0) | Accumulation — pre-halving bottom → halving | *Where to look for the bear bottom* (B4 lives here) |
 | P2 | (0, +270) | Early bull — halving → first parabolic expansion | *Confirmation window* — break of 50w + first lower-high |
 | P3 | (+270, +540) | Late bull / blow-off — expansion → cycle top | *Where to look for the top* (C5 lives here) |
-| P4 | (+540, next halving) | Bear / re-accumulation — top → next-cycle bottom | *Exit window* — distribution → re-accumulation |
+| P4 | (+540, next halving) | Bear / re-accumulation — top → next-cycle bottom | *Exit window* — from the C5 top zone into the bear, then B5 re-entry |
 
 The phase bounds are the same regardless of which role an artefact plays —
 they're the calendar the whole site is laid out against.

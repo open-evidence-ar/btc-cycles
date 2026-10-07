@@ -14,37 +14,37 @@
       "asset": "XRP",
       "b4_base_end": "2026-07-18",
       "b4_base_start": "2026-03-20",
-      "b4_price_high": "$0.992",
-      "b4_price_low": "$0.5938",
+      "b4_price_high": "$0.9113",
+      "b4_price_low": "$0.7761",
       "lead_vs_btc_days": -206,
-      "method": "naive_median_own_dd"
+      "method": "borrowed_2_stage_from_BTC"
     },
     {
       "asset": "ETH",
       "b4_base_end": "2026-09-13",
       "b4_base_start": "2026-06-27",
-      "b4_price_high": "$2,115",
-      "b4_price_low": "$1,166",
+      "b4_price_high": "$2,092",
+      "b4_price_low": "$1,154",
       "lead_vs_btc_days": -107,
-      "method": "2_stage_with_observed_c4"
+      "method": "naive_median_own_dd"
     },
     {
       "asset": "SOL",
       "b4_base_end": "2027-01-28",
       "b4_base_start": "2026-09-30",
-      "b4_price_high": "$85.97",
-      "b4_price_low": "$77.87",
+      "b4_price_high": "$67.12",
+      "b4_price_low": "$57.16",
       "lead_vs_btc_days": -12,
-      "method": "borrowed_2_stage_from_ETH"
+      "method": "borrowed_2_stage_from_BTC"
     },
     {
       "asset": "MSTR",
       "b4_base_end": "2027-01-28",
       "b4_base_start": "2026-09-30",
-      "b4_price_high": "$82.31",
-      "b4_price_low": "$50.86",
+      "b4_price_high": "$121.44",
+      "b4_price_low": "$103.42",
       "lead_vs_btc_days": -12,
-      "method": "naive_median_own_dd"
+      "method": "borrowed_2_stage_from_BTC"
     },
     {
       "asset": "WGMI",
@@ -68,6 +68,25 @@
   "assets": {
     "BTC": {
       "anchored_on": "observed C4 top",
+      "bottom_tracking": {
+        "as_of": "2026-09-21",
+        "band_cross_check_note": "Projected B4 band failed its own cross-check (Stage 1 vs Stage 2 disagree by >15%); the published corridor is their union and carries that disagreement.",
+        "band_cross_check_ok": "False",
+        "band_price_high": "$53,673",
+        "band_price_low": "$29,596",
+        "date": "2026-06-30",
+        "days_since_top": "267",
+        "exec_label": "Lowest so far",
+        "gap_pct_vs_band": "+9.0",
+        "gap_pct_vs_band_center": "+35.9",
+        "gap_pct_vs_band_edge": "top",
+        "label": "Lowest close since C4 top (provisional)",
+        "note": "Running minimum over [C4 top +90d, latest data]. Not a confirmed bottom - C4 stays open until H5 (2028-04-01), and Rule B's window has no right edge yet, so this value can only fall.",
+        "price": "$58,526",
+        "status": "provisional_low_to_date",
+        "vs_band": "above_band",
+        "vs_band_text": "still +9.0% ABOVE the projected B4 corridor top ($53,673) - price has not entered the band yet"
+      },
       "last_observed_event": {
         "date": "2025-10-06",
         "exec_label": "Last observed top",
@@ -86,8 +105,8 @@
         {
           "base_end": "2029-09-20",
           "base_start": "2029-07-31",
-          "exec_label": "Next cycle top",
-          "label": "C5 distribution (top)",
+          "exec_label": "Next cycle top (exit window)",
+          "label": "C5 top (distribution)",
           "outer_end": "2029-09-29",
           "outer_start": "2029-04-07",
           "price_center": "$262,873",
@@ -98,14 +117,14 @@
         {
           "base_end": "2030-10-09",
           "base_start": "2030-09-18",
-          "exec_label": "Post-top exit",
-          "label": "B5 - post-C5-top exit",
+          "exec_label": "Post-top re-entry",
+          "label": "B5 - post-C5-top bear bottom",
           "outer_end": "2030-11-09",
           "outer_start": "2030-04-06",
           "price_center": "$69,103",
           "price_high": "$79,759",
           "price_low": "$58,447",
-          "role": "next attention peak - exit watch"
+          "role": "next attention peak - re-entry watch"
         }
       ],
       "method": "2_stage (Stage 1 + Stage 2)",
@@ -548,19 +567,38 @@
           "date": "2026-09-10"
         },
         {
-          "close": 76650.22,
-          "date": "2026-09-17"
+          "close": 85705.52,
+          "date": "2026-09-21"
         }
       ]
     },
     "ETH": {
       "anchored_on": "observed C4 top",
+      "bottom_tracking": {
+        "as_of": "2026-09-21",
+        "band_cross_check_note": "",
+        "band_cross_check_ok": "",
+        "band_price_high": "$2,092",
+        "band_price_low": "$1,154",
+        "date": "2026-06-25",
+        "days_since_top": "307",
+        "exec_label": "Lowest so far",
+        "gap_pct_vs_band": "+0.0",
+        "gap_pct_vs_band_center": "-6.8",
+        "gap_pct_vs_band_edge": "",
+        "label": "Lowest close since C4 top (provisional)",
+        "note": "Running minimum over [C4 top +90d, latest data]. Not a confirmed bottom - C4 stays open until H5 (2028-04-01), and Rule B's window has no right edge yet, so this value can only fall.",
+        "price": "$1,565",
+        "status": "provisional_low_to_date",
+        "vs_band": "in_band",
+        "vs_band_text": "INSIDE the projected B4 corridor ($1,154-$2,092)"
+      },
       "last_observed_event": {
         "date": "2025-08-22",
         "exec_label": "Last observed top",
         "label": "C4 top",
         "note": "ETH C4 top — anchor for the 2-stage B4/C5 projection.",
-        "price": "$4,836"
+        "price": "$4,831"
       },
       "later_windows": [
         {
@@ -576,25 +614,25 @@
           "label": "C5 distribution (top)",
           "outer_end": "2029-10-06",
           "outer_start": "2029-08-03",
-          "price_center": "$5,234",
-          "price_high": "$7,338",
-          "price_low": "$3,130",
+          "price_center": "$95,667",
+          "price_high": "$190,053",
+          "price_low": "$1,281",
           "role": "attention peak - top watch"
         },
         {
-          "base_end": "2030-08-16",
-          "base_start": "2030-06-20",
-          "exec_label": "Post-top exit",
-          "label": "B5 - post-C5-top exit",
+          "base_end": "2030-08-01",
+          "base_start": "2030-06-06",
+          "exec_label": "Post-top re-entry",
+          "label": "B5 - post-C5-top bear bottom",
           "outer_end": "2030-09-06",
           "outer_start": "2030-03-13",
-          "price_center": "$1,928",
-          "price_high": "$2,703",
-          "price_low": "$1,153",
-          "role": "next attention peak - exit watch"
+          "price_center": "$12,765",
+          "price_high": "$25,359",
+          "price_low": "$170.92",
+          "role": "next attention peak - re-entry watch"
         }
       ],
-      "method": "2_stage_with_observed_c4",
+      "method": "naive_median_own_dd",
       "next_window": {
         "base_end": "2026-09-13",
         "base_start": "2026-06-27",
@@ -603,9 +641,9 @@
         "label": "B4 - post-C4-top bear bottom",
         "outer_end": "2026-10-21",
         "outer_start": "2026-05-19",
-        "price_center": "$1,697",
-        "price_high": "$2,115",
-        "price_low": "$1,166",
+        "price_center": "$1,680",
+        "price_high": "$2,092",
+        "price_low": "$1,154",
         "role": "attention peak - bottom watch"
       },
       "price_history": [
@@ -1102,13 +1140,36 @@
           "date": "2026-09-05"
         },
         {
-          "close": 2466.6399,
-          "date": "2026-09-17"
+          "close": 2631.9626,
+          "date": "2026-09-19"
+        },
+        {
+          "close": 2732.8301,
+          "date": "2026-09-21"
         }
       ]
     },
     "MSTR": {
       "anchored_on": "observed C4 top",
+      "bottom_tracking": {
+        "as_of": "2026-09-21",
+        "band_cross_check_note": "",
+        "band_cross_check_ok": "",
+        "band_price_high": "$121.44",
+        "band_price_low": "$103.42",
+        "date": "2026-06-26",
+        "days_since_top": "583",
+        "exec_label": "Lowest so far",
+        "gap_pct_vs_band": "-20.4",
+        "gap_pct_vs_band_center": "-26.8",
+        "gap_pct_vs_band_edge": "bottom",
+        "label": "Lowest close since C4 top (provisional)",
+        "note": "Running minimum over [C4 top +90d, latest data]. Not a confirmed bottom - C4 stays open until H5 (2028-04-01), and Rule B's window has no right edge yet, so this value can only fall.",
+        "price": "$82.31",
+        "status": "provisional_low_to_date",
+        "vs_band": "below_band",
+        "vs_band_text": "-20.4% vs the projected B4 corridor bottom ($103.42) - already through the published band"
+      },
       "last_observed_event": {
         "date": "2024-11-20",
         "exec_label": "Last observed top",
@@ -1130,25 +1191,25 @@
           "label": "C5 distribution (top)",
           "outer_end": "2028-12-31",
           "outer_start": "2028-11-01",
-          "price_center": "$1,778",
-          "price_high": "$2,854",
-          "price_low": "$702.16",
+          "price_center": "$765.48",
+          "price_high": "$1,093",
+          "price_low": "$437.51",
           "role": "attention peak - top watch"
         },
         {
-          "base_end": "2030-09-23",
-          "base_start": "2030-08-02",
-          "exec_label": "Post-top exit",
-          "label": "B5 - post-C5-top exit",
+          "base_end": "2030-10-20",
+          "base_start": "2030-10-20",
+          "exec_label": "Post-top re-entry",
+          "label": "B5 - post-C5-top bear bottom",
           "outer_end": "2030-11-19",
-          "outer_start": "2030-06-07",
-          "price_center": "$249.90",
-          "price_high": "$401.12",
-          "price_low": "$98.67",
-          "role": "next attention peak - exit watch"
+          "outer_start": "2030-09-20",
+          "price_center": "$181.63",
+          "price_high": "$259.46",
+          "price_low": "$103.81",
+          "role": "next attention peak - re-entry watch"
         }
       ],
-      "method": "naive_median_own_dd",
+      "method": "borrowed_2_stage_from_BTC",
       "next_window": {
         "base_end": "2027-01-28",
         "base_start": "2026-09-30",
@@ -1157,9 +1218,9 @@
         "label": "B4 - post-C4-top bear bottom",
         "outer_end": "2027-03-29",
         "outer_start": "2026-08-01",
-        "price_center": "$66.58",
-        "price_high": "$82.31",
-        "price_low": "$50.86",
+        "price_center": "$112.43",
+        "price_high": "$121.44",
+        "price_low": "$103.42",
         "role": "attention peak - bottom watch"
       },
       "price_history": [
@@ -1656,13 +1717,32 @@
           "date": "2026-09-15"
         },
         {
-          "close": 130.66,
-          "date": "2026-09-17"
+          "close": 165.5989,
+          "date": "2026-09-21"
         }
       ]
     },
     "SOL": {
       "anchored_on": "observed C4 top",
+      "bottom_tracking": {
+        "as_of": "2026-09-21",
+        "band_cross_check_note": "",
+        "band_cross_check_ok": "",
+        "band_price_high": "$67.12",
+        "band_price_low": "$57.16",
+        "date": "2026-06-06",
+        "days_since_top": "504",
+        "exec_label": "Lowest so far",
+        "gap_pct_vs_band": "+0.0",
+        "gap_pct_vs_band_center": "+0.1",
+        "gap_pct_vs_band_edge": "",
+        "label": "Lowest close since C4 top (provisional)",
+        "note": "Running minimum over [C4 top +90d, latest data]. Not a confirmed bottom - C4 stays open until H5 (2028-04-01), and Rule B's window has no right edge yet, so this value can only fall.",
+        "price": "$62.19",
+        "status": "provisional_low_to_date",
+        "vs_band": "in_band",
+        "vs_band_text": "INSIDE the projected B4 corridor ($57.16-$67.12)"
+      },
       "last_observed_event": {
         "date": "2025-01-18",
         "exec_label": "Last observed top",
@@ -1684,25 +1764,25 @@
           "label": "C5 distribution (top)",
           "outer_end": "2029-09-27",
           "outer_start": "2028-12-30",
-          "price_center": "$885.15",
-          "price_high": "$1,555",
-          "price_low": "$215.50",
+          "price_center": "$423.05",
+          "price_high": "$604.31",
+          "price_low": "$241.79",
           "role": "attention peak - top watch"
         },
         {
-          "base_end": "2030-09-08",
-          "base_start": "2030-07-27",
-          "exec_label": "Post-top exit",
-          "label": "B5 - post-C5-top exit",
-          "outer_end": "2031-02-13",
+          "base_end": "2030-07-06",
+          "base_start": "2030-07-06",
+          "exec_label": "Post-top re-entry",
+          "label": "B5 - post-C5-top bear bottom",
+          "outer_end": "2030-11-19",
           "outer_start": "2030-02-21",
-          "price_center": "$276.89",
-          "price_high": "$486.37",
-          "price_low": "$67.41",
-          "role": "next attention peak - exit watch"
+          "price_center": "$100.38",
+          "price_high": "$143.39",
+          "price_low": "$57.37",
+          "role": "next attention peak - re-entry watch"
         }
       ],
-      "method": "borrowed_2_stage_from_ETH",
+      "method": "borrowed_2_stage_from_BTC",
       "next_window": {
         "base_end": "2027-01-28",
         "base_start": "2026-09-30",
@@ -1711,9 +1791,9 @@
         "label": "B4 - post-C4-top bear bottom",
         "outer_end": "2027-03-29",
         "outer_start": "2026-08-01",
-        "price_center": "$81.92",
-        "price_high": "$85.97",
-        "price_low": "$77.87",
+        "price_center": "$62.14",
+        "price_high": "$67.12",
+        "price_low": "$57.16",
         "role": "attention peak - bottom watch"
       },
       "price_history": [
@@ -2210,13 +2290,36 @@
           "date": "2026-09-05"
         },
         {
-          "close": 101.15,
-          "date": "2026-09-17"
+          "close": 111.0149,
+          "date": "2026-09-19"
+        },
+        {
+          "close": 117.82,
+          "date": "2026-09-21"
         }
       ]
     },
     "WGMI": {
       "anchored_on": "observed C4 top",
+      "bottom_tracking": {
+        "as_of": "2026-09-21",
+        "band_cross_check_note": "",
+        "band_cross_check_ok": "",
+        "band_price_high": "$18.48",
+        "band_price_low": "$15.74",
+        "date": "2026-09-16",
+        "days_since_top": "90",
+        "exec_label": "Lowest so far",
+        "gap_pct_vs_band": "+141.1",
+        "gap_pct_vs_band_center": "+160.5",
+        "gap_pct_vs_band_edge": "top",
+        "label": "Lowest close since C4 top (provisional)",
+        "note": "Running minimum over [C4 top +90d, latest data]. Not a confirmed bottom - C4 stays open until H5 (2028-04-01), and Rule B's window has no right edge yet, so this value can only fall.",
+        "price": "$44.56",
+        "status": "provisional_low_to_date",
+        "vs_band": "above_band",
+        "vs_band_text": "still +141.1% ABOVE the projected B4 corridor top ($18.48) - price has not entered the band yet"
+      },
       "last_observed_event": {
         "date": "2026-06-18",
         "exec_label": "Last observed top",
@@ -2246,14 +2349,14 @@
         {
           "base_end": "2032-03-03",
           "base_start": "2031-01-16",
-          "exec_label": "Post-top exit",
-          "label": "B5 - post-C5-top exit",
-          "outer_end": "2033-07-21",
-          "outer_start": "2029-09-08",
+          "exec_label": "Post-top re-entry",
+          "label": "B5 - post-C5-top bear bottom",
+          "outer_end": "2034-04-12",
+          "outer_start": "2030-05-31",
           "price_center": "$27.64",
           "price_high": "$39.48",
           "price_low": "$15.80",
-          "role": "next attention peak - exit watch"
+          "role": "next attention peak - re-entry watch"
         }
       ],
       "method": "borrowed_2_stage_from_BTC",
@@ -2756,19 +2859,38 @@
           "date": "2026-09-15"
         },
         {
-          "close": 46.45,
-          "date": "2026-09-17"
+          "close": 50.45,
+          "date": "2026-09-21"
         }
       ]
     },
     "XRP": {
       "anchored_on": "observed C4 top",
+      "bottom_tracking": {
+        "as_of": "2026-09-21",
+        "band_cross_check_note": "",
+        "band_cross_check_ok": "",
+        "band_price_high": "$0.9113",
+        "band_price_low": "$0.7761",
+        "date": "2026-08-16",
+        "days_since_top": "391",
+        "exec_label": "Lowest so far",
+        "gap_pct_vs_band": "+8.9",
+        "gap_pct_vs_band_center": "+17.6",
+        "gap_pct_vs_band_edge": "top",
+        "label": "Lowest close since C4 top (provisional)",
+        "note": "Running minimum over [C4 top +90d, latest data]. Not a confirmed bottom - C4 stays open until H5 (2028-04-01), and Rule B's window has no right edge yet, so this value can only fall.",
+        "price": "$0.992",
+        "status": "provisional_low_to_date",
+        "vs_band": "above_band",
+        "vs_band_text": "still +8.9% ABOVE the projected B4 corridor top ($0.9113) - price has not entered the band yet"
+      },
       "last_observed_event": {
-        "date": "2025-07-22",
+        "date": "2025-07-21",
         "exec_label": "Last observed top",
         "label": "C4 top",
         "note": "XRP C4 top — anchor for the 2-stage B4/C5 projection.",
-        "price": "$3.55"
+        "price": "$3.56"
       },
       "later_windows": [
         {
@@ -2778,31 +2900,31 @@
           "role": "patience window end"
         },
         {
-          "base_end": "2029-06-03",
-          "base_start": "2029-04-04",
+          "base_end": "2029-06-02",
+          "base_start": "2029-04-03",
           "exec_label": "Next cycle top",
           "label": "C5 distribution (top)",
-          "outer_end": "2029-07-03",
+          "outer_end": "2029-07-02",
           "outer_start": "2029-03-05",
-          "price_center": "$9.81",
-          "price_high": "$13.28",
-          "price_low": "$6.34",
+          "price_center": "$5.74",
+          "price_high": "$8.21",
+          "price_low": "$3.28",
           "role": "attention peak - top watch"
         },
         {
-          "base_end": "2030-06-28",
-          "base_start": "2030-06-08",
-          "exec_label": "Post-top exit",
-          "label": "B5 - post-C5-top exit",
-          "outer_end": "2030-09-06",
-          "outer_start": "2030-03-30",
-          "price_center": "$2.19",
-          "price_high": "$2.96",
-          "price_low": "$1.41",
-          "role": "next attention peak - exit watch"
+          "base_end": "2030-07-07",
+          "base_start": "2030-07-07",
+          "exec_label": "Post-top re-entry",
+          "label": "B5 - post-C5-top bear bottom",
+          "outer_end": "2030-09-05",
+          "outer_start": "2030-05-09",
+          "price_center": "$1.36",
+          "price_high": "$1.95",
+          "price_low": "$0.779",
+          "role": "next attention peak - re-entry watch"
         }
       ],
-      "method": "naive_median_own_dd",
+      "method": "borrowed_2_stage_from_BTC",
       "next_window": {
         "base_end": "2026-07-18",
         "base_start": "2026-03-20",
@@ -2811,9 +2933,9 @@
         "label": "B4 - post-C4-top bear bottom",
         "outer_end": "2026-09-16",
         "outer_start": "2026-01-19",
-        "price_center": "$0.7929",
-        "price_high": "$0.992",
-        "price_low": "$0.5938",
+        "price_center": "$0.8437",
+        "price_high": "$0.9113",
+        "price_low": "$0.7761",
         "role": "attention peak - bottom watch"
       },
       "price_history": [
@@ -3310,14 +3432,37 @@
           "date": "2026-09-05"
         },
         {
-          "close": 1.3062,
-          "date": "2026-09-17"
+          "close": 1.4104,
+          "date": "2026-09-19"
+        },
+        {
+          "close": 1.4926,
+          "date": "2026-09-21"
         }
       ]
     }
   },
   "btc": {
     "anchored_on": "observed C4 top",
+    "bottom_tracking": {
+      "as_of": "2026-09-21",
+      "band_cross_check_note": "Projected B4 band failed its own cross-check (Stage 1 vs Stage 2 disagree by >15%); the published corridor is their union and carries that disagreement.",
+      "band_cross_check_ok": "False",
+      "band_price_high": "$53,673",
+      "band_price_low": "$29,596",
+      "date": "2026-06-30",
+      "days_since_top": "267",
+      "exec_label": "Lowest so far",
+      "gap_pct_vs_band": "+9.0",
+      "gap_pct_vs_band_center": "+35.9",
+      "gap_pct_vs_band_edge": "top",
+      "label": "Lowest close since C4 top (provisional)",
+      "note": "Running minimum over [C4 top +90d, latest data]. Not a confirmed bottom - C4 stays open until H5 (2028-04-01), and Rule B's window has no right edge yet, so this value can only fall.",
+      "price": "$58,526",
+      "status": "provisional_low_to_date",
+      "vs_band": "above_band",
+      "vs_band_text": "still +9.0% ABOVE the projected B4 corridor top ($53,673) - price has not entered the band yet"
+    },
     "last_observed_event": {
       "date": "2025-10-06",
       "exec_label": "Last observed top",
@@ -3336,8 +3481,8 @@
       {
         "base_end": "2029-09-20",
         "base_start": "2029-07-31",
-        "exec_label": "Next cycle top",
-        "label": "C5 distribution (top)",
+        "exec_label": "Next cycle top (exit window)",
+        "label": "C5 top (distribution)",
         "outer_end": "2029-09-29",
         "outer_start": "2029-04-07",
         "price_center": "$262,873",
@@ -3348,14 +3493,14 @@
       {
         "base_end": "2030-10-09",
         "base_start": "2030-09-18",
-        "exec_label": "Post-top exit",
-        "label": "B5 - post-C5-top exit",
+        "exec_label": "Post-top re-entry",
+        "label": "B5 - post-C5-top bear bottom",
         "outer_end": "2030-11-09",
         "outer_start": "2030-04-06",
         "price_center": "$69,103",
         "price_high": "$79,759",
         "price_low": "$58,447",
-        "role": "next attention peak - exit watch"
+        "role": "next attention peak - re-entry watch"
       }
     ],
     "method": "2_stage (Stage 1 + Stage 2)",
@@ -3798,13 +3943,13 @@
         "date": "2026-09-10"
       },
       {
-        "close": 76650.22,
-        "date": "2026-09-17"
+        "close": 85705.52,
+        "date": "2026-09-21"
       }
     ]
   },
   "current_phase_hint": {
-    "exit": "Post-top bear - exit watch",
+    "b5_bottom": "Post-top bear - re-entry watch",
     "in_accumulation": "Patience window - accumulation",
     "in_b4_window": "Bottom window open - attention peak",
     "pre_b4_bear": "Late bear - next bottom watch imminent"

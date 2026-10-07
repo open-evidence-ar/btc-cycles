@@ -1174,9 +1174,9 @@ def build_c6():
     # --- Zone shading (faint vertical bands) ---
     zone_fill = {
         'accumulation': 'rgba(74,222,128,0.06)',
-        'distribution': 'rgba(251,146,60,0.10)',
-        'exit': 'rgba(96,165,250,0.10)',
-        'bear_bottom': 'rgba(34,211,238,0.06)',
+        'top': 'rgba(251,146,60,0.10)',
+        'b5_bottom': 'rgba(96,165,250,0.10)',
+        'bottom': 'rgba(34,211,238,0.06)',
     }
     for _, z in zones.iterrows():
         fig.add_vrect(x0=z['outer_start'], x1=z['outer_end'],
@@ -1188,7 +1188,7 @@ def build_c6():
 
     # --- BTC bear_bottom band (unified with alt-chart style: outer/base
     #     price-band rects + midpoint triangle + detailed annotation). ---
-    _bb = zones[zones['zone'] == 'bear_bottom']
+    _bb = zones[zones['zone'] == 'bottom']
     if not _bb.empty:
         _bb = _bb.iloc[0]
         _bb_lo = float(_bb['price_low'])
@@ -1217,7 +1217,7 @@ def build_c6():
             hovertemplate=f'B4 center<br>$%{{y:,.0f}}<extra></extra>'))
         fig.add_trace(go.Scatter(
             x=[_bb_band_x1], y=[_bb_pmid], mode='markers', name='B4 (proj bear bottom)',
-            marker=dict(symbol='triangle-up', size=14, color='rgb(34,211,238)',
+            marker=dict(symbol='triangle-down', size=14, color='rgb(34,211,238)',
                         line=dict(color='white', width=1.5)),
             hovertemplate=f'B4 (proj bear bottom)<br>{_bb_band_x1}<br>${_bb_pmid:,.0f}<br>'
                           f'band ${_bb_lo:,.0f}–${_bb_hi:,.0f}<extra></extra>',
@@ -1244,15 +1244,15 @@ def build_c6():
             bgcolor='rgba(10,14,26,0.90)', borderpad=4,
             xanchor='right', yanchor='middle')
 
-    dist_zone = zones[zones['zone'] == 'distribution'].iloc[0]
-    exit_zone = zones[zones['zone'] == 'exit'].iloc[0]
+    top_zone = zones[zones['zone'] == 'top'].iloc[0]
+    b5_zone = zones[zones['zone'] == 'b5_bottom'].iloc[0]
 
     # --- C5 TOP band rectangle (orange) ---
     # Dual-layer like the Pine overlay: faint dashed OUTER (full uncertainty
     # range) behind the solid BASE rectangle (IQR window).
     fig.add_shape(
         type='rect', xref='x', yref='y',
-        x0=dist_zone['outer_start'], x1=dist_zone['outer_end'],
+        x0=top_zone['outer_start'], x1=top_zone['outer_end'],
         y0=c5_top_low, y1=c5_top_high,
         fillcolor='rgba(251,146,60,0.06)',
         line=dict(color='rgb(251,146,60)', width=1, dash='dash'),
@@ -1260,41 +1260,41 @@ def build_c6():
     )
     fig.add_shape(
         type='rect', xref='x', yref='y',
-        x0=dist_zone['base_start'], x1=dist_zone['base_end'],
+        x0=top_zone['base_start'], x1=top_zone['base_end'],
         y0=c5_top_low, y1=c5_top_high,
         fillcolor='rgba(251,146,60,0.25)',
         line=dict(color='rgb(251,146,60)', width=2),
         layer='below',
     )
     fig.add_trace(go.Scatter(
-        x=[dist_zone['base_start'], dist_zone['base_end']],
+        x=[top_zone['base_start'], top_zone['base_end']],
         y=[c5_top_center, c5_top_center],
         mode='lines', name='C5 TOP center',
         line=dict(color='rgb(251,146,60)', width=2),
         hovertemplate='C5 TOP center: $%{y:,.0f}<extra></extra>',
         showlegend=False,
     ))
-    # C5 TOP marker (triangle-down) at distribution zone midpoint
-    dist_mid_date = (pd.to_datetime(dist_zone['base_start'])
-                     + (pd.to_datetime(dist_zone['base_end'])
-                        - pd.to_datetime(dist_zone['base_start'])) / 2)
+    # C5 TOP marker (triangle-up) at top zone midpoint
+    dist_mid_date = (pd.to_datetime(top_zone['base_start'])
+                     + (pd.to_datetime(top_zone['base_end'])
+                        - pd.to_datetime(top_zone['base_start'])) / 2)
     fig.add_trace(go.Scatter(
         x=[dist_mid_date.strftime('%Y-%m-%d')], y=[c5_top_center],
         mode='markers', name='C5 TOP proj',
-        marker=dict(symbol='triangle-down', size=14, color='#facc15',
+        marker=dict(symbol='triangle-up', size=14, color='#facc15',
                     line=dict(color='white', width=1.5)),
         hovertemplate=f'C5 TOP predicted<br>${c5_top_center:,.0f}<br>'
                       f'band ${c5_top_low:,.0f}–${c5_top_high:,.0f}<extra></extra>',
         showlegend=False,
     ))
     fig.add_annotation(
-        x=dist_zone['base_end'], y=c5_top_center,
+        x=top_zone['base_end'], y=c5_top_center,
         xref='x', yref='y',
         text=(f"<b>C5 TOP</b><br>"
               f"${c5_top_low:,.0f} – ${c5_top_high:,.0f}<br>"
               f"(center ${c5_top_center:,.0f})<br>"
-              f"<span style='font-size:9px'>{dist_zone['base_start']} → {dist_zone['base_end']}"
-              f" (outer {dist_zone['outer_start']} → {dist_zone['outer_end']})</span>"),
+              f"<span style='font-size:9px'>{top_zone['base_start']} → {top_zone['base_end']}"
+              f" (outer {top_zone['outer_start']} → {top_zone['outer_end']})</span>"),
         showarrow=True, arrowhead=2, arrowcolor='rgb(251,146,60)',
         ax=-60, ay=0,
         font=dict(size=10, color='#ffffff'),
@@ -1307,7 +1307,7 @@ def build_c6():
     # Dual-layer: faint dashed OUTER behind the solid BASE rectangle.
     fig.add_shape(
         type='rect', xref='x', yref='y',
-        x0=exit_zone['outer_start'], x1=exit_zone['outer_end'],
+        x0=b5_zone['outer_start'], x1=b5_zone['outer_end'],
         y0=b5_low, y1=b5_high,
         fillcolor='rgba(96,165,250,0.06)',
         line=dict(color='rgb(96,165,250)', width=1, dash='dash'),
@@ -1315,14 +1315,14 @@ def build_c6():
     )
     fig.add_shape(
         type='rect', xref='x', yref='y',
-        x0=exit_zone['base_start'], x1=exit_zone['base_end'],
+        x0=b5_zone['base_start'], x1=b5_zone['base_end'],
         y0=b5_low, y1=b5_high,
         fillcolor='rgba(96,165,250,0.25)',
         line=dict(color='rgb(96,165,250)', width=2),
         layer='below',
     )
     fig.add_trace(go.Scatter(
-        x=[exit_zone['base_start'], exit_zone['base_end']],
+        x=[b5_zone['base_start'], b5_zone['base_end']],
         y=[b5_center, b5_center],
         mode='lines', name='B5 center',
         line=dict(color='rgb(96,165,250)', width=2),
@@ -1330,13 +1330,13 @@ def build_c6():
         showlegend=False,
     ))
     fig.add_annotation(
-        x=exit_zone['base_end'], y=b5_center,
+        x=b5_zone['base_end'], y=b5_center,
         xref='x', yref='y',
         text=(f"<b>B5 (post-C5 bottom)</b><br>"
               f"${b5_low:,.0f} – ${b5_high:,.0f}<br>"
               f"(center ${b5_center:,.0f})<br>"
-              f"<span style='font-size:9px'>{exit_zone['base_start']} → {exit_zone['base_end']}"
-              f" (outer {exit_zone['outer_start']} → {exit_zone['outer_end']})</span>"),
+              f"<span style='font-size:9px'>{b5_zone['base_start']} → {b5_zone['base_end']}"
+              f" (outer {b5_zone['outer_start']} → {b5_zone['outer_end']})</span>"),
         showarrow=True, arrowhead=2, arrowcolor='rgb(96,165,250)',
         ax=-60, ay=0,
         font=dict(size=10, color='#ffffff'),
@@ -1349,7 +1349,7 @@ def build_c6():
     fig.add_trace(go.Scatter(
         x=[observed_c4_top_date], y=[observed_c4_top_price],
         mode='markers', name='Observed C4 top',
-        marker=dict(symbol='triangle-down', size=14, color='#facc15',
+        marker=dict(symbol='triangle-up', size=14, color='#facc15',
                     line=dict(color='white', width=1.5)),
         hovertemplate='Observed C4 top<br>%{x}<br>$%{y:,.0f}<extra></extra>',
         showlegend=False,
@@ -1368,26 +1368,26 @@ def build_c6():
         # --- Projected B4 date (kept for folklore band + event lines + cross-ref note;
     #     the bear_bottom band above now carries the B4 marker + annotation). ---
     b4_zone = None
-    if 'bear_bottom' in set(zones['zone'].values):
-        b4_zone = zones[zones['zone'] == 'bear_bottom'].iloc[0]
+    if 'bottom' in set(zones['zone'].values):
+        b4_zone = zones[zones['zone'] == 'bottom'].iloc[0]
         b4_base_start = pd.to_datetime(b4_zone['base_start'])
         b4_base_end = pd.to_datetime(b4_zone['base_end'])
         projected_b4_date = b4_base_start + (b4_base_end - b4_base_start) / 2
     else:
-        legacy_exit = zones[zones['zone'] == 'exit'].iloc[0]
-        legacy_start = pd.to_datetime(legacy_exit['base_start'])
-        legacy_end = pd.to_datetime(legacy_exit['base_end'])
+        legacy_b5 = zones[zones['zone'] == 'b5_bottom'].iloc[0]
+        legacy_start = pd.to_datetime(legacy_b5['base_start'])
+        legacy_end = pd.to_datetime(legacy_b5['base_end'])
         projected_b4_date = legacy_start + (legacy_end - legacy_start) / 2
     projected_b4_date_str = projected_b4_date.strftime('%Y-%m-%d')
 
     # --- B5 marker at exit zone midpoint ---
-    exit_start = pd.to_datetime(exit_zone['base_start'])
-    exit_end = pd.to_datetime(exit_zone['base_end'])
-    b5_date = (exit_start + (exit_end - exit_start) / 2).strftime('%Y-%m-%d')
+    b5_start = pd.to_datetime(b5_zone['base_start'])
+    b5_end = pd.to_datetime(b5_zone['base_end'])
+    b5_date = (b5_start + (b5_end - b5_start) / 2).strftime('%Y-%m-%d')
     fig.add_trace(go.Scatter(
         x=[b5_date], y=[b5_center],
         mode='markers', name='Projected B5',
-        marker=dict(symbol='triangle-up', size=12, color='#60a5fa',
+        marker=dict(symbol='triangle-down', size=12, color='#60a5fa',
                     line=dict(color='white', width=1.5)),
         hovertemplate=f'Projected B5<br>%{{x}}<br>$%{{y:,.0f}}<br>band ${b5_low:,.0f}-${b5_high:,.0f}<extra></extra>',
         showlegend=False,
@@ -1400,7 +1400,7 @@ def build_c6():
     # near-arithmetic identity (next cycle's D_prev_bottom_to_halving +
     # D_halving_to_top), so this is a qualitative consistency check against
     # a folk narrative, not independent statistical validation.
-    if 'bear_bottom' in set(zones['zone'].values):
+    if 'bottom' in set(zones['zone'].values):
         try:
             b4_center_dt = pd.to_datetime(projected_b4_date_str)
             d_bnt_row = fwd[fwd['statistic'] == 'D_bottom_to_next_top']
@@ -1510,11 +1510,11 @@ def build_c6():
     ]
     if b4_zone is not None:
         notes.append(
-            f"B4 (post-C4 bear): {b4_zone['base_start']} -> B5 (post-C5 bear): {exit_zone['base_start']} "
+            f"B4 (post-C4 bear): {b4_zone['base_start']} -> B5 (post-C5 bear): {b5_zone['base_start']} "
             f"band ${b5_low:,.0f}-${b5_high:,.0f}"
         )
     # Qualitative cross-reference note (purple-hued, drawn from D_bottom_to_next_top in forward_ranges.csv)
-    if 'bear_bottom' in set(zones['zone'].values):
+    if 'bottom' in set(zones['zone'].values):
         d_bnt_row = fwd[fwd['statistic'] == 'D_bottom_to_next_top']
         if not d_bnt_row.empty and pd.notna(d_bnt_row.iloc[0].get('median')):
             d_bnt = d_bnt_row.iloc[0]
@@ -1653,7 +1653,7 @@ def _build_alt_chart(asset, filename, title, subtitle):
     for _, z in sub.iterrows():
         try:
             ph = float(z.get('price_high', '') or 0)
-            if z.get('zone') in ('distribution', 'bear_bottom', 'exit') and ph > 0:
+            if z.get('zone') in ('top', 'bottom', 'b5_bottom') and ph > 0:
                 band_max = max(band_max, ph)
         except (ValueError, TypeError):
             pass
@@ -1681,7 +1681,7 @@ def _build_alt_chart(asset, filename, title, subtitle):
                            bgcolor='rgba(10,14,26,0.7)')
 
     # Projected B4 vertical line (when bear_bottom zone exists with valid dates)
-    b4_row = sub[sub['zone'] == 'bear_bottom']
+    b4_row = sub[sub['zone'] == 'bottom']
     if not b4_row.empty:
         b4_os = str(b4_row.iloc[0].get('outer_start', ''))
         b4_oe = str(b4_row.iloc[0].get('outer_end', ''))
@@ -1698,9 +1698,9 @@ def _build_alt_chart(asset, filename, title, subtitle):
 
     # Zone shading (vertical bands with top labels — matches C6)
     zone_fill = {'accumulation': 'rgba(74,222,128,0.06)',
-                 'distribution': 'rgba(251,146,60,0.10)',
-                 'exit': 'rgba(96,165,250,0.10)',
-                 'bear_bottom': 'rgba(34,211,238,0.06)'}
+                 'top': 'rgba(251,146,60,0.10)',
+                 'b5_bottom': 'rgba(96,165,250,0.10)',
+                 'bottom': 'rgba(34,211,238,0.06)'}
     for _, z in sub.iterrows():
         zone = z['zone']
         os_ = str(z.get('outer_start', ''))
@@ -1723,9 +1723,14 @@ def _build_alt_chart(asset, filename, title, subtitle):
 
     # (zone_name, color, marker_symbol, marker_size, band_label, arrow_color)
     _band_styles = {
-        'bear_bottom': ('#22d3ee', 'triangle-up',  14, 'B4 (proj bear bottom)', '#22d3ee'),
-        'distribution': ('#facc15', 'triangle-down', 14, 'C5 TOP (proj cycle peak)', '#facc15'),
-        'exit':         ('#60a5fa', 'triangle-up',  12, 'B5 (proj next bear bottom)', '#60a5fa'),
+        # (color, marker, size, band_label, arrow_color)
+        # Marker orientation follows the zone's price direction: B4 and B5 are
+        # bear BOTTOMS so they get a down triangle; the C5 top gets an up
+        # triangle. These were previously all inverted (the only high took the
+        # down triangle and both lows took the up triangle).
+        'bottom':    ('#22d3ee', 'triangle-down', 14, 'B4 (proj bear bottom)', '#22d3ee'),
+        'top':       ('#facc15', 'triangle-up',   14, 'C5 TOP (proj cycle peak)', '#facc15'),
+        'b5_bottom': ('#60a5fa', 'triangle-down', 12, 'B5 (proj next bear bottom)', '#60a5fa'),
     }
 
     for _, z in sub.iterrows():
@@ -1817,7 +1822,7 @@ def _build_alt_chart(asset, filename, title, subtitle):
     # row of alt_next_cycle_zones.csv). Rendered as a horizontal shaded rect
     # spanning the chart's x-range so the projected B4 can be visually compared
     # against gold's validated support floor (docs/gold_seasonality.md).
-    bb_row = sub[sub['zone'] == 'bear_bottom']
+    bb_row = sub[sub['zone'] == 'bottom']
     if not bb_row.empty:
         sb_lo = bb_row.iloc[0].get('support_band_low', '')
         sb_hi = bb_row.iloc[0].get('support_band_high', '')
@@ -2099,7 +2104,7 @@ def _build_alt_chart(asset, filename, title, subtitle):
                 pass
             # BTC projected B4 zone center (median of next_cycle_zones bear_bottom)
             btc_zones_df = zones  # 'zones' is the BTC next_cycle_zones DataFrame
-            btc_bb = btc_zones_df[btc_zones_df['zone'] == 'bear_bottom']
+            btc_bb = btc_zones_df[btc_zones_df['zone'] == 'bottom']
             if not btc_bb.empty:
                 btc_b4_start = pd.to_datetime(btc_bb.iloc[0]['base_start'])
                 btc_b4_end = pd.to_datetime(btc_bb.iloc[0]['base_end'])
@@ -2227,13 +2232,14 @@ def build_c8_macro():
         btc_evts.append((btc_peak_d, '#facc15', 'dot', 'BTC C4 top'))
 
     zone_fill = {'accumulation': 'rgba(74,222,128,0.06)',
-                 'distribution': 'rgba(251,146,60,0.10)',
-                 'exit': 'rgba(96,165,250,0.10)',
-                 'bear_bottom': 'rgba(34,211,238,0.06)'}
+                 'top': 'rgba(251,146,60,0.10)',
+                 'b5_bottom': 'rgba(96,165,250,0.10)',
+                 'bottom': 'rgba(34,211,238,0.06)'}
     _band_styles = {
-        'bear_bottom': ('#22d3ee', 'triangle-up',  12, 'B4 (proj bear bottom)'),
-        'distribution': ('#facc15', 'triangle-down', 12, 'C5 TOP (proj cycle peak)'),
-        'exit':         ('#60a5fa', 'triangle-up',  10, 'B5 (proj next bear bottom)'),
+        # See the alt-table comment above: bottoms point down, the top points up.
+        'bottom':    ('#22d3ee', 'triangle-down', 12, 'B4 (proj bear bottom)'),
+        'top':       ('#facc15', 'triangle-up',   12, 'C5 TOP (proj cycle peak)'),
+        'b5_bottom': ('#60a5fa', 'triangle-down', 10, 'B5 (proj next bear bottom)'),
     }
 
     def fmt_price_macro(p):
@@ -2265,9 +2271,9 @@ def build_c8_macro():
             try:
                 ph = float(z.get('price_high', '') or 0)
                 pl = float(z.get('price_low', '') or 0)
-                if z.get('zone') in ('distribution', 'bear_bottom', 'exit') and ph > 0:
+                if z.get('zone') in ('top', 'bottom', 'b5_bottom') and ph > 0:
                     band_max = max(band_max, ph)
-                if z.get('zone') in ('bear_bottom', 'exit') and pl > 0:
+                if z.get('zone') in ('bottom', 'b5_bottom') and pl > 0:
                     band_min_positive = min(band_min_positive, pl)
             except (ValueError, TypeError):
                 pass
@@ -2392,7 +2398,7 @@ def build_c8_macro():
         # I-21 R-9: canonical regime adjustment. When active, the solid
         # zone IS adjusted; draw the unadjusted band as dotted gray
         # reference + applied-note. Fallback panels stay clean.
-        bb_row = sub[sub['zone'] == 'bear_bottom']
+        bb_row = sub[sub['zone'] == 'bottom']
         if not bb_row.empty:
             rm = str(bb_row.iloc[0].get('regime_multiplier_b4', '') or '')
             rstate = str(bb_row.iloc[0].get('regime_state_at_anchor', '') or '')
@@ -2501,7 +2507,7 @@ def build_c8_macro():
             a = anchor_csv.iloc[0]
             any_active = False
             try:
-                bb = alt_zones[alt_zones['zone'] == 'bear_bottom']
+                bb = alt_zones[alt_zones['zone'] == 'bottom']
                 for _, zr in bb.iterrows():
                     if str(zr.get('multiplier_source', '')) == 'computed':
                         if float(zr.get('regime_multiplier_b4', 1.0) or 1.0) != 1.0:

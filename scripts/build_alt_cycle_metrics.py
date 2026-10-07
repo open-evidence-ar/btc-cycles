@@ -93,8 +93,15 @@ def load_asset(asset: str) -> pd.DataFrame:
     if not frames:
         raise FileNotFoundError(f"No raw file for {asset} under any pattern in {patterns}")
     merged = pd.concat(frames, ignore_index=True)
-    # Deduplicate: later source wins on same date
-    merged = merged.sort_values("date").drop_duplicates(subset=["date"], keep="last")
+    # Deduplicate: later source wins on same date.
+    # kind="stable" is REQUIRED, not cosmetic. Default sort_values uses
+    # quicksort, which is not stable, so the relative order of equal-date rows
+    # was arbitrary and the "later source wins" rule could pick a different
+    # snapshot between runs (observed: gold's C4 provisional low differing by
+    # $6.50 from a recomputation of the same window).
+    merged = merged.sort_values("date", kind="stable").drop_duplicates(
+        subset=["date"], keep="last"
+    )
     merged = merged.sort_values("date").reset_index(drop=True)
     return merged
 
@@ -154,30 +161,49 @@ def detect_asset_cycle_extrema(
         return None
     t_date, t_price, _, _ = t_res
 
-    # Next bear bottom via Rule B
-    b_res = rule_b(asset_df, t_date, next_h_date)
+    # Cycle closure: a cycle is closed only once its NEXT halving has actually
+    # happened. While it is open, any bottom Rule B can find is a running
+    # minimum over a window with no right edge (window_end = H_next - 30d, which
+    # for C4 is 2028-03-02 — far past the available data). Such a value can only
+    # ever fall, so it is NOT a confirmed bear bottom and must never be promoted
+    # to one. See bottom_status / b4_low_to_date below.
+    data_cutoff = asset_df["date"].max()
+    cycle_closed = (next_h_date is not None) and (next_h_date <= data_cutoff)
+
+    # Provisional running-minimum bottom: lowest close since the top, measured to
+    # the data cutoff. Emitted for open cycles so the tracking value is visible
+    # and auditable, but written to dedicated columns that no fitted series reads.
+    prov_date = None
+    prov_price = None
+    if not cycle_closed:
+        prov_res = rule_b(asset_df, t_date, None)  # None => window_end = data max
+        if prov_res is not None:
+            prov_date, prov_price, _, _ = prov_res
+
+    # Confirmed bear bottom via Rule B — only for CLOSED cycles.
+    b_res = rule_b(asset_df, t_date, next_h_date) if cycle_closed else None
     if b_res is None:
-        # C4 (open cycle) — bottom TBD; record top only
         nbb_date = None
         nbb_price = None
     else:
         nbb_date, nbb_price, _, _ = b_res
-        # Plausibility check: if the data window extends well past the Rule B
-        # pick (>= 90 days after) AND the bottom is implausibly shallow for a
-        # cycle bear (drawdown < 65% passed the catastrophic-bear threshold),
-        # treat it as a local low rather than the eventual cycle bottom.
-        # Historical bottoms (B1-B3) all came >= 350 days after the top with
-        # >= 76% drawdown. The memo's framework explicitly warns against
-        # treating early-summer interim lows as cycle lows in the C4 context.
-        # We apply a soft "not yet observed" filter to C4 only; C1-C3 bottoms
-        # are canonical events so we keep Rule B's pick without re-litigating.
+        # Plausibility check for a closed cycle: if the bottom is implausibly
+        # shallow for a cycle bear, treat it as a local low rather than the
+        # eventual cycle bottom. Historical bottoms (B1-B3) all came >= 350 days
+        # after the top with >= 76% drawdown. C1-C3 bottoms are canonical events,
+        # so Rule B's pick is kept without re-litigating.
         if cycle_id == "C4":
             elapsed = (nbb_date - t_date).days
             if elapsed < 270:
-                # Insufficient elapsed time for a cycle bottom; treated as
-                # local-low only and flagged as open.
                 nbb_date = None
                 nbb_price = None
+
+    if nbb_date is not None:
+        bottom_status = "confirmed"
+    elif prov_date is not None:
+        bottom_status = "provisional_low_to_date"
+    else:
+        bottom_status = "none"
 
     def _d(a, b):
         if a is None or b is None:
@@ -198,11 +224,18 @@ def detect_asset_cycle_extrema(
         "asset_pre_halving_bottom_price": pre_b_price,
         "asset_local_top_date": t_date.strftime("%Y-%m-%d"),
         "asset_local_top_price": float(t_price),
+        "bottom_status": bottom_status,
+        "bottom_as_of": data_cutoff.strftime("%Y-%m-%d"),
         "asset_next_bear_bottom_date": nbb_date.strftime("%Y-%m-%d") if nbb_date is not None else "",
         "asset_next_bear_bottom_price": nbb_price if nbb_price is not None else "",
+        "b4_low_to_date": prov_date.strftime("%Y-%m-%d") if prov_date is not None else "",
+        "b4_low_to_date_price": prov_price if prov_date is not None else "",
         "D_asset_prev_bottom_to_halving": d_pbh,
         "D_asset_halving_to_top": d_ht,
         "D_asset_top_to_next_bottom": d_tnb if d_tnb is not None else "",
+        "D_asset_low_to_date_to_top": (
+            int((prov_date - t_date).days) if prov_date is not None else ""
+        ),
         "mult_asset_bottom_to_top": mult,
         "drawdown_asset_pct": dd if dd is not None else "",
     }
@@ -288,19 +321,29 @@ def main() -> None:
                     "asset_pre_halving_bottom_price": "",
                     "asset_local_top_date": "",
                     "asset_local_top_price": "",
+                    "bottom_status": "none",
+                    "bottom_as_of": asset_dfs[asset]["date"].max().strftime("%Y-%m-%d"),
                     "asset_next_bear_bottom_date": "",
                     "asset_next_bear_bottom_price": "",
+                    "b4_low_to_date": "",
+                    "b4_low_to_date_price": "",
                     "D_asset_prev_bottom_to_halving": "",
                     "D_asset_halving_to_top": "",
                     "D_asset_top_to_next_bottom": "",
+                    "D_asset_low_to_date_to_top": "",
                     "mult_asset_bottom_to_top": "",
                     "drawdown_asset_pct": "",
                 })
                 continue
 
-            # For C4 actuals the bottom is open; mark accordingly
+            # Cycle-state labelling. The open-cycle marker must key off whether
+            # the CYCLE is still open, not off whether a bottom happens to be
+            # empty. Keying off emptiness (the previous behaviour) left every
+            # open cycle with a populated running-minimum bottom reading
+            # "actual", i.e. asserting a final bottom for a cycle whose next
+            # halving is still in the future.
             if cid == "C4" and cycle_source == "actual":
-                if row_data.get("asset_next_bear_bottom_date") == "":
+                if row_data.get("bottom_status") != "confirmed":
                     cycle_source = "actual_C4_open"
 
             rows.append({
@@ -323,9 +366,11 @@ def main() -> None:
         "cycle_source",
         "asset_pre_halving_bottom_date", "asset_pre_halving_bottom_price",
         "asset_local_top_date", "asset_local_top_price",
+        "bottom_status", "bottom_as_of",
         "asset_next_bear_bottom_date", "asset_next_bear_bottom_price",
+        "b4_low_to_date", "b4_low_to_date_price",
         "D_asset_prev_bottom_to_halving", "D_asset_halving_to_top",
-        "D_asset_top_to_next_bottom",
+        "D_asset_top_to_next_bottom", "D_asset_low_to_date_to_top",
         "mult_asset_bottom_to_top", "drawdown_asset_pct",
     ]
     out_df = out_df[cols]

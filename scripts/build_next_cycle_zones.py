@@ -66,6 +66,19 @@ def get_stat_fwd(fwd_df, stat_name):
     }
 
 
+def _shift_after(band_start, band_end, floor_date):
+    """Move a date band forward so it starts on/after ``floor_date``.
+
+    The band is TRANSLATED, not truncated: its width is preserved so the
+    published spread (which carries the IQR uncertainty) is unchanged and only
+    the placement moves. Enforces DESIGN.md §9.4 R-5 mutual non-overlap.
+    """
+    delta = (floor_date - band_start).days
+    if delta > 0:
+        return floor_date, band_end + timedelta(days=delta)
+    return band_start, band_end
+
+
 def _fmt_usd(v):
     if v is None or (isinstance(v, float) and not math.isfinite(v)):
         return ""
@@ -340,7 +353,7 @@ def main():
             pass
 
     zones.append({
-        'zone': 'bear_bottom',
+        'zone': 'bottom',
         'base_start': b4_base_start,
         'base_end': b4_base_end,
         'outer_start': b4_outer_start,
@@ -407,12 +420,16 @@ def main():
 
     # Distribution zone = C5 TOP window:
     # price band: [C5_top_band_low, C5_top_band_high]
+    dist_base_start = H5_DATE + timedelta(days=int(d_ht['q25']))
+    dist_base_end = H5_DATE + timedelta(days=int(d_ht['q75']))
+    dist_outer_start = H5_DATE + timedelta(days=int(d_ht['min']))
+    dist_outer_end = H5_DATE + timedelta(days=int(d_ht['max']))
     zones.append({
-        'zone': 'distribution',
-        'base_start': (H5_DATE + timedelta(days=int(d_ht['q25']))).strftime('%Y-%m-%d'),
-        'base_end': (H5_DATE + timedelta(days=int(d_ht['q75']))).strftime('%Y-%m-%d'),
-        'outer_start': (H5_DATE + timedelta(days=int(d_ht['min']))).strftime('%Y-%m-%d'),
-        'outer_end': (H5_DATE + timedelta(days=int(d_ht['max']))).strftime('%Y-%m-%d'),
+        'zone': 'top',
+        'base_start': dist_base_start.strftime('%Y-%m-%d'),
+        'base_end': dist_base_end.strftime('%Y-%m-%d'),
+        'outer_start': dist_outer_start.strftime('%Y-%m-%d'),
+        'outer_end': dist_outer_end.strftime('%Y-%m-%d'),
         'price_low': "" if c5_low is None else f"{c5_low:.0f}",
         'price_high': "" if c5_high is None else f"{c5_high:.0f}",
         'anchor_event': "projected B4",
@@ -430,6 +447,23 @@ def main():
     # Exit zone = C5 TOP -> next bear bottom (B5) window:
     # price band: post-C5-top bear bottom (B5), expressed in USD as
     # B5 = B4 * projected_ratio(idx=5)
+    #
+    # DESIGN.md §9.4 R-5 mutual non-overlap: the exit band is built as
+    # H5 + median(D_halving_to_top) + D_top_to_next_bottom[q25..q75] while the
+    # distribution band is H5 + D_halving_to_top[q25..q75]; they collide whenever
+    # median(ht) + tnb_q25 < ht_q75. BTC does not collide today (margin 363d) but
+    # the formula is unguarded, so clamp it here too rather than rely on the
+    # present data. The band is translated, not truncated, so its width holds.
+    exit_base_start = H5_DATE + timedelta(days=int(d_ht['median']) + int(d_tnb['q25']))
+    exit_base_end = H5_DATE + timedelta(days=int(d_ht['median']) + int(d_tnb['q75']))
+    exit_outer_start = H5_DATE + timedelta(days=int(d_ht['min']) + int(d_tnb['min']))
+    exit_outer_end = H5_DATE + timedelta(days=int(d_ht['max']) + int(d_tnb['max']))
+    exit_outer_start, exit_outer_end = _shift_after(
+        exit_outer_start, exit_outer_end, dist_outer_end + timedelta(days=1))
+    exit_base_start, exit_base_end = _shift_after(
+        exit_base_start, exit_base_end,
+        max(dist_base_end + timedelta(days=1), exit_outer_start))
+
     if proj.get('available'):
         dd_fit = proj['dd_fit']
         if dd_fit.get('fit_a') is not None and dd_fit.get('fit_b') is not None:
@@ -454,11 +488,11 @@ def main():
         dd_c5 = None
 
     zones.append({
-        'zone': 'exit',
-        'base_start': (H5_DATE + timedelta(days=int(d_ht['median']) + int(d_tnb['q25']))).strftime('%Y-%m-%d'),
-        'base_end': (H5_DATE + timedelta(days=int(d_ht['median']) + int(d_tnb['q75']))).strftime('%Y-%m-%d'),
-        'outer_start': (H5_DATE + timedelta(days=int(d_ht['min']) + int(d_tnb['min']))).strftime('%Y-%m-%d'),
-        'outer_end': (H5_DATE + timedelta(days=int(d_ht['max']) + int(d_tnb['max']))).strftime('%Y-%m-%d'),
+        'zone': 'b5_bottom',
+        'base_start': exit_base_start.strftime('%Y-%m-%d'),
+        'base_end': exit_base_end.strftime('%Y-%m-%d'),
+        'outer_start': exit_outer_start.strftime('%Y-%m-%d'),
+        'outer_end': exit_outer_end.strftime('%Y-%m-%d'),
         'price_low': "" if b5_low is None else f"{b5_low:.0f}",
         'price_high': "" if b5_high is None else f"{b5_high:.0f}",
         'anchor_event': "projected B5",

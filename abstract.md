@@ -85,7 +85,7 @@ zone-map cells always use ISO.
 3. A leave-one-cycle-out (LOOCO) backtest that hides one cycle's top
    and bottom from the fit and reports the error of the prediction — the
    honest error bar attached to the headline numbers in (4).
-4. **Forward zone estimates** (accumulation / distribution / exit) for the
+4. **Forward zone estimates** (bottom / accumulation / top / re-entry) for the
    next BTC cycle — the load-bearing **decision windows** that follow from
    (1) + (3). Each published as a base-case interquartile band overlaid on
    a wider historical envelope, with a stated cross-check status.

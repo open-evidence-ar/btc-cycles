@@ -16,10 +16,10 @@ Custom subagents are defined globally at `D:\opencode\config\opencode\agent\`. I
 
 | Agent | Model | Purpose |
 |-------|-------|---------|
-| `@sub-agent-1` | `opencode/deepseek-v4-flash-free` | General-purpose — research, fact-checking, bash, editing |
-| `@sub-agent-2` | `opencode/mimo-v2.5-free` | General-purpose — research, fact-checking, bash, editing |
-| `@sub-agent-3` | `opencode/big-pickle` | General-purpose — research, fact-checking, bash, editing |
-| `@sub-agent-4` | `opencode/north-mini-code-free` | General-purpose — research, fact-checking, bash, editing |
+| `@sub-agent-1` | `opencode/mimo-v2.6-flash-free` | General-purpose — research, fact-checking, bash, editing |
+| `@sub-agent-2` | `opencode/muse-spark-1.3-contributor-free` | General-purpose — research, fact-checking, bash, editing |
+| `@sub-agent-3` | `opencode/space-bunny-free` | General-purpose — research, fact-checking, bash, editing |
+| `@sub-agent-4` | `opencode/nemotron-3.5-lightning-free` | General-purpose — research, fact-checking, bash, editing |
 
 All agents have identical permissions (read/grep/glob/websearch/webfetch/edit/bash). The **orchestrator** decides the task type at invocation time via the prompt — not the agent config.
 
@@ -57,6 +57,15 @@ Remove-Item $askpass
 ```
 
 Full reference (init/reset/Pages/renormalize): `docs/github-workflow.md`.
+
+## Local Jekyll build (Windows PATH note)
+
+Some Windows shells do not have Ruby on `PATH`; plain `bundle exec jekyll
+build` then fails. The working command on this machine prefixes Ruby 3.3:
+
+```powershell
+$env:PATH = "C:\Ruby33-x64\bin;$env:PATH"; bundle exec jekyll build
+```
 
 ## Quick refresh workflow
 
@@ -108,6 +117,64 @@ Key data flow notes:
 | I-19 | Macro cycle-tied prediction | `tests/test_alt_timing.py::test_macro_assets_use_cycle_tied_projection` (+ 2 companions) | **done** |
 | I-19b | Gold (GC=F) in macro set + bull-support-band cross-check | `tests/test_alt_timing.py::test_gold_support_band_populated` (+ C8g presence/snapshot; `tests/test_macro_provenance.py` gold gates) | **done** |
 | I-21 | Curve-regime multiplier overlay on B4 bands (proper 10y-2y) | `tests/test_yield_provenance.py`, `tests/test_curve_state.py`, `tests/test_regime_mult.py`, `tests/test_regime_integration.py` | **done** |
+| I-22 | Provisional open-cycle bottoms (`bottom_status` + `bottom_tracking` banner) | `tests/test_bottom_status.py` | **done** |
+| I-22a | Zone-band non-overlap clamp (R-5 enforcement) | `tests/test_zones.py::test_zones_dont_overlap_base_bands`, `test_zones.py::test_zone_chronological_order`, `tests/test_alt_timing.py::test_alt_next_cycle_zones_no_overlap`, `::test_alt_next_cycle_zones_chronological_order` | **done** |
+| I-22b | Zone keys made direction-neutral (`exit`→`b5_bottom`, `distribution`→`top`, `bear_bottom`→`bottom`) | `tests/test_zones.py` (vocab + shape gates) | **done** |
+
+Zone non-overlap note (I-22a): R-5 promises the four zones are mutually
+non-overlapping, and they were not. The exit band is built independently as
+`H5 + median(ht) + tnb_q25..q75` while distribution is `H5 + ht_q25..q75`, so
+they collide whenever `median(ht) + tnb_q25 < ht_q75` — true for any asset whose
+top-window IQR exceeds its lower-quartile post-top-to-bottom duration (gold:
+IQR 549d vs q25 119d). Shipped output had 2 base-band and 6 outer-band
+overlaps. `_shift_after()` in both zone builders TRANSLATES the exit band to
+open the day after distribution closes, preserving its width so the published
+IQR spread is unchanged. Clamp outer first, then base against
+`max(dist_base_end + 1d, outer_start)` — the reverse order breaks
+base-within-outer (NDX). The old `test_alt_next_cycle_zones_no_overlap` was
+named for this contract but checked 1 of 6 adjacent pairs, base bands only; it
+now checks all six across both band types, plus chronological order.
+
+Zone vocabulary note (I-22b): the `zone` column may only contain the four keys
+declared in `tests/test_zones.py::CANONICAL_ZONES` — `bottom` (B4, low, entry),
+`accumulation` (H5, price-free, hold), `top` (C5, high, **exit**),
+`b5_bottom` (B5, low, re-entry). The old keys were inverted from a trader's
+reading: the zone named `exit` was a bear *bottom*, and the zone holding the
+cycle *top* was named `distribution` and never said "top". Action words live
+only in prose now, never in a key. `ZONE_SEMANTICS[...][1]` carries each zone's
+price direction and is what chart markers are drawn from — B4/B5 get
+`triangle-down`, the C5 top gets `triangle-up`. All three were previously
+backwards. Gates: `test_zones.py::test_cycle_shape_price_ordering` (top centre
+> b5_bottom centre, 11/11), `::test_rising_bear_bottoms_outside_documented_exceptions`
+(DXY/TLT pinned — neither has a rise-then-fall projected shape).
+
+Rule T/B window bound note (I-22): the ±21d neighbourhood re-pick in `rule_t` /
+`rule_b` is now clamped to `[window_start, window_end]`, and the price is
+re-read at the clamped date. Previously the re-pick could emit an extremum
+outside its own window (WGMI produced a C4 "bottom" 75 days after its top,
+before Rule B's `top+90d` start). Verified a no-op for BTC C1–C3.
+
+Provisional-bottom convention (I-22): while a cycle is open — i.e. its *next*
+halving has not yet occurred — Rule B's window has no right edge, so any bottom
+found is a **running minimum that can only fall**. It is emitted in dedicated
+columns (`bottom_status` = `provisional_low_to_date`, `bottom_as_of`,
+`b4_low_to_date`, `b4_low_to_date_price`, `D_asset_low_to_date_to_top`) and the
+confirmed fields (`asset_next_bear_bottom_*`, `D_asset_top_to_next_bottom`,
+`drawdown_asset_pct`) stay **empty**. Eligibility in
+`build_alt_forward_ranges.py` is therefore per-statistic, not per-asset:
+bottom-dependent statistics require a closed cycle; top-dependent ones
+(`mult_asset_bottom_to_top`, `D_asset_*_halving_to_top`,
+`D_asset_prev_bottom_to_halving`) legitimately include the open cycle because
+`mult = top / pre_halving_bottom` needs only observed quantities. Surface via
+`bottom_tracking` in `_data/cycle_status.json` → the `now-stamp` banner, always
+labelled *provisional*. **Never resolve this by refreshing data.** See
+`docs/blockers/I-17-c4-provisional-bottom.md`.
+
+Merge determinism note (I-22): any `sort_values("date").drop_duplicates(
+keep="last")` over multiple source snapshots must use `kind="stable"` — pandas'
+default quicksort is unstable, so the "later source wins" tie-break on a shared
+date was arbitrary between runs. Fixed in `build_alt_cycle_metrics.py` and
+`build_curve_state.py`.
 
 Rule T tuning note (I-05): window upper bound was tightened from
 `halving + 1500d` (DESIGN.md §5.1 literal) to

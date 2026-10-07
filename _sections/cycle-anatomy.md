@@ -167,9 +167,9 @@ halving-specific timing variance. The IQR ratio is more robust to outliers
 than the min-max; the outer ratio confirms the direction.
 
 We surface this as an additive cross-check, not a replacement: the
-distribution zone row in `data/processed/next_cycle_zones.csv` carries the
+top zone row in `data/processed/next_cycle_zones.csv` carries the
 full reconciliation in its `compression_fit_note` column, and chart C6 draws
-both windows visually (orange H5-anchored distribution band, translucent
+both windows visually (orange H5-anchored top band, translucent
 purple B4-anchored folklore cross-check band).
 
 #### Why the "365-day bear" is loose

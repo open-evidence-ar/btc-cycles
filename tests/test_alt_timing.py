@@ -236,7 +236,7 @@ def test_alt_next_cycle_zones_structure():
     # Each asset has exactly 4 zones: bear_bottom, accumulation, distribution, exit
     for asset in EXPECTED_ZONE_ASSETS:
         zones = set(df[df["asset"] == asset]["zone"].unique())
-        assert zones == {"bear_bottom", "accumulation", "distribution", "exit"}, (
+        assert zones == {"bottom", "accumulation", "top", "b5_bottom"}, (
             f"{asset}: expected 4 zones, got {zones}"
         )
 
@@ -251,7 +251,7 @@ def test_gold_support_band_populated():
     assert "support_band_low" in df.columns and "support_band_high" in df.columns, (
         "alt_next_cycle_zones.csv missing support_band_low/support_band_high columns"
     )
-    gold_bb = df[(df["asset"] == "gold") & (df["zone"] == "bear_bottom")]
+    gold_bb = df[(df["asset"] == "gold") & (df["zone"] == "bottom")]
     assert not gold_bb.empty, "gold: missing bear_bottom row"
     r = gold_bb.iloc[0]
     assert r["support_band_low"] != "" and r["support_band_high"] != "", (
@@ -264,7 +264,7 @@ def test_gold_support_band_populated():
     assert 2500 <= lo <= 4500, f"gold: support band low {lo} outside plausible range"
     assert 2500 <= hi <= 4500, f"gold: support band high {hi} outside plausible range"
     for asset in EXPECTED_ZONE_ASSETS - {"gold"}:
-        others = df[(df["asset"] == asset) & (df["zone"] == "bear_bottom")]
+        others = df[(df["asset"] == asset) & (df["zone"] == "bottom")]
         assert not others.empty, f"{asset}: missing bear_bottom row"
         o = others.iloc[0]
         assert o["support_band_low"] == "" and o["support_band_high"] == "", (
@@ -302,7 +302,7 @@ def test_macro_assets_distribution_has_price_band():
     a real band, unlike the legacy historical envelope)."""
     df = pd.read_csv(ALT_ZONES, keep_default_na=False)
     for asset in MACRO_ASSETS_I19:
-        dist = df[(df["asset"] == asset) & (df["zone"] == "distribution")]
+        dist = df[(df["asset"] == asset) & (df["zone"] == "top")]
         assert not dist.empty, f"{asset}: missing distribution zone"
         r = dist.iloc[0]
         assert r["price_low"] != "" and r["price_high"] != "", (
@@ -323,7 +323,7 @@ def test_macro_assets_bear_bottom_has_dates():
     (cycle-tied projection anchors on BTC B4 + alt lag)."""
     df = pd.read_csv(ALT_ZONES, keep_default_na=False)
     for asset in MACRO_ASSETS_I19:
-        bb = df[(df["asset"] == asset) & (df["zone"] == "bear_bottom")]
+        bb = df[(df["asset"] == asset) & (df["zone"] == "bottom")]
         assert not bb.empty, f"{asset}: missing bear_bottom zone"
         r = bb.iloc[0]
         for col in ["base_start", "base_end", "outer_start", "outer_end"]:
@@ -331,20 +331,68 @@ def test_macro_assets_bear_bottom_has_dates():
 
 
 def test_alt_next_cycle_zones_no_overlap():
-    """Per asset: distribution zone must not overlap accumulation zone
-    (distribution must start after halving, accumulation ends at halving)."""
+    """DESIGN.md §9.4 R-5: the four zones are MUTUALLY NON-OVERLAPPING.
+
+    Checks all six adjacent zone pairs (not just distribution vs accumulation)
+    and BOTH band types. The previous version of this test asserted only
+    `distribution.base_start >= accumulation.base_end`, so a real contract
+    breach shipped unnoticed: gold and tlt had overlapping BASE bands and six
+    assets had overlapping OUTER bands, with all 211 gates green.
+
+    Root cause of the breach: the exit band is built independently as
+    H5 + median(D_halving_to_top) + D_top_to_next_bottom[q25..q75] while the
+    distribution band is H5 + D_halving_to_top[q25..q75]; they collide whenever
+    median(ht) + tnb_q25 < ht_q75, which holds for any asset whose top-window
+    IQR exceeds its lower-quartile post-top-to-bottom duration.
+    """
     df = pd.read_csv(ALT_ZONES, keep_default_na=False)
+    order = ["bottom", "accumulation", "top", "b5_bottom"]
+    violations = []
     for asset in EXPECTED_ZONE_ASSETS:
-        # Skip rows with empty dates (insufficient-data placeholders)
         sub = df[df["asset"] == asset]
-        acc = sub[sub["zone"] == "accumulation"].iloc[0]
-        dist = sub[sub["zone"] == "distribution"].iloc[0]
-        if dist["base_start"] == "" or acc["base_end"] == "":
+        if sub.empty:
+            violations.append(f"{asset}: no zone rows")
             continue
-        # Distribution base starts after H5; accumulation ends at H5
-        assert dist["base_start"] >= acc["base_end"], (
-            f"{asset}: distribution starts {dist['base_start']} before "
-            f"accumulation ends {acc['base_end']}"
+        by_zone = {r["zone"]: r for _, r in sub.iterrows()}
+        for earlier, later in zip(order, order[1:]):
+            a, b = by_zone.get(earlier), by_zone.get(later)
+            if a is None or b is None:
+                continue
+            # base bands must not overlap
+            if a["base_end"] and b["base_start"] and a["base_end"] != "" and b["base_start"] != "":
+                gap = (pd.to_datetime(a["base_end"]) - pd.to_datetime(b["base_start"])).days
+                if gap > 0:
+                    violations.append(
+                        f"{asset} {earlier}->{later} BASE overlap +{gap}d "
+                        f"(base_end={a['base_end']} > base_start={b['base_start']})"
+                    )
+            # outer bands must not overlap either
+            if a["outer_end"] and b["outer_start"] and a["outer_end"] != "" and b["outer_start"] != "":
+                gap = (pd.to_datetime(a["outer_end"]) - pd.to_datetime(b["outer_start"])).days
+                if gap > 0:
+                    violations.append(
+                        f"{asset} {earlier}->{later} OUTER overlap +{gap}d "
+                        f"(outer_end={a['outer_end']} > outer_start={b['outer_start']})"
+                    )
+    assert not violations, (
+        "R-5 mutual non-overlap violated (DESIGN.md §9.4):\n  "
+        + "\n  ".join(violations)
+    )
+
+
+def test_alt_next_cycle_zones_chronological_order():
+    """Sorting by outer_start must yield the canonical zone sequence.
+
+    Non-overlap alone does not pin ordering: a scrambled but disjoint set of
+    bands would pass the overlap check while inverting the cycle narrative.
+    """
+    df = pd.read_csv(ALT_ZONES, keep_default_na=False)
+    expected = ["bottom", "accumulation", "top", "b5_bottom"]
+    for asset in sorted(df["asset"].unique()):
+        sub = df[(df["asset"] == asset) & (df["outer_start"] != "")]
+        got = sub.sort_values("outer_start")["zone"].tolist()
+        assert got == expected, (
+            f"{asset}: zones out of chronological order: {got} != {expected}"
         )
 
 
@@ -380,7 +428,7 @@ def test_alt_next_cycle_zones_bear_bottom_floor():
     # check must use the last CONFIRMED bottom (C3 post-bottom).
     asset = "eth"
     bb = zones_df[(zones_df["asset"] == asset)
-                  & (zones_df["zone"] == "bear_bottom")]
+                  & (zones_df["zone"] == "bottom")]
     assert not bb.empty, f"{asset}: no bear_bottom row"
     price_low_str = bb.iloc[0]["price_low"]
     assert price_low_str != "", f"{asset}: bear_bottom price_low is empty"

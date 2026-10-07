@@ -311,10 +311,10 @@ def _build_asset_block(asset_upper, zones, h5_date):
     price_history, anchored_on, method}`` or ``None`` if the asset has no
     usable zone data.
     """
-    bb = zones.get("bear_bottom")
+    bb = zones.get("bottom")
     accum = zones.get("accumulation")
-    dist = zones.get("distribution")
-    exit_zone = zones.get("exit")
+    dist = zones.get("top")
+    b5_zone = zones.get("b5_bottom")
 
     # For ETH (ror mode) the canonical B4 lives in the distribution row.
     # Detect by base_start presence: if bear_bottom has no base_start, use
@@ -385,18 +385,18 @@ def _build_asset_block(asset_upper, zones, h5_date):
             "role": "attention peak - top watch",
         })
     # B5 exit
-    if exit_zone and (exit_zone.get("base_start") or "").strip():
+    if b5_zone and (b5_zone.get("base_start") or "").strip():
         later_windows.append({
-            "label": "B5 - post-C5-top exit",
-            "exec_label": "Post-top exit",
-            "base_start": exit_zone["base_start"],
-            "base_end": exit_zone["base_end"],
-            "outer_start": (exit_zone.get("outer_start") or exit_zone["base_start"]).strip(),
-            "outer_end": (exit_zone.get("outer_end") or exit_zone["base_end"]).strip(),
-            "price_low": fmt_price(exit_zone.get("price_low", "")),
-            "price_high": fmt_price(exit_zone.get("price_high", "")),
-            "price_center": _zone_center(exit_zone.get("price_low", ""), exit_zone.get("price_high", ""), exit_zone.get("anchor_price", "")),
-            "role": "next attention peak - exit watch",
+            "label": "B5 - post-C5-top bear bottom",
+            "exec_label": "Post-top re-entry",
+            "base_start": b5_zone["base_start"],
+            "base_end": b5_zone["base_end"],
+            "outer_start": (b5_zone.get("outer_start") or b5_zone["base_start"]).strip(),
+            "outer_end": (b5_zone.get("outer_end") or b5_zone["base_end"]).strip(),
+            "price_low": fmt_price(b5_zone.get("price_low", "")),
+            "price_high": fmt_price(b5_zone.get("price_high", "")),
+            "price_center": _zone_center(b5_zone.get("price_low", ""), b5_zone.get("price_high", ""), b5_zone.get("anchor_price", "")),
+            "role": "next attention peak - re-entry watch",
         })
 
     asset_lower = asset_upper.lower()
@@ -406,10 +406,140 @@ def _build_asset_block(asset_upper, zones, h5_date):
         "anchored_on": "observed C4 top",
         "method": method,
         "last_observed_event": last_observed,
+        "bottom_tracking": _bottom_tracking(asset_upper.lower(), zones),
         "next_window": next_window,
         "later_windows": later_windows,
         "price_history": price_history,
     }
+
+
+def _bottom_tracking(asset: str, zones: dict | None = None):
+    """Provisional bear-bottom tracker for the open C4 cycle.
+
+    Reads the running minimum emitted by build_cycle_metrics /
+    build_alt_cycle_metrics (bottom_status == "provisional_low_to_date"). This
+    is NOT a confirmed bottom: Rule B's window for C4 runs to H5-30d (2028-03-02),
+    far past available data, so the value can only fall as new data arrives. It
+    is surfaced so the reader can see where the bottom is tracking without it
+    being mistaken for a confirmed event.
+
+    When the asset's published ``bottom`` zone (the PROJECTED B4 band) is
+    available, the tracking value is also placed in relation to it. Without
+    this the banner printed two sentences — "lowest so far $58,526" then
+    "corridor $29,596-$53,673" — with nothing connecting them, so a reader had
+    to work out on their own that price had not come close to the band. The
+    observed low can sit far ABOVE the forecast corridor precisely because the
+    bear has not finished.
+    """
+    if asset == "btc":
+        path = PROCESSED / "btc_cycle_metrics.csv"
+        date_col, price_col, top_col, d_col = (
+            "b4_low_to_date", "b4_low_to_date_price",
+            "final_top_date", "D_low_to_date_to_top",
+        )
+        if not path.exists():
+            return None
+        with open(path, newline="", encoding="utf-8") as fh:
+            rows = list(csv.DictReader(fh))
+    else:
+        path = PROCESSED / "alt_cycle_metrics.csv"
+        date_col, price_col, top_col, d_col = (
+            "b4_low_to_date", "b4_low_to_date_price",
+            "asset_local_top_date", "D_asset_low_to_date_to_top",
+        )
+        if not path.exists():
+            return None
+        with open(path, newline="", encoding="utf-8") as fh:
+            rows = [r for r in csv.DictReader(fh) if r.get("asset") == asset]
+
+    for r in rows:
+        if r.get("cycle_id") != "C4":
+            continue
+        if (r.get("bottom_status") or "") != "provisional_low_to_date":
+            continue
+        d = (r.get(date_col) or "").strip()
+        if not d:
+            continue
+
+        raw_price = (r.get(price_col) or "").strip()
+        out = {
+            "status": "provisional_low_to_date",
+            "label": "Lowest close since C4 top (provisional)",
+            "exec_label": "Lowest so far",
+            "date": d,
+            "price": fmt_price(raw_price),
+            "as_of": (r.get("bottom_as_of") or "").strip(),
+            "days_since_top": (r.get(d_col) or "").strip(),
+            "note": (
+                "Running minimum over [C4 top +90d, latest data]. Not a confirmed "
+                "bottom - C4 stays open until H5 (2028-04-01), and Rule B's window "
+                "has no right edge yet, so this value can only fall."
+            ),
+        }
+
+        # Relation to the published PROJECTED B4 band, plus that band's own
+        # cross-check verdict so the forecast's confidence travels with it.
+        zone = (zones or {}).get("bottom") if zones else None
+        try:
+            obs = float(raw_price)
+        except (TypeError, ValueError):
+            obs = None
+        if zone is not None and obs is not None:
+            def _f(k):
+                v = (zone.get(k) or "").strip()
+                try:
+                    return float(v)
+                except (TypeError, ValueError):
+                    return None
+            lo, hi, ctr = _f("price_low"), _f("price_high"), _f("anchor_price")
+            if hi is not None and hi > 0:
+                if obs > hi:
+                    # measured against the corridor's TOP edge
+                    state, edge = "above_band", "top"
+                    gap = (obs - hi) / hi * 100.0
+                elif lo is not None and obs < lo:
+                    # measured against the corridor's BOTTOM edge -- measuring a
+                    # sub-band value against the top produced nonsense like
+                    # "+32% BELOW the corridor top".
+                    state, edge = "below_band", "bottom"
+                    gap = (obs - lo) / lo * 100.0
+                else:
+                    state, edge = "in_band", ""
+                    gap = 0.0
+                out["vs_band"] = state
+                out["band_price_low"] = fmt_price(lo) if lo is not None else ""
+                out["band_price_high"] = fmt_price(hi)
+                out["gap_pct_vs_band"] = f"{gap:+.1f}"
+                out["gap_pct_vs_band_edge"] = edge
+                out["gap_pct_vs_band_center"] = (
+                    f"{(obs - ctr) / ctr * 100.0:+.1f}" if ctr else ""
+                )
+                out["vs_band_text"] = {
+                    "above_band": (
+                        f"still {gap:+.1f}% ABOVE the projected B4 corridor top "
+                        f"({out['band_price_high']}) - price has not entered the band yet"
+                    ),
+                    "in_band": (
+                        f"INSIDE the projected B4 corridor "
+                        f"({out['band_price_low']}-{out['band_price_high']})"
+                    ),
+                    "below_band": (
+                        f"{gap:+.1f}% vs the projected B4 corridor bottom "
+                        f"({out['band_price_low']}) - already through the published band"
+                    ),
+                }[state]
+            cc = (zone.get("cross_check_ok") or "").strip()
+            out["band_cross_check_ok"] = cc if cc else ""
+            if cc.lower() in ("false", "0"):
+                out["band_cross_check_note"] = (
+                    "Projected B4 band failed its own cross-check (Stage 1 vs "
+                    "Stage 2 disagree by >15%); the published corridor is their "
+                    "union and carries that disagreement."
+                )
+            else:
+                out["band_cross_check_note"] = ""
+        return out
+    return None
 
 
 def _build_btc_block(btc_zones, h5_date):
@@ -420,10 +550,10 @@ def _build_btc_block(btc_zones, h5_date):
 
     Mirrors ``_build_asset_block`` output shape exactly.
     """
-    bb = btc_zones["bear_bottom"]
+    bb = btc_zones["bottom"]
     accum = btc_zones.get("accumulation", {})
-    dist = btc_zones.get("distribution", {})
-    exit_zone = btc_zones.get("exit", {})
+    dist = btc_zones.get("top", {})
+    b5_zone = btc_zones.get("b5_bottom", {})
 
     obs_c4_date = (bb.get("observed_c4_top_date") or "2025-10-06").strip()
     obs_c4_price = (bb.get("observed_c4_top_price") or "124728").strip()
@@ -460,26 +590,27 @@ def _build_btc_block(btc_zones, h5_date):
     later_windows = [
         {"label": "H5 - next halving", "exec_label": "Next halving",
          "date": h5, "role": "patience window end"},
-        {"label": "C5 distribution (top)", "exec_label": "Next cycle top",
+        {"label": "C5 top (distribution)", "exec_label": "Next cycle top (exit window)",
          "base_start": dist["base_start"], "base_end": dist["base_end"],
          "outer_start": dist["outer_start"], "outer_end": dist["outer_end"],
          "price_low": fmt_price(dist.get("price_low", "186863")),
          "price_high": fmt_price(dist.get("price_high", "338883")),
          "price_center": _zone_center(dist.get("price_low", "186863"), dist.get("price_high", "338883"), "272004"),
          "role": "attention peak - top watch"},
-        {"label": "B5 - post-C5-top exit", "exec_label": "Post-top exit",
-         "base_start": exit_zone["base_start"], "base_end": exit_zone["base_end"],
-         "outer_start": exit_zone["outer_start"], "outer_end": exit_zone["outer_end"],
-         "price_low": fmt_price(exit_zone.get("price_low", "58447")),
-         "price_high": fmt_price(exit_zone.get("price_high", "79759")),
-         "price_center": _zone_center(exit_zone.get("price_low", "58447"), exit_zone.get("price_high", "79759"), "69103"),
-         "role": "next attention peak - exit watch"},
+        {"label": "B5 - post-C5-top bear bottom", "exec_label": "Post-top re-entry",
+         "base_start": b5_zone["base_start"], "base_end": b5_zone["base_end"],
+         "outer_start": b5_zone["outer_start"], "outer_end": b5_zone["outer_end"],
+         "price_low": fmt_price(b5_zone.get("price_low", "58447")),
+         "price_high": fmt_price(b5_zone.get("price_high", "79759")),
+         "price_center": _zone_center(b5_zone.get("price_low", "58447"), b5_zone.get("price_high", "79759"), "69103"),
+         "role": "next attention peak - re-entry watch"},
     ]
 
     return {
         "anchored_on": "observed C4 top",
         "method": "2_stage (Stage 1 + Stage 2)",
         "last_observed_event": last_observed,
+        "bottom_tracking": _bottom_tracking("btc", btc_zones),
         "next_window": next_window,
         "later_windows": later_windows,
         "price_history": collect_price_history("btc"),
@@ -488,11 +619,11 @@ def _build_btc_block(btc_zones, h5_date):
 
 def main():
     btc_zones = pick_btc_zones()
-    if "bear_bottom" not in btc_zones:
+    if "bottom" not in btc_zones:
         print("ERROR: next_cycle_zones.csv missing bear_bottom row",
               file=sys.stderr)
         return 1
-    btc_b4 = btc_zones["bear_bottom"]
+    btc_b4 = btc_zones["bottom"]
     h5_date = _load_h5_from_events()
 
     # ---- per-asset blocks (BTC first, then alts in display order) ----
@@ -551,7 +682,7 @@ def main():
         "pre_b4_bear": "Late bear - next bottom watch imminent",
         "in_b4_window": "Bottom window open - attention peak",
         "in_accumulation": "Patience window - accumulation",
-        "exit": "Post-top bear - exit watch",
+        "b5_bottom": "Post-top bear - re-entry watch",
     }
 
     data = {

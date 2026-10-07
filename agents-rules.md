@@ -5,8 +5,8 @@
 - **Parallelize independent work.** When tasks are independent (e.g., checking separate sources, writing unrelated scripts), invoke subagents concurrently using separate parallel `@agent-name` calls.
 
 ## Subagent roster
-- `@grounding-1` (DeepSeek V4 Flash Free), `@grounding-2` (MiMo V2.5 Free), `@grounding-3` (Big Pickle): online source verification, fact-checking, evidence tracing. Read-only + websearch/webfetch.
-- `@scripting` (North Mini Code Free): bash commands, automation, data processing, file manipulation scripts. Full bash and edit access.
+- `@grounding-1` (MiMo-V2.6-Flash Free), `@grounding-2` (Ling 3.0 Flash Fin Free), `@grounding-3` (Nemotron 3 Ultra Free): online source verification, fact-checking, evidence tracing. Read-only + websearch/webfetch.
+- `@scripting` (Nemotron 3.5 Lightning Free): bash commands, automation, data processing, file manipulation scripts. Full bash and edit access.
 
 ## Invocation
 - The parent agent chooses which subagent to use based on task type and provides instructions at invocation time. Subagents have no built-in prompt.

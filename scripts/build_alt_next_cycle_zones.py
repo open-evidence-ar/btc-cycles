@@ -118,6 +118,20 @@ def _num(v):
         return None
 
 
+def _shift_after(band_start, band_end, floor_date):
+    """Move a date band forward so it starts on/after ``floor_date``.
+
+    The band is TRANSLATED, not truncated: its width is preserved, so the
+    published spread (which carries the IQR uncertainty) is unchanged and only
+    the placement moves. Used to enforce DESIGN.md §9.4 R-5 mutual
+    non-overlap between the distribution and exit zones.
+    """
+    delta = (floor_date - band_start).days
+    if delta > 0:
+        return floor_date, band_end + timedelta(days=delta)
+    return band_start, band_end
+
+
 def _load_btc_projected_b4_center():
     """Load BTC's projected B4 date (center of bear_bottom base band) from
     next_cycle_zones.csv. This is the BTC driver timing — alts should lag
@@ -130,7 +144,7 @@ def _load_btc_projected_b4_center():
     if not btc_zones_path.exists():
         return None
     df = pd.read_csv(btc_zones_path, keep_default_na=False)
-    bb = df[df["zone"] == "bear_bottom"]
+    bb = df[df["zone"] == "bottom"]
     if bb.empty:
         return None
     bs = bb.iloc[0].get("base_start", "")
@@ -153,7 +167,7 @@ def _load_btc_b4_price():
     if not btc_zones_path.exists():
         return None
     df = pd.read_csv(btc_zones_path, keep_default_na=False)
-    bb = df[df["zone"] == "bear_bottom"]
+    bb = df[df["zone"] == "bottom"]
     if bb.empty:
         return None
     row = bb.iloc[0]
@@ -429,6 +443,12 @@ def _extract_bear_bottom_chain(metrics_df, asset, exclude_last_cycle_post=False)
             continue
         pre = _num(r.get("asset_pre_halving_bottom_price"))
         post = _num(r.get("asset_next_bear_bottom_price"))
+        # Open-cycle provisional bottoms must never enter a fit that predicts
+        # that very bottom. Today they are already empty (see
+        # build_alt_cycle_metrics.py); this gate keeps it true even if a
+        # provisional value is ever written into the confirmed column.
+        if str(r.get("bottom_status", "")) != "confirmed":
+            post = None
         triple.append((r["cycle_id"], pre, post))
 
     if not triple:
@@ -503,7 +523,11 @@ def _project_eth_btc_ror(metrics_df, btc_b4_info, ror_cycle='C2'):
       dict with available, mode, projected_b4, b4_band_low, b4_band_high,
       ror_used, ror_cycle_label, fit_note, and the underlying stats.
     """
-    # ETH per-cycle pre/post bottoms (C4 post excluded as unconfirmed)
+    # ETH per-cycle pre/post bottoms. Post-bottoms are included only where the
+    # cycle is closed and the bottom is confirmed; open cycles carry a
+    # provisional running-minimum bottom instead (bottom_status column) and must
+    # not enter a fit that predicts that very bottom. Keyed off bottom_status
+    # rather than a hardcoded cycle id so it still holds when C5 opens.
     eth_rows = metrics_df[(metrics_df["asset"] == "eth") &
                           (~metrics_df["cycle_source"].str.contains("proxy", na=False)) &
                           (metrics_df["cycle_source"] != "missing")].sort_values("cycle_id")
@@ -513,8 +537,8 @@ def _project_eth_btc_ror(metrics_df, btc_b4_info, ror_cycle='C2'):
         cid = r.get("cycle_id", "")
         pre = _num(r.get("asset_pre_halving_bottom_price"))
         post = _num(r.get("asset_next_bear_bottom_price"))
-        if cid == "C4":
-            post = None  # exclude unconfirmed C4 post-bottom
+        if str(r.get("bottom_status", "")) != "confirmed":
+            post = None  # provisional / none — excluded as unconfirmed
         eth_cycle_data[cid] = (pre, post)
 
     # BTC per-cycle pre/post bottoms (C4 post excluded)
@@ -1360,7 +1384,7 @@ def main() -> None:
                 or int(d_pvbh["n_with_proxy"]) < 1
                 or int(d_ht["n_with_proxy"]) < 1
                 or int(d_tnb["n_with_proxy"]) < 1) and asset not in FORCE_BORROW_ASSETS:
-            for zone in ["bear_bottom", "accumulation", "distribution", "exit"]:
+            for zone in ["bottom", "accumulation", "top", "b5_bottom"]:
                 zone_rows.append({
                     "asset": asset, "zone": zone,
                     "base_start": "", "base_end": "",
@@ -1660,7 +1684,7 @@ def main() -> None:
                 multiplier_source = src
 
         zone_rows.append({
-            "asset": asset, "zone": "bear_bottom",
+            "asset": asset, "zone": "bottom",
             "base_start": b4_base_start, "base_end": b4_base_end,
             "outer_start": b4_outer_start, "outer_end": b4_outer_end,
             "price_low": "" if b4_price_low is None or not math.isfinite(b4_price_low) else "%.4f" % b4_price_low,
@@ -1758,7 +1782,7 @@ def main() -> None:
 
         note = proj_out.get('fit_note', 'no data')
         zone_rows.append({
-            "asset": asset, "zone": "distribution",
+            "asset": asset, "zone": "top",
             "base_start": dist_base_start.strftime("%Y-%m-%d"),
             "base_end": dist_base_end.strftime("%Y-%m-%d"),
             "outer_start": dist_outer_start.strftime("%Y-%m-%d"),
@@ -1786,6 +1810,32 @@ def main() -> None:
         exit_base_end = H5_DATE + timedelta(days=int(ht_median) + int(d_tnb["q75"]))
         exit_outer_start = H5_DATE + timedelta(days=int(_num(d_ht["min"])) + int(_num(d_tnb["min"])))
         exit_outer_end = H5_DATE + timedelta(days=int(_num(d_ht["max"])) + int(_num(d_tnb["max"])))
+
+        # DESIGN.md §9.4 R-5: the four zones are mutually non-overlapping. The
+        # exit band is computed independently as
+        #   H5 + median(D_halving_to_top) + D_top_to_next_bottom[q25..q75]
+        # while the distribution band is H5 + D_halving_to_top[q25..q75], so
+        # they collide whenever median(ht) + tnb_q25 < ht_q75. That holds for
+        # every asset whose top-window IQR exceeds its lower-quartile
+        # post-top-to-bottom duration -- e.g. gold, where the top-window IQR is
+        # 549d against a 119d tnb q25. Not a data-quality artefact: removing the
+        # provisional C4 bottoms (I-22) moved these by only 5-8d.
+        # Shift the exit band forward so it opens the day after the distribution
+        # band closes, preserving its width so the published spread is unchanged.
+        # Order matters: clamp the OUTER band first, then the base band against
+        # max(dist_base_end + 1d, outer_start). Clamping base against
+        # dist_base_end alone pushed ndx's base_start (2031-03-26) ahead of its
+        # own outer_start (2031-04-19), breaking base-within-outer. Base width
+        # (tnb IQR) <= outer width (ht range + tnb range), so anchoring base at
+        # or after outer_start also keeps base_end <= outer_end.
+        exit_outer_start, exit_outer_end = _shift_after(
+            exit_outer_start, exit_outer_end, dist_outer_end + timedelta(days=1)
+        )
+        exit_base_start, exit_base_end = _shift_after(
+            exit_base_start,
+            exit_base_end,
+            max(dist_base_end + timedelta(days=1), exit_outer_start),
+        )
 
         # Exit price band: post-C5-top bear bottom (= asset B5).
         # For crypto with a 2-stage fit:
@@ -1827,7 +1877,7 @@ def main() -> None:
             exit_anchor_kind = exit_anchor_price = None
 
         zone_rows.append({
-            "asset": asset, "zone": "exit",
+            "asset": asset, "zone": "b5_bottom",
             "base_start": exit_base_start.strftime("%Y-%m-%d"),
             "base_end": exit_base_end.strftime("%Y-%m-%d"),
             "outer_start": exit_outer_start.strftime("%Y-%m-%d"),

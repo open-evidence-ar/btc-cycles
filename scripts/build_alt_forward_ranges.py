@@ -36,11 +36,37 @@ STATS = [
 CYCLES = ["C1", "C2", "C3", "C4"]
 ASSETS = ["eth", "xrp", "sol", "mstr", "wgmi", "spx", "ndx", "dxy", "tlt", "gold"]
 
-# Rows with these cycle_source values count as "actually observed"
-# (vs proxy or missing).
-ACTUAL_SOURCES = {"actual", "actual_C4_open"}
-PROXY_SOURCES = {"ETH_proxy_C1", "ETH_proxy_C2"}
-USABLE_SOURCES = ACTUAL_SOURCES | PROXY_SOURCES  # for n_with_proxy
+# Rows with these cycle_source values count as "actually observed" (vs proxy or
+# missing). "actual_C4_open" marks an OPEN cycle: its bottom is provisional (see
+# bottom_status in alt_cycle_metrics.csv), so it is a valid observation for
+# statistics that do not depend on the post-cycle bottom, but NOT for those that
+# do. Splitting the two is deliberate -- eligibility is a property of the
+# statistic, not of the asset:
+#   - bottom-dependent (D_top_to_next_bottom, drawdown) need a CONFIRMED bottom,
+#     i.e. a closed cycle. Observed as n_actual=4 for dxy/tlt but 3 for
+#     gold/ndx/spx before this split; the asymmetry was accidental, not designed.
+#   - top-dependent (D_prev_bottom_to_halving, D_halving_to_top, mult) only need
+#     the cycle top and the pre-halving bottom, both of which are fully observed
+#     for an open cycle, so C4 legitimately contributes.
+ACTUAL_SOURCES = {"actual"}
+OPEN_SOURCES = {"actual_C4_open"}
+BOTTOM_DEPENDENT_STATS = {"D_asset_top_to_next_bottom", "drawdown_asset_pct"}
+OBSERVED_SOURCES = ACTUAL_SOURCES | OPEN_SOURCES
+
+
+def _is_proxy(src: str) -> bool:
+    """True for any borrowed/proxy source label.
+
+    Hardcoding ETH_proxy_C1/C2 missed the mara_proxy_* rows used by WGMI, whose
+    values were folded into the statistics while being counted in neither
+    n_actual nor n_with_proxy. Match on the label instead.
+    """
+    return "proxy" in str(src)
+
+
+def _eligible_sources(stat: str) -> set[str]:
+    """Source labels that count as observed for a given statistic."""
+    return ACTUAL_SOURCES if stat in BOTTOM_DEPENDENT_STATS else OBSERVED_SOURCES
 
 # Market-cap hierarchy (highest to lowest): BTC -> ETH -> XRP -> SOL
 # For timing borrow: when an alt has <3 actual D_top_to_next_bottom samples,
@@ -145,9 +171,16 @@ def main() -> None:
         for stat in STATS:
             vals = {}      # cycle_id -> value
             sources = {}   # cycle_id -> cycle_source
+            eligible = _eligible_sources(stat)
             for _, r in asset_rows.iterrows():
                 src = r["cycle_source"]
                 if src == "missing":
+                    continue
+                # Structural exclusion: a provisional (open-cycle) bottom can
+                # never enter a bottom-dependent statistic. Today the value is
+                # already empty for these rows; this keeps that true even if a
+                # provisional value is ever written into the confirmed column.
+                if stat in BOTTOM_DEPENDENT_STATS and src in OPEN_SOURCES:
                     continue
                 v = r.get(stat)
                 if v == "" or pd.isna(v):
@@ -158,8 +191,10 @@ def main() -> None:
                 except (ValueError, TypeError):
                     continue
 
-            n_actual = sum(1 for c in vals if sources[c] in ACTUAL_SOURCES)
-            n_with_proxy = sum(1 for c in vals if sources[c] in USABLE_SOURCES)
+            n_actual = sum(1 for c in vals if sources[c] in eligible)
+            n_with_proxy = sum(
+                1 for c in vals if sources[c] in eligible or _is_proxy(sources[c])
+            )
             n = len(vals)
             # n is the count of populated values (with proxy if applicable)
             if n == 0:

@@ -79,7 +79,12 @@ def load_raw(key: str, pattern: str) -> pd.DataFrame:
         df = df.dropna(subset=["date", "close"])
         frames.append(df[["date", "close"]].rename(columns={"close": key}))
     merged = pd.concat(frames, ignore_index=True)
-    merged = merged.sort_values("date").drop_duplicates(subset=["date"], keep="last")
+    # kind="stable" required: default sort_values uses an unstable quicksort, so
+    # with several snapshots per tenor the "last file wins" tie-break on a shared
+    # date was arbitrary between runs.
+    merged = merged.sort_values("date", kind="stable").drop_duplicates(
+        subset=["date"], keep="last"
+    )
     return merged.sort_values("date").reset_index(drop=True)
 
 
