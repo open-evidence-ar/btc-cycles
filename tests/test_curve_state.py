@@ -35,20 +35,31 @@ def test_curve_state_series_exists_and_ordered():
 
 
 def test_curve_state_determinism():
-    """Re-running the builder yields a bit-identical file."""
+    """Re-running the builder yields the same series.
+
+    Line endings are normalised before hashing. The committed blob is stored
+    verbatim (see .gitattributes `*.csv -text`, which keeps manifest SHA-256
+    values valid on Linux), so a checkout on a CI runner carries the CRLF bytes
+    written on Windows -- while build_curve_state.py emits LF there. Comparing
+    raw bytes therefore failed on CI while passing on Windows, which says
+    nothing about determinism. Any real change to the series still fails.
+    """
     import subprocess
     import sys
 
-    # Rebuild into a temp path via monkeypatched module? Simpler: rebuild
-    # in-place then assert no git diff on the tracked file. We assert the
-    # byte content is stable across two consecutive builds.
     from pathlib import Path
     import hashlib
 
-    before = hashlib.sha256(Path(CSV).read_bytes()).hexdigest()
+    def _norm_hash():
+        # CRLF -> LF so the hash reflects data, not the platform's newline
+        return hashlib.sha256(
+            Path(CSV).read_bytes().replace(b"\r\n", b"\n")
+        ).hexdigest()
+
+    before = _norm_hash()
     subprocess.run([sys.executable, str(ROOT / "scripts" / "build_curve_state.py")],
                    check=True, capture_output=True)
-    after = hashlib.sha256(Path(CSV).read_bytes()).hexdigest()
+    after = _norm_hash()
     assert before == after
 
 
