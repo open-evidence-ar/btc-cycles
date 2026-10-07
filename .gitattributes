@@ -8,7 +8,15 @@
 *.js text eol=lf
 *.html text eol=lf
 *.txt text eol=lf
-*.csv text eol=lf
+# CSVs are DATA, not text: store them byte-for-byte (-text disables all
+# end-of-line conversion). data/raw/ is an immutable-snapshot store whose
+# manifest.txt records a SHA-256 of the exact bytes written by the fetchers.
+# With `text eol=lf` git rewrote CRLF -> LF in the blob, so the Linux CI
+# checkout hashed to different bytes than the manifest recorded and every
+# provenance gate failed there (btc/eth/xrp/sol/gold) while passing on Windows.
+# Storing the bytes verbatim keeps the recorded hash a true content hash on
+# every platform and honours the AGENTS.md rule-2 immutability guarantee.
+*.csv -text
 *.gemfile text eol=lf
 Gemfile text eol=lf
 *.pem text eol=lf
