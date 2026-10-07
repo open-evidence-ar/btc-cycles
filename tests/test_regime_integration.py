@@ -10,7 +10,11 @@ when the regime context is missing or n<3.
 import pandas as pd
 import pytest
 
-ZONES = r"D:\trading\data\processed\alt_next_cycle_zones.csv"
+from pathlib import Path
+
+# Repo-relative: CI runs on ubuntu, where a hardcoded D:\trading path does not
+# exist, so every gate here failed there with FileNotFoundError.
+ZONES = str(Path(__file__).resolve().parent.parent / "data" / "processed" / "alt_next_cycle_zones.csv")
 REQUIRED_COLS = {
     "regime_state_at_anchor",
     "regime_multiplier_b4",

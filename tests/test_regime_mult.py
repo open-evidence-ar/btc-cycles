@@ -16,9 +16,12 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-MULT_CSV = Path(r"D:\trading\data\processed\regime_multipliers.csv")
-ANCHOR_CSV = Path(r"D:\trading\data\processed\regime_anchor.csv")
-SCRIPT = r"D:\trading\scripts\build_regime_multipliers.py"
+# Repo-relative: CI runs on ubuntu, where a hardcoded D:\trading path does not
+# exist, so every gate here failed there with FileNotFoundError.
+ROOT = Path(__file__).resolve().parent.parent
+MULT_CSV = ROOT / "data" / "processed" / "regime_multipliers.csv"
+ANCHOR_CSV = ROOT / "data" / "processed" / "regime_anchor.csv"
+SCRIPT = str(ROOT / "scripts" / "build_regime_multipliers.py")
 
 MIN_SAMPLES = 3
 MULT_MIN, MULT_MAX = 0.5, 2.0

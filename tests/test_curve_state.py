@@ -9,10 +9,15 @@ persistence gate (I-21.3) behaves as specified.
 import pandas as pd
 import pytest
 
+from pathlib import Path
+
 from scripts.build_curve_state import classify_curve
 
-ROOT = __file__.rsplit("\\", 1)[0] and None
-CSV = r"D:\trading\data\processed\curve_state.csv"
+# Repo-relative, not a hardcoded D:\trading path: CI runs on ubuntu where an
+# absolute Windows path does not exist, so every gate here failed there with
+# FileNotFoundError regardless of the data.
+ROOT = Path(__file__).resolve().parent.parent
+CSV = ROOT / "data" / "processed" / "curve_state.csv"
 
 
 def load():
@@ -41,7 +46,7 @@ def test_curve_state_determinism():
     import hashlib
 
     before = hashlib.sha256(Path(CSV).read_bytes()).hexdigest()
-    subprocess.run([sys.executable, r"D:\trading\scripts\build_curve_state.py"],
+    subprocess.run([sys.executable, str(ROOT / "scripts" / "build_curve_state.py")],
                    check=True, capture_output=True)
     after = hashlib.sha256(Path(CSV).read_bytes()).hexdigest()
     assert before == after
