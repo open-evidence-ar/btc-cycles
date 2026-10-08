@@ -53,6 +53,15 @@ jobs:
           python-version: '3.11'
           cache: 'pip'
 
+      # This job re-verifies the gates after regenerating artifacts, and
+      # test_repo_skeleton.py::test_jekyll_build_succeeds shells out to
+      # `bundle exec jekyll build`. Without Ruby on PATH that gate fails here
+      # with "bundle not found on PATH" even though the site builds fine.
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+          bundler-cache: true
+
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip

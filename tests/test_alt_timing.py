@@ -461,6 +461,7 @@ def test_alt_next_cycle_zones_bear_bottom_floor():
 
 import hashlib
 import json
+import platform
 
 SECTIONS_DIR = ROOT / "_sections"
 LAYOUT_FILE = ROOT / "_layouts" / "default.html"
@@ -480,16 +481,34 @@ def test_charts_c8_c9_present():
         assert "plotly" in content.lower(), f"{cid}.html missing Plotly content"
 
 
+def _png_pins():
+    """Same contract as tests/test_charts.py::_load_snapshot (duplicated here on
+    purpose: a shared test helper is another new module that can be forgotten at
+    commit time, and the zone_vocab incident showed that failure mode reds the
+    whole suite)."""
+    stored = json.loads(SNAPSHOTS.read_text()) if SNAPSHOTS.is_file() else {}
+    pins = {k: v for k, v in stored.items() if k != "platform"}
+    enforce = bool(pins) and stored.get("platform") == platform.system().lower()
+    return pins, enforce
+
+
 def test_charts_c8_c9_snapshot_determinism():
-    """PNG snapshots for C8 and C9 must match the stored SHA-256."""
+    """PNG snapshots for C8 and C9 must match the stored SHA-256 on the recorded
+    platform; elsewhere they must exist and render non-trivially."""
     if not SNAPSHOTS.is_file():
         assert False, "chart_snapshots.json is missing"
-    stored = json.loads(SNAPSHOTS.read_text())
+    pins, enforce = _png_pins()
     for cid in ["C8", "C9"]:
-        assert cid in stored, f"No stored snapshot for {cid}"
+        assert cid in pins, f"No stored snapshot for {cid}"
         path = CHARTS_DIR / f"{cid}.png"
-        h = hashlib.sha256(path.read_bytes()).hexdigest()
-        assert h == stored[cid], f"{cid}.png SHA mismatch"
+        if enforce:
+            h = hashlib.sha256(path.read_bytes()).hexdigest()
+            assert h == pins[cid], f"{cid}.png SHA mismatch"
+        else:
+            assert path.is_file() and path.stat().st_size > 10000, (
+                f"{cid}.png missing/too small; cross-platform byte equality "
+                "is not expected"
+            )
 
 
 def test_charts_c8g_present():
@@ -506,14 +525,21 @@ def test_charts_c8g_present():
 
 
 def test_charts_c8g_snapshot_determinism():
-    """PNG snapshot for C8g must match the stored SHA-256."""
+    """PNG snapshot for C8g must match the stored SHA-256 on the recorded
+    platform; elsewhere it must exist and render non-trivially."""
     if not SNAPSHOTS.is_file():
         assert False, "chart_snapshots.json is missing"
-    stored = json.loads(SNAPSHOTS.read_text())
-    assert "C8g" in stored, "No stored snapshot for C8g"
+    pins, enforce = _png_pins()
+    assert "C8g" in pins, "No stored snapshot for C8g"
     path = CHARTS_DIR / "C8g.png"
-    h = hashlib.sha256(path.read_bytes()).hexdigest()
-    assert h == stored["C8g"], "C8g.png SHA mismatch"
+    if enforce:
+        h = hashlib.sha256(path.read_bytes()).hexdigest()
+        assert h == pins["C8g"], "C8g.png SHA mismatch"
+    else:
+        assert path.is_file() and path.stat().st_size > 10000, (
+            "C8g.png missing/too small; cross-platform byte equality "
+            "is not expected"
+        )
 
 
 def test_cross_asset_timing_section_exists():
