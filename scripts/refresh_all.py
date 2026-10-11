@@ -11,8 +11,9 @@ Pipeline order (each stage depends on the previous one):
   2. CYCLE   — rebuild BTC + alt cycle metrics from raw snapshots
   3. DERIVED — SMA floors, alt SMA floors, forward ranges, alt forward ranges, curve-state + regime multipliers
                (I-21), next-cycle zones, alt zones (regime-adjusted B4), Pine exports, alignment
-  4. HEAVY   — backtest, regime robustness, correlations, rolling corr (optional)
-  5. CHARTS  — render all PNG charts (C1-C9, C-SMA)
+  4. CORR    — phase-conditioned correlations (serial; build_regime_robustness reads its output)
+  5. HEAVY   — backtest, regime robustness, rolling corr (parallel — no cross-dependencies)
+  6. CHARTS  — render all PNG charts (C1-C9, C-SMA)
 """
 
 import subprocess
@@ -178,7 +179,23 @@ def build_pipeline(skip_fetch: bool = False) -> list[Stage]:
         parallel=False,
     ))
 
-    # ── Stage 4: HEAVY ANALYTICS (parallel — no cross-dependencies) ──────
+    # ── Stage 4: PHASE CORRELATIONS (serial) ─────────────────────────────
+    # build_regime_robustness.py reads correlations_phase.csv, so this must
+    # complete before the HEAVY stage starts. Running it inside the parallel
+    # HEAVY stage caused a read/write race on the shared CSV.
+    stages.append(Stage(
+        name="CORR",
+        steps=[
+            Step(
+                name="corr_phase",
+                cmd=[sys.executable, str(SCRIPTS_DIR / "build_correlations_phase.py")],
+                label="Phase-conditioned correlation",
+            ),
+        ],
+        parallel=False,
+    ))
+
+    # ── Stage 5: HEAVY ANALYTICS (parallel — no cross-dependencies) ──────
     stages.append(Stage(
         name="HEAVY",
         steps=[
@@ -193,11 +210,6 @@ def build_pipeline(skip_fetch: bool = False) -> list[Stage]:
                 label="Regime robustness",
             ),
             Step(
-                name="corr_phase",
-                cmd=[sys.executable, str(SCRIPTS_DIR / "build_correlations_phase.py")],
-                label="Phase-conditioned correlation",
-            ),
-            Step(
                 name="rolling_corr",
                 cmd=[sys.executable, str(SCRIPTS_DIR / "build_rolling_corr.py")],
                 label="Rolling correlation + lead/lag",
@@ -206,7 +218,7 @@ def build_pipeline(skip_fetch: bool = False) -> list[Stage]:
         parallel=True,
     ))
 
-    # ── Stage 5: CHARTS ──────────────────────────────────────────────────
+    # ── Stage 6: CHARTS ──────────────────────────────────────────────────
     stages.append(Stage(
         name="CHARTS",
         steps=[

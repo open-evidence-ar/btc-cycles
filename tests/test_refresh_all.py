@@ -46,6 +46,41 @@ def test_refresh_all_importable():
     assert r.returncode == 0, f"Import failed: {r.stderr[-300:]}"
 
 
+def _load_pipeline_module():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("refresh_all_pipeline", SCRIPT)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def test_corr_phase_precedes_regime_robustness():
+    """build_regime_robustness.py reads data/processed/correlations_phase.csv, so
+    build_correlations_phase.py must run to completion first. Running both in the
+    same parallel stage races on the shared CSV (writer truncates while reader
+    holds a handle -> OSError on Windows). Guards against re-merging the stages.
+    """
+    mod = _load_pipeline_module()
+    stages = mod.build_pipeline(skip_fetch=False)
+
+    def locate(step_name):
+        for si, stage in enumerate(stages):
+            for step in stage.steps:
+                if step.name == step_name:
+                    return si, stage
+        return None, None
+
+    corr_si, _ = locate("corr_phase")
+    reg_si, _ = locate("regime")
+    assert corr_si is not None, "corr_phase step missing from pipeline"
+    assert reg_si is not None, "regime step missing from pipeline"
+    assert corr_si != reg_si, (
+        "corr_phase and regime share a stage; regime reads correlations_phase.csv, "
+        "so the two must be serialized"
+    )
+    assert corr_si < reg_si, "corr_phase must run before regime robustness"
+
+
 def test_refresh_all_dry_run():
     r = _run(["--dry-run"], timeout=30)
     assert r.returncode == 0, f"--dry-run failed: {r.stdout[-300:]}\n{r.stderr[-300:]}"
