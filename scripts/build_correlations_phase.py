@@ -2,6 +2,11 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 
+try:
+    from csv_io import atomic_to_csv
+except ImportError:  # imported as scripts.build_correlations_phase
+    from scripts.csv_io import atomic_to_csv
+
 ASSETS = ['btc', 'eth', 'xrp', 'sol', 'mstr', 'wgmi', 'spx', 'ndx', 'dxy', 'tlt']
 NON_BTC_ASSETS = [a for a in ASSETS if a != 'btc']
 
@@ -100,6 +105,6 @@ result_df = pd.DataFrame(results)
 output_path = Path('data/processed')
 output_path.mkdir(exist_ok=True)
 
-result_df.to_csv(output_path / 'correlations_phase.csv', index=False)
+atomic_to_csv(result_df, output_path / 'correlations_phase.csv', index=False)
 print(f"Wrote {len(result_df)} rows to data/processed/correlations_phase.csv")
 print(result_df.pivot(index='asset', columns='phase', values='pearson').to_string())

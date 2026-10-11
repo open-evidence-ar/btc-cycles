@@ -81,8 +81,11 @@ Pipeline stages (dependency order enforced):
 1. **FETCH** — BTC (Bitstamp), ETH/XRP/SOL (CDD+Yahoo), macro (SPX/NDX/DXY/TLT/GOLD), US Treasury yield panel (I-21: y10/y5/y13w/y30 via Yahoo, y2 via Eco3min DGS2 mirror). Parallel.
 2. **CYCLE** — `build_cycle_metrics.py` + `build_alt_cycle_metrics.py`. Parallel.
 3. **DERIVED** — SMA floors, forward ranges, alt forward ranges, BTC zones, **curve-state + regime multipliers (I-21)**, alt zones (regime-adjusted B4). Serial (zones depend on ranges; alt zones depend on regime tables).
-4. **HEAVY** — backtest, regime robustness, correlations, rolling corr. Parallel.
-5. **CHARTS** — `build_charts.py` (all C1-C9 + C8h + C-SMA). Serial.
+4. **CORR** — `build_correlations_phase.py`. Serial. (`build_regime_robustness.py` reads `correlations_phase.csv`, so this must finish before HEAVY starts — the two previously raced when both lived in the parallel HEAVY stage.)
+5. **HEAVY** — backtest, regime robustness, rolling corr. Parallel.
+6. **CHARTS** — `build_charts.py` (all C1-C9 + C8h + C-SMA). Serial.
+
+All derived-artefact writes (processed CSVs, `cycle_status.json`, Pine exports, chart HTML) go through `scripts/csv_io.py::atomic_*` (write temp + `os.replace`): readers never see partial files, a failed write never truncates the previous output, and writes survive the transient `open(..., "w")` EINVAL failures this machine's external drive exhibits. Enforced by `tests/test_csv_io.py` (unit + scan gate).
 
 Key data flow notes:
 - `fetch_alts.py --source auto` pulls CDD first, Yahoo fallback if CDD unavailable.

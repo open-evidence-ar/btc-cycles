@@ -57,6 +57,8 @@ from build_charts import (
     project_bear_bottom,
 )
 
+from csv_io import atomic_to_csv
+
 # Parent asset's relative shape used when an alt has insufficient own history.
 # Source: data/processed/btc_cycle_metrics.csv (mult/dd at C1, C2, C3).
 # Hierarchy by market cap (smaller alt borrows from larger): SOL->XRP->ETH->BTC.
@@ -1904,7 +1906,7 @@ def main() -> None:
 
     out = pd.DataFrame(zone_rows)
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
-    out.to_csv(OUTPUT, index=False)
+    atomic_to_csv(out, OUTPUT, index=False)
     print(f"Wrote {OUTPUT} ({len(out)} rows)")
     print()
     print(out[["asset", "zone", "base_start", "base_end",

@@ -23,6 +23,11 @@ from pathlib import Path
 
 import pandas as pd
 
+try:
+    from csv_io import atomic_to_csv
+except ImportError:  # imported as scripts.build_alt_cycle_metrics
+    from scripts.csv_io import atomic_to_csv
+
 # Make scripts/ importable so we can reuse rule_t / rule_b
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
@@ -374,7 +379,7 @@ def main() -> None:
         "mult_asset_bottom_to_top", "drawdown_asset_pct",
     ]
     out_df = out_df[cols]
-    out_df.to_csv(OUTPUT, index=False)
+    atomic_to_csv(out_df, OUTPUT, index=False)
     print(f"Wrote {OUTPUT} ({len(out_df)} rows)")
     print()
     print("Coverage summary by asset:")

@@ -20,6 +20,11 @@ from pathlib import Path
 
 import pandas as pd
 
+try:
+    from csv_io import atomic_write_text
+except ImportError:  # imported as scripts.export_tradingview_pine
+    from scripts.csv_io import atomic_write_text
+
 ROOT = Path(__file__).resolve().parent.parent
 PROCESSED = ROOT / "data" / "processed"
 INPUT_BTC = PROCESSED / "next_cycle_zones.csv"
@@ -227,10 +232,10 @@ def main() -> int:
     for block in blocks:
         lines += block
     content = "\n".join(lines) + "\n"
-    OUTPUT.write_text(content, encoding="utf-8")
+    atomic_write_text(OUTPUT, content, encoding="utf-8")
     print(f"wrote {OUTPUT.relative_to(ROOT).as_posix()}")
     PUBLISH_DIR.mkdir(exist_ok=True)
-    PUBLISHED.write_text(content, encoding="utf-8")
+    atomic_write_text(PUBLISHED, content, encoding="utf-8")
     print(f"published {PUBLISHED.relative_to(ROOT).as_posix()}")
     return 0
 

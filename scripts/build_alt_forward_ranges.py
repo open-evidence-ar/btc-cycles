@@ -20,6 +20,11 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 
+try:
+    from csv_io import atomic_to_csv
+except ImportError:  # imported as scripts.build_alt_forward_ranges
+    from scripts.csv_io import atomic_to_csv
+
 ROOT = Path(__file__).resolve().parent.parent
 INPUT = ROOT / "data" / "processed" / "alt_cycle_metrics.csv"
 INPUT_BTC = ROOT / "data" / "processed" / "btc_cycle_metrics.csv"
@@ -301,7 +306,7 @@ def main() -> None:
 
     out = pd.DataFrame(rows)
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
-    out.to_csv(OUTPUT, index=False)
+    atomic_to_csv(out, OUTPUT, index=False)
     print(f"Wrote {OUTPUT} ({len(out)} rows)")
     # Print compact view
     print()

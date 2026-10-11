@@ -20,6 +20,11 @@ from pathlib import Path
 
 import pandas as pd
 
+try:
+    from csv_io import atomic_to_csv
+except ImportError:  # imported as scripts.build_cycle_metrics
+    from scripts.csv_io import atomic_to_csv
+
 ROOT = Path(__file__).resolve().parent.parent
 RAW_DIR = ROOT / "data" / "raw"
 PROCESSED_DIR = ROOT / "data" / "processed"
@@ -349,11 +354,11 @@ def main() -> None:
 
     # Write outputs deterministically (sorted columns)
     df_metrics = pd.DataFrame(metrics_rows)
-    df_metrics.to_csv(TARGETS_CSV, index=False)
+    atomic_to_csv(df_metrics, TARGETS_CSV, index=False)
     print(f"Wrote {TARGETS_CSV} ({len(df_metrics)} rows)")
 
     df_extrema = pd.DataFrame(extrema_rows)
-    df_extrema.to_csv(CANDIDATES_CSV, index=False)
+    atomic_to_csv(df_extrema, CANDIDATES_CSV, index=False)
     print(f"Wrote {CANDIDATES_CSV} ({len(df_extrema)} rows)")
 
     # Folklore reconciliation per DESIGN.md §3.2.5
@@ -416,7 +421,7 @@ def main() -> None:
         },
     ]
     df_folklore = pd.DataFrame(folklore_rows)
-    df_folklore.to_csv(FOLKLORE_CSV, index=False)
+    atomic_to_csv(df_folklore, FOLKLORE_CSV, index=False)
     print(f"Wrote {FOLKLORE_CSV} ({len(df_folklore)} rows)")
 
     print("I-05 done.")

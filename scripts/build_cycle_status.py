@@ -63,6 +63,11 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
+try:
+    from csv_io import atomic_write_json
+except ImportError:  # imported as scripts.build_cycle_status
+    from scripts.csv_io import atomic_write_json
+
 ROOT = Path(__file__).resolve().parent.parent
 PROCESSED = ROOT / "data" / "processed"
 RAW = ROOT / "data" / "raw"
@@ -699,9 +704,8 @@ def main():
     }
 
     DATA_OUT.parent.mkdir(parents=True, exist_ok=True)
-    with open(DATA_OUT, "w", encoding="utf-8") as f:
-        # deterministic: sort_keys + stable separators so diffs are clean
-        json.dump(data, f, indent=2, sort_keys=True, ensure_ascii=False)
+    # deterministic: sort_keys + stable separators so diffs are clean
+    atomic_write_json(DATA_OUT, data, indent=2, sort_keys=True, ensure_ascii=False)
     print(f"OK   wrote {DATA_OUT.relative_to(ROOT)} ({DATA_OUT.stat().st_size} bytes)")
     return 0
 

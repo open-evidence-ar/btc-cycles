@@ -38,6 +38,11 @@ from pathlib import Path
 
 import pandas as pd
 
+try:
+    from csv_io import atomic_to_csv, atomic_write_text
+except ImportError:  # imported as scripts.build_regime_multipliers
+    from scripts.csv_io import atomic_to_csv, atomic_write_text
+
 ROOT = Path(__file__).resolve().parent.parent
 PROC = ROOT / "data" / "processed"
 
@@ -103,7 +108,7 @@ def _write_sensitivity_include(out: pd.DataFrame, anchor: pd.Series) -> None:
     inc_dir = ROOT / "_includes"
     inc_dir.mkdir(exist_ok=True)
     path = inc_dir / "regime-sensitivity.html"
-    path.write_text("\n".join(lines), encoding="utf-8")
+    atomic_write_text(path, "\n".join(lines), encoding="utf-8")
     print(f"Wrote {path}")
 
 
@@ -184,7 +189,7 @@ def main(argv: list[str] | None = None) -> int:
                 }]),
             ], ignore_index=True)
     out = out.sort_values(["asset", "regime_state"]).reset_index(drop=True)
-    out.to_csv(PROC / "regime_multipliers.csv", index=False)
+    atomic_to_csv(out, PROC / "regime_multipliers.csv", index=False)
 
     anchor = pd.DataFrame([{
         "anchor_date": anchor_date,
@@ -192,7 +197,7 @@ def main(argv: list[str] | None = None) -> int:
         "regime_state_days": int(latest["regime_state_days"]),
         "prev_regime_state": latest["prev_regime_state"],
     }])
-    anchor.to_csv(PROC / "regime_anchor.csv", index=False)
+    atomic_to_csv(anchor, PROC / "regime_anchor.csv", index=False)
 
     _write_sensitivity_include(out, anchor.iloc[0])
 

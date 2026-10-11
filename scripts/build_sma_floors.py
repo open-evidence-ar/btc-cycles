@@ -28,6 +28,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
+try:
+    from csv_io import atomic_to_csv
+except ImportError:  # imported as scripts.build_sma_floors
+    from scripts.csv_io import atomic_to_csv
+
 import pandas as pd
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -135,7 +140,7 @@ def main() -> None:
     # SMA NaNs (early weeks) become ''.
     for col in ["sma_50w", "sma_200w"]:
         out[col] = out[col].map(lambda x: "" if pd.isna(x) else round(float(x), 2))
-    out.to_csv(TARGET_CSV, index=False)
+    atomic_to_csv(out, TARGET_CSV, index=False)
     print(f"Wrote {TARGET_CSV} ({len(out)} weekly rows; source={path.name})")
     print("I-18a done.")
 

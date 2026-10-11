@@ -33,6 +33,11 @@ inverted_flat=2, bull_steep=3) per round-2 tooling.
 from __future__ import annotations
 
 import sys
+
+try:
+    from csv_io import atomic_to_csv
+except ImportError:  # imported as scripts.build_curve_state
+    from scripts.csv_io import atomic_to_csv
 from pathlib import Path
 
 import pandas as pd
@@ -170,7 +175,7 @@ def build_curve_state() -> pd.DataFrame:
 def main(argv: list[str] | None = None) -> int:
     df = build_curve_state()
     OUT.parent.mkdir(parents=True, exist_ok=True)
-    df.to_csv(OUT, index=False)
+    atomic_to_csv(df, OUT, index=False)
 
     # Summary
     n_class = df["curve_shape_state"].isin(STATE_ORDER).sum()

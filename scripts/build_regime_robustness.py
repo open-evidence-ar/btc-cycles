@@ -2,6 +2,11 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 
+try:
+    from csv_io import atomic_to_csv
+except ImportError:  # imported as scripts.build_regime_robustness
+    from scripts.csv_io import atomic_to_csv
+
 ASSETS = ['btc', 'eth', 'xrp', 'sol', 'mstr', 'wgmi', 'spx', 'ndx', 'dxy', 'tlt']
 NON_BTC_ASSETS = [a for a in ASSETS if a != 'btc']
 MACRO_ASSETS = ['dxy', 'tlt']
@@ -135,5 +140,5 @@ else:
 output_path = Path('data/processed')
 output_path.mkdir(exist_ok=True)
 
-merged.to_csv(output_path / 'correlations_BY_regime.csv', index=False)
+atomic_to_csv(merged, output_path / 'correlations_BY_regime.csv', index=False)
 print(f"\nWrote {len(merged)} rows to correlations_BY_regime.csv")

@@ -24,6 +24,11 @@ from pathlib import Path
 
 import pandas as pd
 
+try:
+    from csv_io import atomic_to_csv
+except ImportError:  # imported as scripts.build_alt_sma_floors
+    from scripts.csv_io import atomic_to_csv
+
 ROOT = Path(__file__).resolve().parent.parent
 RAW_DIR = ROOT / "data" / "raw"
 PROCESSED_DIR = ROOT / "data" / "processed"
@@ -126,7 +131,7 @@ def main() -> None:
     for asset in ALT_ASSETS:
         frames.append(build_one(asset))
     alt_sma = pd.concat(frames, ignore_index=True)
-    alt_sma.to_csv(TARGET_CSV, index=False)
+    atomic_to_csv(alt_sma, TARGET_CSV, index=False)
     print(f"Wrote {TARGET_CSV} ({len(alt_sma)} weekly rows, {len(frames)} assets)")
     print("I-18a-alt done.")
 

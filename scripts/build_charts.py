@@ -8,6 +8,8 @@ import math
 import time
 from datetime import timedelta
 
+from csv_io import atomic_write_text
+
 CHARTS_DIR = (Path(__file__).resolve().parent.parent / 'assets' / 'charts')
 CHARTS_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -74,7 +76,7 @@ def _autoheight_html(path):
     if '<style>html,body' not in c:
         c = c.replace('</head>',
                       '<style>html,body{height:100%;margin:0;padding:0}</style></head>')
-    p.write_text(c, encoding='utf-8')
+    atomic_write_text(p, c, encoding='utf-8')
 
 
 def _safe_write_image(fig, path, retries=12, delay=0.3, **kwargs):

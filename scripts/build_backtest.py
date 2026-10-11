@@ -2,6 +2,11 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 
+try:
+    from csv_io import atomic_to_csv
+except ImportError:  # imported as scripts.build_backtest
+    from scripts.csv_io import atomic_to_csv
+
 # Load data
 metrics = pd.read_csv('data/processed/btc_cycle_metrics.csv')
 fwd = pd.read_csv('data/processed/forward_ranges.csv')
@@ -69,7 +74,7 @@ result_df = pd.DataFrame(results)
 output_path = Path('data/processed')
 output_path.mkdir(exist_ok=True)
 
-result_df.to_csv(output_path / 'backtest_by_cycle.csv', index=False)
+atomic_to_csv(result_df, output_path / 'backtest_by_cycle.csv', index=False)
 print(f"Wrote {len(result_df)} rows to backtest_by_cycle.csv")
 print(result_df[['statistic', 'leave_out_cycle', 'actual_value',
                   'date_error_mean', 'date_error_median',

@@ -2,6 +2,11 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 
+try:
+    from csv_io import atomic_to_csv
+except ImportError:  # imported as scripts.build_rolling_corr
+    from scripts.csv_io import atomic_to_csv
+
 ASSETS = ['btc', 'eth', 'xrp', 'sol', 'mstr', 'wgmi', 'spx', 'ndx', 'dxy', 'tlt']
 NON_BTC_ASSETS = [a for a in ASSETS if a != 'btc']
 ROLLING_WINDOW = 90
@@ -39,7 +44,7 @@ for cycle_id in sorted(df['cycle_id'].unique()):
             })
 
 rolling_df = pd.DataFrame(rolling_rows)
-rolling_df.to_csv('data/processed/correlations_rolling.csv', index=False)
+atomic_to_csv(rolling_df, 'data/processed/correlations_rolling.csv', index=False)
 print(f"Wrote {len(rolling_df)} rows to correlations_rolling.csv")
 
 # --- Part 2: Cross-correlation lag [-60, +60] ---
@@ -81,5 +86,5 @@ for cycle_id in sorted(df['cycle_id'].unique()):
                 })
 
 cross_lag_df = pd.DataFrame(cross_lag_rows)
-cross_lag_df.to_csv('data/processed/cross_lag.csv', index=False)
+atomic_to_csv(cross_lag_df, 'data/processed/cross_lag.csv', index=False)
 print(f"Wrote {len(cross_lag_df)} rows to cross_lag.csv")

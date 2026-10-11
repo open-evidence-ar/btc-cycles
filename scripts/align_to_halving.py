@@ -2,6 +2,11 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 
+try:
+    from csv_io import atomic_to_csv
+except ImportError:  # imported as scripts.align_to_halving
+    from scripts.csv_io import atomic_to_csv
+
 ASSETS = ['btc', 'eth', 'xrp', 'sol', 'mstr', 'wgmi', 'spx', 'ndx', 'dxy', 'tlt']
 CYCLES = [('C1', '2012-11-28'), ('C2', '2016-07-09'), ('C3', '2020-05-11'), ('C4', '2024-04-20')]
 DAYS_MIN, DAYS_MAX = -1500, 1500
@@ -114,6 +119,6 @@ output_path = Path('data/processed')
 output_path.mkdir(exist_ok=True)
 
 # Write to CSV
-result_df.to_csv(output_path / 'returns_aligned.csv', index=False)
+atomic_to_csv(result_df, output_path / 'returns_aligned.csv', index=False)
 
 print(f"Created {len(result_df)} rows in data/processed/returns_aligned.csv")

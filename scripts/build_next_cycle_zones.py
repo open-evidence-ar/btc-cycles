@@ -49,6 +49,8 @@ from build_charts import (
     two_stage_projection_with_observed_c4,
 )
 
+from csv_io import atomic_to_csv
+
 INPUT_EVENTS = ROOT / "data" / "events.csv"
 INPUT_METRICS = ROOT / "data" / "processed" / "btc_cycle_metrics.csv"
 INPUT_FWD = ROOT / "data" / "processed" / "forward_ranges.csv"
@@ -514,7 +516,7 @@ def main():
 
     out = pd.DataFrame(zones)
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
-    out.to_csv(OUTPUT, index=False)
+    atomic_to_csv(out, OUTPUT, index=False)
     print(f"Wrote {len(out)} rows to {OUTPUT}")
     print()
     print(out[['zone', 'base_start', 'base_end', 'price_low', 'price_high',

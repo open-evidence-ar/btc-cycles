@@ -2,6 +2,11 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 
+try:
+    from csv_io import atomic_to_csv
+except ImportError:  # imported as scripts.build_forward_ranges
+    from scripts.csv_io import atomic_to_csv
+
 # Statistics to aggregate (from DESIGN.md A5.3)
 STATS = [
     'D_prev_bottom_to_halving',
@@ -169,6 +174,6 @@ if derived_vals:
 output_path = Path('data/processed')
 output_path.mkdir(exist_ok=True)
 
-result_df.to_csv(output_path / 'forward_ranges.csv', index=False)
+atomic_to_csv(result_df, output_path / 'forward_ranges.csv', index=False)
 print(f"Wrote {len(result_df)} rows to forward_ranges.csv")
 print(result_df[['statistic', 'n', 'mean', 'median', 'min', 'max', 'is_sensitive']].to_string())
