@@ -69,7 +69,7 @@
     "BTC": {
       "anchored_on": "observed C4 top",
       "bottom_tracking": {
-        "as_of": "2026-10-10",
+        "as_of": "2026-10-12",
         "band_cross_check_note": "Projected B4 band failed its own cross-check (Stage 1 vs Stage 2 disagree by >15%); the published corridor is their union and carries that disagreement.",
         "band_cross_check_ok": "False",
         "band_price_high": "$53,673",
@@ -575,15 +575,15 @@
           "date": "2026-10-08"
         },
         {
-          "close": 82733.94,
-          "date": "2026-10-10"
+          "close": 83480.41,
+          "date": "2026-10-12"
         }
       ]
     },
     "ETH": {
       "anchored_on": "observed C4 top",
       "bottom_tracking": {
-        "as_of": "2026-10-10",
+        "as_of": "2026-10-12",
         "band_cross_check_note": "",
         "band_cross_check_ok": "",
         "band_price_high": "$2,092",
@@ -1156,8 +1156,8 @@
           "date": "2026-10-03"
         },
         {
-          "close": 2494.5901,
-          "date": "2026-10-10"
+          "close": 2543.0701,
+          "date": "2026-10-12"
         }
       ]
     },
@@ -1741,7 +1741,7 @@
     "SOL": {
       "anchored_on": "observed C4 top",
       "bottom_tracking": {
-        "as_of": "2026-10-10",
+        "as_of": "2026-10-12",
         "band_cross_check_note": "",
         "band_cross_check_ok": "",
         "band_price_high": "$67.12",
@@ -2314,8 +2314,8 @@
           "date": "2026-10-03"
         },
         {
-          "close": 110.02,
-          "date": "2026-10-10"
+          "close": 111.56,
+          "date": "2026-10-12"
         }
       ]
     },
@@ -2891,7 +2891,7 @@
     "XRP": {
       "anchored_on": "observed C4 top",
       "bottom_tracking": {
-        "as_of": "2026-10-10",
+        "as_of": "2026-10-12",
         "band_cross_check_note": "",
         "band_cross_check_ok": "",
         "band_price_high": "$0.9113",
@@ -3464,8 +3464,8 @@
           "date": "2026-10-03"
         },
         {
-          "close": 1.4096,
-          "date": "2026-10-10"
+          "close": 1.4044,
+          "date": "2026-10-12"
         }
       ]
     }
@@ -3473,7 +3473,7 @@
   "btc": {
     "anchored_on": "observed C4 top",
     "bottom_tracking": {
-      "as_of": "2026-10-10",
+      "as_of": "2026-10-12",
       "band_cross_check_note": "Projected B4 band failed its own cross-check (Stage 1 vs Stage 2 disagree by >15%); the published corridor is their union and carries that disagreement.",
       "band_cross_check_ok": "False",
       "band_price_high": "$53,673",
@@ -3979,8 +3979,8 @@
         "date": "2026-10-08"
       },
       {
-        "close": 82733.94,
-        "date": "2026-10-10"
+        "close": 83480.41,
+        "date": "2026-10-12"
       }
     ]
   },
