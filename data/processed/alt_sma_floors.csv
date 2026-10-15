@@ -464,8 +464,8 @@ eth,2026-09-07,2477.020751953125,2509.91,2508.19,True,True,False,False,False,Fal
 eth,2026-09-14,2642.99755859375,2472.46,2515.7,False,False,False,False,True,True
 eth,2026-09-21,2686.9267578125,2442.91,2523.16,False,False,False,False,False,False
 eth,2026-09-28,2726.509033203125,2417.75,2530.39,False,False,False,False,False,False
-eth,2026-10-05,2504.02783203125,2384.67,2536.59,False,True,False,True,False,False
-eth,2026-10-12,2543.070068359375,2357.31,2543.38,False,True,False,False,False,False
+eth,2026-10-05,2534.69921875,2385.28,2536.74,False,True,False,True,False,False
+eth,2026-10-12,2386.570068359375,2354.79,2542.75,False,True,False,False,False,False
 xrp,2017-11-06,0.1973389983177185,,,False,False,False,False,False,False
 xrp,2017-11-13,0.231015995144844,,,False,False,False,False,False,False
 xrp,2017-11-20,0.2488179951906204,,,False,False,False,False,False,False
@@ -931,8 +931,8 @@ xrp,2026-09-07,1.3406130075454712,1.61,1.24,True,False,False,False,False,False
 xrp,2026-09-14,1.4098520278930664,1.58,1.25,True,False,False,False,False,False
 xrp,2026-09-21,1.5183579921722412,1.56,1.25,True,False,False,False,False,False
 xrp,2026-09-28,1.52018404006958,1.54,1.26,True,False,False,False,False,False
-xrp,2026-10-05,1.4017289876937866,1.52,1.27,True,False,False,False,False,False
-xrp,2026-10-12,1.4043999910354614,1.49,1.27,True,False,False,False,False,False
+xrp,2026-10-05,1.4092060327529907,1.52,1.27,True,False,False,False,False,False
+xrp,2026-10-12,1.3170000314712524,1.49,1.27,True,False,False,False,False,False
 sol,2020-04-06,0.8825070261955261,,,False,False,False,False,False,False
 sol,2020-04-13,0.6069689989089966,,,False,False,False,False,False,False
 sol,2020-04-20,0.6355059742927551,,,False,False,False,False,False,False
@@ -1272,8 +1272,8 @@ sol,2026-09-07,99.24577331542967,107.58,109.9,True,True,False,False,False,False
 sol,2026-09-14,111.1329116821289,105.23,110.4,False,False,False,False,True,True
 sol,2026-09-21,122.05870056152344,103.72,110.94,False,False,False,False,False,False
 sol,2026-09-28,121.52859497070312,102.4,111.48,False,False,False,False,False,False
-sol,2026-10-05,110.0340347290039,100.6,111.96,False,True,False,True,False,False
-sol,2026-10-12,111.55999755859376,99.07,112.46,False,True,False,False,False,False
+sol,2026-10-05,111.24126434326172,100.62,111.97,False,True,False,True,False,False
+sol,2026-10-12,104.29000091552734,98.95,112.43,False,True,False,False,False,False
 mstr,1998-06-08,10.4375,,,False,False,False,False,False,False
 mstr,1998-06-15,14.0625,,,False,False,False,False,False,False
 mstr,1998-06-22,13.6875,,,False,False,False,False,False,False
@@ -2753,6 +2753,7 @@ mstr,2026-09-14,153.9199981689453,154.32,163.28,True,True,False,False,False,Fals
 mstr,2026-09-21,158.61000061035156,151.39,163.98,False,True,False,False,True,False
 mstr,2026-09-28,160.00999450683594,148.8,164.68,False,True,False,False,False,False
 mstr,2026-10-05,154.33999633789062,146.1,165.35,False,True,False,False,False,False
+mstr,2026-10-12,143.6300048828125,143.58,165.98,False,True,False,False,False,False
 wgmi,2022-02-07,26.68000030517578,,,False,False,False,False,False,False
 wgmi,2022-02-14,24.5,,,False,False,False,False,False,False
 wgmi,2022-02-21,24.459999084472656,,,False,False,False,False,False,False
@@ -2997,3 +2998,4 @@ wgmi,2026-09-14,49.5,48.96,24.84,False,False,False,False,False,False
 wgmi,2026-09-21,48.220001220703125,48.82,25.05,True,False,True,False,False,False
 wgmi,2026-09-28,45.34000015258789,48.56,25.25,True,False,False,False,False,False
 wgmi,2026-10-05,40.2400016784668,48.17,25.42,True,False,False,False,False,False
+wgmi,2026-10-12,32.26499938964844,47.67,25.56,True,False,False,False,False,False
