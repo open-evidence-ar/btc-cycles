@@ -79,3 +79,15 @@ class TestYieldProvenance:
         y2 = pd.read_csv(path_y2, parse_dates=["date"])
         y10 = pd.read_csv(path_y10, parse_dates=["date"])
         assert y2["date"].min() < y10["date"].min(), "y2 should start before y10"
+
+    def test_yahoo_yields_current(self):
+        """Yahoo yield series (y10, y5, y13w, y30) must have data within 7 days of retrieval date."""
+        for symbol in ["y10", "y5", "y13w", "y30"]:
+            path, row = _latest_snapshot(symbol)
+            last_date = pd.to_datetime(row["date_range_last"]).date()
+            retrieved = pd.to_datetime(row["retrieved_at"]).date()
+            diff_days = (retrieved - last_date).days
+            assert diff_days <= 7, (
+                f"{symbol} snapshot is stale: last data date is {last_date}, "
+                f"retrieved on {retrieved} ({diff_days} days difference)"
+            )

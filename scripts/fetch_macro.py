@@ -22,9 +22,8 @@ ASSETS = {
 
 BASE_URL = "https://query1.finance.yahoo.com/v8/finance/chart/{}?period1={}&period2={}&interval=1d"
 
-# Yahoo's Unix epoch start (1949-12-31 00:00:00 UTC) and end (2026-08-15 00:00:00 UTC)
+# Yahoo's Unix epoch start (1949-12-31 00:00:00 UTC)
 PERIOD1 = 631152000
-PERIOD2 = 1786752000
 
 HEADERS = {"User-Agent": "Mozilla/5.0"}
 
@@ -39,7 +38,8 @@ def _sha256_file(path: Path) -> str:
 
 
 def fetch_yahoo_asset(symbol_key: str, target_symbol: str) -> None:
-    url = BASE_URL.format(target_symbol, PERIOD1, PERIOD2)
+    period2 = int(datetime.now(timezone.utc).timestamp())
+    url = BASE_URL.format(target_symbol, PERIOD1, period2)
 
     response = requests.get(url, headers=HEADERS)
     response.raise_for_status()

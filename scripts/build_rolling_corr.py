@@ -29,7 +29,7 @@ for cycle_id in sorted(df['cycle_id'].unique()):
         s_btc = pd.Series(btc_lr, index=cyc['days_from_halving'])
         s_asset = pd.Series(asset_lr, index=cyc['days_from_halving'])
 
-        rolling_r = s_btc.rolling(window=ROLLING_WINDOW, min_periods=ROLLING_WINDOW).corr(s_asset)
+        rolling_r = s_btc.rolling(window=ROLLING_WINDOW, min_periods=ROLLING_WINDOW).corr(s_asset).clip(-1.0, 1.0)
 
         # Drop the first ROLLING_WINDOW-1 rows (NaN by construction)
         valid = rolling_r.dropna()
@@ -77,7 +77,7 @@ for cycle_id in sorted(df['cycle_id'].unique()):
                     'cross_corr': np.nan,
                 })
             else:
-                cross_r = np.corrcoef(b, a)[0, 1]
+                cross_r = float(np.clip(np.corrcoef(b, a)[0, 1], -1.0, 1.0))
                 cross_lag_rows.append({
                     'cycle_id': cycle_id,
                     'asset': asset,

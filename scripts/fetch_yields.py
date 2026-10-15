@@ -48,7 +48,6 @@ MANIFEST = RAW_DIR / "manifest.txt"
 # Yahoo v8 chart endpoint
 YAHOO_BASE = "https://query1.finance.yahoo.com/v8/finance/chart/{}?period1={}&period2={}&interval=1d"
 PERIOD1 = 631152000   # 1990-01-01
-PERIOD2 = 1786752000  # ~2026-08-15
 HEADERS = {"User-Agent": "Mozilla/5.0"}
 
 # Yahoo-sourced Cboe yield indices (key -> display ticker)
@@ -128,7 +127,8 @@ def fetch_yahoo_yield(key: str, symbol: str) -> Path | None:
     MAX_ATTEMPTS = 3
     last_exc: Exception | None = None
     for attempt in range(1, MAX_ATTEMPTS + 1):
-        url = YAHOO_BASE.format(symbol, PERIOD1, PERIOD2)
+        period2 = int(datetime.now(timezone.utc).timestamp())
+        url = YAHOO_BASE.format(symbol, PERIOD1, period2)
         try:
             r = requests.get(url, headers=HEADERS, timeout=30)
             r.raise_for_status()

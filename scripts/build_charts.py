@@ -36,9 +36,10 @@ def _safe_write_html(fig, path, retries=12, delay=0.3, **kwargs):
     import random
     import re
     last_err = None
+    div_id = kwargs.pop('div_id', Path(path).stem)
     for attempt in range(retries):
         try:
-            fig.write_html(path, **kwargs)
+            fig.write_html(path, div_id=div_id, **kwargs)
             _autoheight_html(path)
             return
         except (OSError, IOError) as e:

@@ -120,3 +120,16 @@ class TestMacroProvenance:
         assert int(row["row_count"]) >= 6000, (
             f"Gold row count {row['row_count']} is less than 6000"
         )
+
+    def test_macro_data_is_current(self):
+        """Macro series must have data within 7 calendar days of retrieval date."""
+        for symbol in MACRO_SYMBOLS:
+            path, row = _latest_snapshot(symbol)
+            last_date = datetime.fromisoformat(row["date_range_last"]).date()
+            retrieved = datetime.fromisoformat(row["retrieved_at"].replace("Z", "+00:00")).date()
+            diff_days = (retrieved - last_date).days
+            assert diff_days <= 7, (
+                f"{symbol} snapshot is stale: last data date is {last_date}, "
+                f"retrieved on {retrieved} ({diff_days} days difference)"
+            )
+
