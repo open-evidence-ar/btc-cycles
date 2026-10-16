@@ -8,6 +8,8 @@ Usage:
 
 Pipeline order (each stage depends on the previous one):
   1. FETCH   — pull latest OHLCV snapshots (BTC, alts, macro) + US Treasury yield panel (I-21)
+  1b. FRESHNESS — audit data/raw/manifest.txt; fails if a snapshot carries data
+       much older than its own retrieval date (catches hard-coded fetch windows)
   2. CYCLE   — rebuild BTC + alt cycle metrics from raw snapshots
   3. DERIVED — SMA floors, alt SMA floors, forward ranges, alt forward ranges, curve-state + regime multipliers
                (I-21), next-cycle zones, alt zones (regime-adjusted B4), Pine exports, alignment
@@ -97,6 +99,25 @@ def build_pipeline(skip_fetch: bool = False) -> list[Stage]:
             ),
         ]
         stages.append(Stage(name="FETCH", steps=fetch_steps, parallel=True))
+
+    # ── Stage 1b: FRESHNESS AUDIT (serial) ───────────────────────────────
+    # Reads data/raw/manifest.txt *after* the fetches land and fails the run if
+    # any snapshot carries data much older than its own retrieval date -- the
+    # signature of a fetcher with a hard-coded PERIOD2 epoch, which is exactly
+    # how the macro + Treasury-yield panel sat on 2026-08-14 data for 11
+    # consecutive fetches while the manifest advertised a fresh retrieved_at.
+    # Serial because it reads the manifest all eight parallel fetches write.
+    stages.append(Stage(
+        name="FRESHNESS",
+        steps=[
+            Step(
+                name="freshness",
+                cmd=[sys.executable, str(SCRIPTS_DIR / "feed_freshness.py")],
+                label="Feed freshness audit (data/raw/manifest.txt)",
+            ),
+        ],
+        parallel=False,
+    ))
 
     # ── Stage 2: CYCLE METRICS ───────────────────────────────────────────
     stages.append(Stage(

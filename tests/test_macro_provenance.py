@@ -3,6 +3,8 @@ import pytest
 from datetime import datetime, timedelta
 from pathlib import Path
 
+from scripts.feed_freshness import evaluate, format_report
+
 ROOT = Path(__file__).resolve().parent.parent
 RAW_DIR = ROOT / "data" / "raw"
 MANIFEST = RAW_DIR / "manifest.txt"
@@ -122,14 +124,20 @@ class TestMacroProvenance:
         )
 
     def test_macro_data_is_current(self):
-        """Macro series must have data within 7 calendar days of retrieval date."""
-        for symbol in MACRO_SYMBOLS:
-            path, row = _latest_snapshot(symbol)
-            last_date = datetime.fromisoformat(row["date_range_last"]).date()
-            retrieved = datetime.fromisoformat(row["retrieved_at"].replace("Z", "+00:00")).date()
-            diff_days = (retrieved - last_date).days
-            assert diff_days <= 7, (
-                f"{symbol} snapshot is stale: last data date is {last_date}, "
-                f"retrieved on {retrieved} ({diff_days} days difference)"
-            )
+        """Macro series must have data within MAX_INTERNAL_LAG_DAYS of retrieval.
+
+        Delegates to `scripts/feed_freshness.py` so the budget and the arithmetic
+        live in exactly one place (the shared gate also covers crypto/corporate
+        panels in tests/test_feed_freshness.py). This is the gate that would have
+        caught the `PERIOD2 = 1786752000` freeze, under which every macro fetch
+        stamped a fresh `retrieved_at` onto 2026-08-14 data for 11 consecutive runs.
+        """
+        manifest = _load_manifest()
+        macro_rows = manifest[manifest["symbol"].isin(MACRO_SYMBOLS)]
+        report = evaluate(macro_rows.to_dict("records"))
+        assert report["violations"] == [], (
+            "Macro feeds carry data far older than their retrieval date -- a "
+            "hard-coded PERIOD2 epoch is the usual cause:\n"
+            + format_report(report)
+        )
 

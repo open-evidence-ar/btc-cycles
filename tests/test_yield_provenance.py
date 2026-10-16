@@ -11,6 +11,8 @@ import pandas as pd
 import pytest
 from pathlib import Path
 
+from scripts.feed_freshness import evaluate, format_report
+
 ROOT = Path(__file__).resolve().parent.parent
 RAW_DIR = ROOT / "data" / "raw"
 MANIFEST = RAW_DIR / "manifest.txt"
@@ -81,13 +83,31 @@ class TestYieldProvenance:
         assert y2["date"].min() < y10["date"].min(), "y2 should start before y10"
 
     def test_yahoo_yields_current(self):
-        """Yahoo yield series (y10, y5, y13w, y30) must have data within 7 days of retrieval date."""
-        for symbol in ["y10", "y5", "y13w", "y30"]:
-            path, row = _latest_snapshot(symbol)
-            last_date = pd.to_datetime(row["date_range_last"]).date()
-            retrieved = pd.to_datetime(row["retrieved_at"]).date()
-            diff_days = (retrieved - last_date).days
-            assert diff_days <= 7, (
-                f"{symbol} snapshot is stale: last data date is {last_date}, "
-                f"retrieved on {retrieved} ({diff_days} days difference)"
-            )
+        """Yahoo yield series (y10, y5, y13w, y30) must carry data no more than
+        MAX_INTERNAL_LAG_DAYS older than their own retrieval date.
+
+        Delegates to `scripts/feed_freshness.py` (single source of truth). This
+        is the gate that would have caught the `PERIOD2 = 1786752000` freeze in
+        fetch_yields.py, which silently capped every yield snapshot at 2026-08-14.
+        """
+        manifest = _load_manifest()
+        yield_rows = manifest[manifest["symbol"].isin(["y10", "y5", "y13w", "y30"])]
+        report = evaluate(yield_rows.to_dict("records"))
+        assert report["violations"] == [], (
+            "Yahoo yield feeds carry data far older than their retrieval date -- "
+            "a hard-coded PERIOD2 epoch is the usual cause:\n"
+            + format_report(report)
+        )
+
+    def test_y2_is_current(self):
+        """The Eco3min DGS2 mirror lags a day or two behind, but must still be
+        within MAX_INTERNAL_LAG_DAYS of its retrieval date. Previously this
+        series was the only yield panel member with no freshness gate at all,
+        because the freeze only ever hit the Yahoo-sourced members."""
+        path, row = _latest_snapshot("y2")
+        last_date = pd.to_datetime(row["date_range_last"]).date()
+        retrieved = pd.to_datetime(row["retrieved_at"], utc=True).date()
+        assert (retrieved - last_date).days <= 7, (
+            f"y2 snapshot is stale: last data date is {last_date}, "
+            f"retrieved on {retrieved}"
+        )

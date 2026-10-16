@@ -16,6 +16,8 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
+from scripts.feed_freshness import evaluate, format_report
+
 ROOT = Path(__file__).resolve().parent.parent
 RAW_DIR = ROOT / "data" / "raw"
 MANIFEST = RAW_DIR / "manifest.txt"
@@ -129,6 +131,26 @@ class TestAltsProvenance:
         available from CoinGecko Pro (paid). See docs/blockers/I-03-sol-start-date.md.
         """
         _test_start_date("sol", datetime(2021, 12, 15))
+
+    def test_alt_feeds_are_current(self):
+        """Crypto + corporate alt feeds must not carry data far older than their
+        own retrieval date.
+
+        fetch_alts.py has always computed a live `period2`, so it never suffered
+        the PERIOD2 freeze -- but nothing asserted that, so a future edit
+        reintroducing a hard-coded window would have gone unnoticed.
+        """
+        manifest = _load_manifest()
+        targets = {"eth", "xrp", "sol", "mstr", "wgmi"}
+        rows = manifest[manifest["symbol"].isin(targets)]
+        assert set(rows["symbol"]) == targets, (
+            f"Expected {sorted(targets)} in manifest, found {sorted(set(rows['symbol']))}"
+        )
+        report = evaluate(rows.to_dict("records"))
+        assert report["violations"] == [], (
+            "Alt feeds carry data far older than their retrieval date:\n"
+            + format_report(report)
+        )
 
 
 class TestEthAltcoin:

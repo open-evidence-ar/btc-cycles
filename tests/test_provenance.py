@@ -78,3 +78,19 @@ class TestBtcProvenance:
         _, row = _latest_snapshot("btc")
         first = datetime.fromisoformat(row["date_range_first"])
         assert first <= datetime(2011, 8, 1) + timedelta(days=365)
+
+    def test_btc_feed_is_current(self):
+        """BTC must not carry data far older than its own retrieval date.
+
+        fetch_data.py always requested a live window, so this never regressed --
+        but nothing asserted it. A hard-coded fetch window is precisely the bug
+        that silently froze the macro panel for 11 consecutive runs.
+        """
+        path, row = _latest_snapshot("btc")
+        last_date = datetime.fromisoformat(row["date_range_last"]).date()
+        retrieved = datetime.fromisoformat(row["retrieved_at"].replace("Z", "+00:00")).date()
+        lag = (retrieved - last_date).days
+        assert lag <= 7, (
+            f"BTC snapshot is stale: last data date is {last_date}, "
+            f"retrieved on {retrieved} ({lag} days difference)"
+        )

@@ -81,6 +81,37 @@ def test_corr_phase_precedes_regime_robustness():
     assert corr_si < reg_si, "corr_phase must run before regime robustness"
 
 
+def test_freshness_audit_runs_after_fetches():
+    """The freshness audit reads data/raw/manifest.txt, which all eight FETCH
+    steps write concurrently. Running it inside the parallel FETCH stage would
+    read a half-written registry and pass or fail at random. It also must run
+    BEFORE the derived builders, so a stale feed stops the run rather than
+    propagating 11 cycles of frozen macro data into charts.
+    """
+    mod = _load_pipeline_module()
+    stages = mod.build_pipeline(skip_fetch=False)
+
+    def locate(step_name):
+        for si, stage in enumerate(stages):
+            for step in stage.steps:
+                if step.name == step_name:
+                    return si, stage
+        return None, None
+
+    fetch_si, fetch_stage = locate("btc")
+    fresh_si, _ = locate("freshness")
+    charts_si, _ = locate("charts")
+
+    assert fresh_si is not None, "freshness step missing from pipeline"
+    assert fetch_stage.parallel, "FETCH stage should still be parallel"
+    assert fresh_si != fetch_si, (
+        "freshness shares the parallel FETCH stage; it reads the manifest that "
+        "every fetcher writes, so it must be serialized after them"
+    )
+    assert not locate("freshness")[1].parallel, "FRESHNESS stage must be serial"
+    assert fresh_si < charts_si, "freshness must run before charts are rendered"
+
+
 def test_refresh_all_dry_run():
     r = _run(["--dry-run"], timeout=30)
     assert r.returncode == 0, f"--dry-run failed: {r.stdout[-300:]}\n{r.stderr[-300:]}"

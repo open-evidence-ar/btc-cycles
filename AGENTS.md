@@ -5,7 +5,7 @@ This project is built as a sequence of **atomic increments** defined in [DESIGN.
 ## Rules
 
 1. **Gate discipline:** Do not start increment *n+1* until increment *n*'s validation gate is green.
-2. **Immutable snapshots:** Never edit files in `data/raw/` after write. Add a new snapshot + manifest entry instead.
+2. **Immutable snapshots:** Never edit files in `data/raw/` after write. Add a new snapshot + manifest entry instead. **Documented exception:** snapshot filenames carry the *retrieval* date only (`spx_yahoo_2026-10-15.csv`), so re-running a fetcher on the same calendar day overwrites that day's file rather than adding a new one. Prior content survives only in git history. This is intentional — a per-day filename keeps `data/raw` from growing without bound — but it means a same-day refetch is *not* an append-only operation.
 3. **Single source of truth:** `data/events.csv` drives all cycle computations. `btc_cycle_metrics.csv` (from I-05) is the only source for derived cycle dates downstream. Split canonical: `events.csv` canonical for event labels/halvings/bottoms; `btc_cycle_metrics.csv` canonical for displayed top dates/prices (Rule T re-detection).
 4. **No upstream patching:** If an increment fails its gate, fix the failing increment — do not modify upstream increments to force a pass.
 5. **Blocker notes:** On failure, write `docs/blockers/<I-ID>-<short-name>.md` with input snapshot, expected vs actual, hypothesis, and action.
@@ -79,11 +79,12 @@ python scripts/refresh_all.py --dry-run    # preview what would run
 
 Pipeline stages (dependency order enforced):
 1. **FETCH** — BTC (Bitstamp), ETH/XRP/SOL (CDD+Yahoo), macro (SPX/NDX/DXY/TLT/GOLD), US Treasury yield panel (I-21: y10/y5/y13w/y30 via Yahoo, y2 via Eco3min DGS2 mirror). Parallel.
+1b. **FRESHNESS** — `feed_freshness.py`. Serial. Reads `data/raw/manifest.txt` after the parallel fetches land and **fails the run** if a snapshot carries data more than 7 days older than its own `retrieved_at`. That signature means a fetcher has a hard-coded fetch window: `fetch_macro.py` and `fetch_yields.py` both pinned `PERIOD2 = 1786752000` (2026-08-15), so 11 consecutive fetches re-stamped a fresh `retrieved_at` onto 2026-08-14 data and every prior check passed. Gate coverage spans crypto, corporate, macro, and yields. Wall-clock age ("nobody has fetched lately") is reported as a warning only — CI rebuilds from committed snapshots and never fetches, so a today-anchored assertion would go red on a schedule no CI job could fix.
 2. **CYCLE** — `build_cycle_metrics.py` + `build_alt_cycle_metrics.py`. Parallel.
 3. **DERIVED** — SMA floors, forward ranges, alt forward ranges, BTC zones, **curve-state + regime multipliers (I-21)**, alt zones (regime-adjusted B4). Serial (zones depend on ranges; alt zones depend on regime tables).
 4. **CORR** — `build_correlations_phase.py`. Serial. (`build_regime_robustness.py` reads `correlations_phase.csv`, so this must finish before HEAVY starts — the two previously raced when both lived in the parallel HEAVY stage.)
 5. **HEAVY** — backtest, regime robustness, rolling corr. Parallel.
-6. **CHARTS** — `build_charts.py` (all C1-C9 + C8h + C-SMA). Serial.
+6. **CHARTS** — `build_charts.py` (all C1-C9 + C8h + C-SMA). Serial. Chart HTML pins the Plotly `div_id` to the filename stem — without it Plotly mints a fresh UUID per render and every regeneration dirtied all 17 charts even when the data was byte-identical.
 
 All derived-artefact writes (processed CSVs, `cycle_status.json`, Pine exports, chart HTML) go through `scripts/csv_io.py::atomic_*` (write temp + `os.replace`): readers never see partial files, a failed write never truncates the previous output, and writes survive the transient `open(..., "w")` EINVAL failures this machine's external drive exhibits. Enforced by `tests/test_csv_io.py` (unit + scan gate).
 
