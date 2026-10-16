@@ -133,6 +133,88 @@ def _to_float(v):
         return None
 
 
+def _esc(text):
+    """Escape a string for use as Plotly annotation text.
+
+    Plotly runs annotation text through MathJax, where a bare ``$`` opens inline
+    math. Every price string in these charts is written ``$1,153.82-$2,092.47``,
+    so the first ``$`` pair was swallowed as a math expression: footers rendered
+    as fragments like ``1,153.82-`` with the upper bound silently dropped, and
+    off-scale disclosures came out as ``190k(axisreaches``. Escaping ``$`` as its
+    HTML entity keeps the glyph and disables the math parsing.
+    """
+    return str(text).replace('$', '&#36;')
+
+
+def _days_between(a, b):
+    """Whole days between two date-ish values (strings or Timestamps)."""
+    return abs((pd.to_datetime(b) - pd.to_datetime(a)).days)
+
+
+def place_x_labels(entries, x_min, x_max, min_frac=0.02, min_gap=0.04,
+                   n_rows=4, width_fn=None):
+    """Assign non-colliding rows to labels positioned along a date x-axis.
+
+    ``entries`` is a sequence of ``(x, frac_width, payload)`` where ``x`` is the
+    label's anchor date and ``frac_width`` is how much of the x-axis the label's
+    own zone occupies.
+
+    Why this exists: the zone charts span 2022-01-01..2031-12-31, so the
+    ~5-month near-term B4/accumulation zones occupy ~4% of the axis -- roughly
+    30px. Three labels anchored inside that 30px ("B4 proj", "BOTTOM",
+    "ACCUMULATION") overprinted each other and rendered as the literal string
+    "BOTTOMACCUMULATION". Plotly does no label collision avoidance, so we have to.
+
+    ``min_frac`` controls suppression (a zone narrower than this cannot hold its
+    label, so drop it rather than stack it on a neighbour). ``min_gap`` is the
+    floor for row separation. ``width_fn`` maps a payload to its estimated
+    rendered width in axis-fraction terms, and two labels may share a row only
+    if the gap between them exceeds the sum of their half-widths. A fixed
+    ``min_gap`` alone either under-separates long labels ("BTC C4 top" and
+    "B4 proj" touching at 0.083 apart) or needlessly splits short ones.
+
+    Returns a list of ``(x, row, payload)`` for the survivors, in x order.
+    """
+    total = _days_between(x_min, x_max) or 1
+
+    def width_of(payload):
+        if width_fn is None:
+            return min_gap
+        try:
+            return max(float(width_fn(payload)), min_gap)
+        except (TypeError, ValueError):
+            return min_gap
+
+    ordered = sorted(entries, key=lambda e: pd.to_datetime(e[0]))
+    # rows[r] = (last Timestamp placed on that row, half its width)
+    rows = [None] * n_rows
+    placed = []
+    for x, zone_frac, payload in ordered:
+        try:
+            frac = float(zone_frac)
+        except (TypeError, ValueError):
+            frac = 0.0
+        if frac < min_frac:
+            continue                      # zone too narrow to letter
+        x_ts = pd.to_datetime(x)
+        w = width_of(payload)
+        chosen = None
+        for r in range(n_rows):
+            if rows[r] is None:
+                chosen = r
+                break
+            occ_ts, occ_w = rows[r]
+            gap = abs((x_ts - occ_ts).days) / total
+            if gap >= (w + occ_w) / 2.0 + 0.006:
+                chosen = r
+                break
+        if chosen is None:
+            continue                      # nowhere to go without overlapping
+        rows[chosen] = (x_ts, w)
+        placed.append((x, chosen, payload))
+    return placed
+
+
 # Load all data sources
 events = pd.read_csv('data/events.csv')
 events['date'] = pd.to_datetime(events['date'], errors='coerce')
@@ -1181,13 +1263,29 @@ def build_c6():
         'b5_bottom': 'rgba(96,165,250,0.10)',
         'bottom': 'rgba(34,211,238,0.06)',
     }
+    # Zone bands. Labels are collected and placed in one collision-aware pass:
+    # "bottom" and "accumulation" are ~5 months wide on a 9-year axis (~4% of
+    # the width) and both pinned to y=0.97, so they overprinted into the
+    # literal string "BOTTOMACCUMULATION".
+    zone_spans = []
     for _, z in zones.iterrows():
         fig.add_vrect(x0=z['outer_start'], x1=z['outer_end'],
                       fillcolor=zone_fill.get(z['zone'], 'gray'),
                       line_width=0, layer='below')
-        fig.add_annotation(x=z['base_start'], y=0.97, yref='paper',
-                           text=f"<b>{z['zone'].upper()}</b>", showarrow=False,
-                           font=dict(size=7, color='white'), xanchor='left', xshift=2)
+        frac = _days_between(z['outer_start'], z['outer_end']) / _days_between(
+            '2022-09-01', '2031-06-01')
+        zone_spans.append((str(z['base_start']), str(z['zone']), frac))
+
+    def _c6_label_width(payload):
+        text = payload[0] if isinstance(payload, tuple) else payload
+        return (len(str(text)) * 5.4 + 12) / 600.0
+
+    for zx, zrow, (_zx0, zname) in place_x_labels(
+            [(x0, frac, (x0, zone)) for x0, zone, frac in zone_spans],
+            '2022-09-01', '2031-06-01', n_rows=3, width_fn=_c6_label_width):
+        fig.add_annotation(x=zx, y=0.975 - zrow * 0.022, yref='paper',
+                           text=f"<b>{zname.upper()}</b>", showarrow=False,
+                           font=dict(size=8, color='white'), xanchor='left', xshift=2)
 
     # --- BTC bear_bottom band (unified with alt-chart style: outer/base
     #     price-band rects + midpoint triangle + detailed annotation). ---
@@ -1360,7 +1458,7 @@ def build_c6():
     fig.add_annotation(
         x=observed_c4_top_date, y=observed_c4_top_price,
         xref='x', yref='y',
-        text=f'<b>C4 top ${observed_c4_top_price:,.0f}</b>',
+        text=_esc(f'<b>C4 top ${observed_c4_top_price:,.0f}</b>'),
         showarrow=True, arrowhead=2, arrowcolor='#facc15',
         ax=40, ay=30,
         font=dict(size=10, color='#facc15'),
@@ -1480,7 +1578,7 @@ def build_c6():
     # --- BTC today reference line ---
     fig.add_hline(y=btc_now, line_dash='dash', line_color='rgba(255,255,255,0.25)', line_width=1)
     fig.add_annotation(x='2031-06-01', y=btc_now, xref='x', yref='y',
-                       text=f'BTC today ${btc_now:,.0f}',
+                       text=_esc(f'BTC today ${btc_now:,.0f}'),
                        showarrow=False, font=dict(size=9, color='rgba(255,255,255,0.5)'),
                        xanchor='right', yanchor='bottom')
 
@@ -1547,24 +1645,51 @@ def build_c6():
                     )
             except Exception as e:
                 print(f"  (qualitative cross-ref note skipped: {e})")
-    for i, note in enumerate(notes):
+    # Footer notes: same treatment as the alt charts -- hard-wrapped, `_esc`ed
+    # so price ranges are not eaten by MathJax (they were rendering as bare
+    # fragments like "230,659-"), and positioned in pixel offsets clear of the
+    # rotated date labels rather than a fixed paper step.
+    FOOTER_COLS = 118
+    wrapped = []
+    for note in notes:
+        text = str(note)
+        while len(text) > FOOTER_COLS:
+            cut = text.rfind(' ', 0, FOOTER_COLS)
+            if cut <= 0:
+                cut = FOOTER_COLS
+            wrapped.append(text[:cut].rstrip())
+            text = text[cut:].lstrip()
+        if text:
+            wrapped.append(text)
+
+    X_TICK_PX = 52          # room for the -45deg YYYY-MM labels
+    NOTE_LINE_PX = 15
+    plot_h = 1000 - 80 - 140
+    for i, note in enumerate(wrapped):
         fig.add_annotation(
-            x=0.0, y=-0.06 - i * 0.035, xref='paper', yref='paper',
-            text=note, showarrow=False,
+            x=0.0, y=-(X_TICK_PX + 6 + i * NOTE_LINE_PX) / float(plot_h),
+            xref='paper', yref='paper',
+            text=_esc(note), showarrow=False,
             font=dict(size=9, color='#b0bdc7'),
             bgcolor='rgba(20,26,40,0.9)',
-            align='left',
+            align='left', xanchor='left',
         )
+
+    bottom_margin = X_TICK_PX + 14 + max(1, len(wrapped)) * NOTE_LINE_PX
+    # The purple "Qualitative cross-ref" annotation sits in the top margin and
+    # was colliding with the title, so the title is anchored to the very top
+    # and the margin made room for both.
+    top_margin = 108
 
     fig.update_layout(
         title=dict(text='C6 — BTC Next-Cycle (C5) Price Predictions — 2-stage model, observed C4 top',
-                   font=dict(size=14, color='#e6edf3')),
+                   font=dict(size=14, color='#e6edf3'), y=0.99, yanchor='top'),
         template='plotly_dark',
         paper_bgcolor='#0a0e1a', plot_bgcolor='#0a0e1a',
         font=dict(color='#e6edf3'),
         height=1000,
         showlegend=False,
-        margin=dict(t=80, b=140, l=80),
+        margin=dict(t=top_margin, b=bottom_margin, l=80),
     )
 
     _safe_write_html(fig, CHARTS_DIR / 'C6.html', config={'responsive': True})
@@ -1646,21 +1771,47 @@ def _build_alt_chart(asset, filename, title, subtitle):
     zoom_min = df_zoom['close'].min()
     zoom_max = df_zoom['close'].max()
     # Explicit y-range so Plotly does not auto-scale to zone bands.
-    # Base range tracks observed history. We extend the upper bound to
-    # include the highest *meaningful* prediction band on the chart (C5 TOP
-    # high edge) so the band + its marker are not clipped. Lower bound is
-    # kept at 0.7 * zoom_min to leave room for the B4 marker below the
-    # observed price axis.
-    y_low = zoom_min * 0.7
-    band_max = 0.0
+    # Base range tracks observed history.
+    #
+    # AXIS HEADROOM CAP: the outer envelope must not set the scale. ETH's C5
+    # top band is $1,281-$190,053 (a 148x spread from an n=2 LOOCO outer
+    # bound); letting it drive the log axis stretched the chart to
+    # $693-$199,526 and squeezed ETH's entire $2k-$5k history into ~17% of
+    # the plot height. The axis is now capped at AXIS_HEADROOM x the observed
+    # high, and any band edge outside it is recorded in `clipped_bands` and
+    # disclosed in the footer rather than silently dropped.
+    AXIS_HEADROOM = 8.0
+    AXIS_FLOOR_DIVISOR = 3.0
+    y_low = max(zoom_min / AXIS_FLOOR_DIVISOR, 1e-9)
+    y_high = zoom_max * AXIS_HEADROOM
+    clipped_bands = []
     for _, z in sub.iterrows():
         try:
+            pl = float(z.get('price_low', '') or 0)
             ph = float(z.get('price_high', '') or 0)
-            if z.get('zone') in ('top', 'bottom', 'b5_bottom') and ph > 0:
-                band_max = max(band_max, ph)
         except (ValueError, TypeError):
-            pass
-    y_high = max(zoom_max * 1.3, band_max * 1.05 if band_max > 0 else zoom_max * 1.3)
+            continue
+        if z.get('zone') not in ('top', 'bottom', 'b5_bottom') or ph <= 0:
+            continue
+        if ph < y_low or pl > y_high:
+            continue
+        if pl < y_low:
+            clipped_bands.append((z['zone'], 'low', pl, y_low))
+        if ph > y_high:
+            clipped_bands.append((z['zone'], 'high', ph, y_high))
+    if zoom_max * 1.3 > y_low:
+        y_high = max(y_high, zoom_max * 1.3)
+
+    # Estimated rendered width of a label as a fraction of plot width.
+    # ~6.2px per character at 8-9px bold, against a ~600px plot. The PNG export
+    # is the binding case: write_image renders a fixed 700px-wide figure
+    # regardless of autosize, so sizing labels against a ~1200px plot
+    # under-estimated every width and let "BTC C4 top" and "B4 proj" touch.
+    def _label_width(payload):
+        text = payload[0] if isinstance(payload, tuple) else payload
+        return (len(str(text)) * 6.2 + 14) / 600.0
+
+    PLOT_H = 700 - 80 - 170          # provisional; final margin set at layout
 
     fig = go.Figure()
 
@@ -1679,12 +1830,15 @@ def _build_alt_chart(asset, filename, title, subtitle):
         fig.add_shape(type='line', x0=evt_date, x1=evt_date, y0=0, y1=1,
                       yref='paper', line=dict(color=evt_color, dash=evt_dash, width=1),
                       opacity=0.45, layer='above')
-        fig.add_annotation(x=evt_date, y=1.01, yref='paper', text=f'<b>{evt_label}</b>',
-                           showarrow=False, font=dict(size=8, color=evt_color),
-                           bgcolor='rgba(10,14,26,0.7)')
+
+    # Top-edge labels are collected first and placed in one collision-aware
+    # pass. They used to all sit on a single y=1.01 row, so any two that fell
+    # close together on the 10-year axis overprinted ("BTC C4 topB4 proj").
+    top_labels = [(d, lab, col) for (d, col, dash, lab) in btc_evts]
 
     # Projected B4 vertical line (when bear_bottom zone exists with valid dates)
     b4_row = sub[sub['zone'] == 'bottom']
+    b4_mid_str = None
     if not b4_row.empty:
         b4_os = str(b4_row.iloc[0].get('outer_start', ''))
         b4_oe = str(b4_row.iloc[0].get('outer_end', ''))
@@ -1694,16 +1848,28 @@ def _build_alt_chart(asset, filename, title, subtitle):
             fig.add_shape(type='line', x0=b4_mid_str, x1=b4_mid_str, y0=0, y1=1,
                           yref='paper', line=dict(color='#22d3ee', dash='dot', width=1),
                           opacity=0.5, layer='above')
-            fig.add_annotation(x=b4_mid_str, y=1.01, yref='paper',
-                               text='<b>B4 proj</b>', showarrow=False,
-                               font=dict(size=8, color='#22d3ee'),
-                               bgcolor='rgba(10,14,26,0.7)')
+            top_labels.append((b4_mid_str, 'B4 proj', '#22d3ee'))
 
-    # Zone shading (vertical bands with top labels — matches C6)
+    # Row offsets are in *pixels* converted to paper units. A fixed paper
+    # fraction shrinks as the bottom margin grows, which made rows overprint.
+    for lx, lrow, (lab, lcol) in place_x_labels(
+            [(x, 0.045, (lab, col)) for x, lab, col in top_labels],
+            '2022-01-01', '2031-12-31', n_rows=4, width_fn=_label_width):
+        fig.add_annotation(x=lx, y=1.012 + (13 + lrow * 13) / float(PLOT_H),
+                           yref='paper',
+                           text=f'<b>{lab}</b>', showarrow=False,
+                           font=dict(size=9, color=lcol),
+                           bgcolor='rgba(10,14,26,0.7)')
+
+    # Zone shading (vertical bands with labels). Spans are collected first so
+    # the labels can be placed in one collision-aware pass; previously every
+    # label was pinned to y=0.97 paper, so the 5-month-wide near-term zones
+    # stacked "BOTTOM" and "ACCUMULATION" into "BOTTOMACCUMULATION".
     zone_fill = {'accumulation': 'rgba(74,222,128,0.06)',
                  'top': 'rgba(251,146,60,0.10)',
                  'b5_bottom': 'rgba(96,165,250,0.10)',
                  'bottom': 'rgba(34,211,238,0.06)'}
+    zone_spans = []
     for _, z in sub.iterrows():
         zone = z['zone']
         os_ = str(z.get('outer_start', ''))
@@ -1711,9 +1877,16 @@ def _build_alt_chart(asset, filename, title, subtitle):
         if os_ and oe_ and os_ != 'nan' and oe_ != 'nan':
             fig.add_vrect(x0=os_, x1=oe_, fillcolor=zone_fill.get(zone, 'gray'),
                           line_width=0, layer='below')
-            fig.add_annotation(x=os_, y=0.97, yref='paper',
-                               text=f"<b>{zone.upper()}</b>", showarrow=False,
-                               font=dict(size=7, color='white'), xanchor='left', xshift=2)
+            frac = _days_between(os_, oe_) / _days_between('2022-01-01', '2031-12-31')
+            zone_spans.append((os_, oe_, zone, frac))
+
+    for zx, zrow, (zx0, zone) in place_x_labels(
+            [(x0, frac, (x0, zone)) for x0, x1, zone, frac in zone_spans],
+            '2022-01-01', '2031-12-31', n_rows=4, width_fn=_label_width):
+        fig.add_annotation(x=zx, y=0.975 - (12 + zrow * 12) / float(PLOT_H),
+                           yref='paper',
+                           text=f"<b>{zone.upper()}</b>", showarrow=False,
+                           font=dict(size=8, color='white'), xanchor='left', xshift=2)
 
     # Price band rectangles + triangle markers + arrow annotations (C6 style)
     def fmt_price(p):
@@ -1731,9 +1904,12 @@ def _build_alt_chart(asset, filename, title, subtitle):
         # bear BOTTOMS so they get a down triangle; the C5 top gets an up
         # triangle. These were previously all inverted (the only high took the
         # down triangle and both lows took the up triangle).
-        'bottom':    ('#22d3ee', 'triangle-down', 14, 'B4 (proj bear bottom)', '#22d3ee'),
-        'top':       ('#facc15', 'triangle-up',   14, 'C5 TOP (proj cycle peak)', '#facc15'),
-        'b5_bottom': ('#60a5fa', 'triangle-down', 12, 'B5 (proj next bear bottom)', '#60a5fa'),
+        # Sizes were raised from 14/14/12 to 18/18/15: on a log axis spanning
+        # the observed history plus the projection band, a 14px triangle was
+        # visually indistinguishable from the price line it sits on.
+        'bottom':    ('#22d3ee', 'triangle-down', 18, 'B4 (proj bear bottom)', '#22d3ee'),
+        'top':       ('#facc15', 'triangle-up',   18, 'C5 TOP (proj cycle peak)', '#facc15'),
+        'b5_bottom': ('#60a5fa', 'triangle-down', 15, 'B5 (proj next bear bottom)', '#60a5fa'),
     }
 
     for _, z in sub.iterrows():
@@ -1764,6 +1940,14 @@ def _build_alt_chart(asset, filename, title, subtitle):
         p_mid = (p_lo + p_hi) / 2
         r_, g_, b_ = int(color[1:3], 16), int(color[3:5], 16), int(color[5:7], 16)
 
+        # A band whose midpoint sits outside the (capped) axis would draw its
+        # marker and tag off-screen entirely: ETH's C5 top centres near $95.7k
+        # against a $38.7k ceiling, so the band rendered as a bare yellow column
+        # with no marker at all. Pin the marker to the nearest visible price and
+        # disclose the true value in the footer.
+        p_mid_vis = min(max(p_mid, y_low * 1.03), y_high * 0.97)
+        off_axis = p_mid_vis != p_mid
+
         # Outer window: faint dashed rect behind the base band (same layering as
         # the TradingView Pine overlay — outer = full uncertainty range).
         fig.add_shape(type='rect', x0=x0, x1=x1, y0=p_lo, y1=p_hi,
@@ -1781,19 +1965,20 @@ def _build_alt_chart(asset, filename, title, subtitle):
                       line=dict(color=color, width=2), layer='below')
 
         # Center line across the base window
-        fig.add_trace(go.Scatter(x=[band_x0, band_x1], y=[p_mid, p_mid], mode='lines',
+        fig.add_trace(go.Scatter(x=[band_x0, band_x1], y=[p_mid_vis, p_mid_vis], mode='lines',
                       line=dict(color=color, width=2), showlegend=False,
                       hovertemplate=f'{band_label}<br>${p_mid:,.2f}<extra></extra>'))
 
         # Triangle marker at base window midpoint
         mid_dt = (pd.to_datetime(band_x0) + (pd.to_datetime(band_x1) - pd.to_datetime(band_x0)) / 2)
         mid_str = mid_dt.strftime('%Y-%m-%d')
+        off_note = ' <i>(off-scale, see footer)</i>' if off_axis else ''
         fig.add_trace(go.Scatter(
-            x=[mid_str], y=[p_mid], mode='markers', name=band_label,
+            x=[mid_str], y=[p_mid_vis], mode='markers', name=band_label,
             marker=dict(symbol=marker_sym, size=marker_sz, color=color,
-                        line=dict(color='white', width=1.5)),
+                        line=dict(color='#0a0e1a', width=2)),
             hovertemplate=f'{band_label}<br>{mid_str}<br>${p_mid:,.2f}<br>'
-                          f'band {fmt_price(p_lo)}–{fmt_price(p_hi)}<extra></extra>',
+                          f'band {fmt_price(p_lo)}–{fmt_price(p_hi)}{off_note}<extra></extra>',
             showlegend=False))
 
         # Arrow annotation at band right edge (base window)
@@ -1809,16 +1994,27 @@ def _build_alt_chart(asset, filename, title, subtitle):
         if (band_x0, band_x1) != (x0, x1):
             date_note += f" (outer {x0} → {x1})"
         date_note += "</span>"
+        # Band callout. This replaces a four-line block anchored at the band's
+        # right edge with a fixed -55px arrow offset -- the single largest
+        # source of overlap. Its widest line ran off the right of the plot and
+        # was clipped, and the three per-zone callouts all cluster around
+        # 2029-2032 and overprinted each other. The three bands sit at very
+        # different prices on a log axis, so a short tag placed above its own
+        # band cannot collide with the others; full detail lives in the hover
+        # template and the footer.
+        short_tag = {'bottom': 'B4', 'top': 'C5', 'b5_bottom': 'B5'}.get(zone, zone)
         fig.add_annotation(
-            x=band_x1, y=p_mid, xref='x', yref='y',
-            text=(f"<b>{band_label}</b><br>"
-                  f"{fmt_price(p_lo)} – {fmt_price(p_hi)}<br>"
-                  f"(center {fmt_price(p_mid)}){fit_note}{chk_note}<br>{date_note}"),
-            showarrow=True, arrowhead=2, arrowcolor=arrow_col,
-            ax=-55, ay=0,
-            font=dict(size=10, color='#ffffff'),
-            bgcolor='rgba(10,14,26,0.90)', borderpad=4,
-            xanchor='right', yanchor='middle')
+            x=mid_str, y=min(p_hi, y_high * 0.99), xref='x', yref='y',
+            text=f"<b>{short_tag}</b>",
+            showarrow=False, xanchor='center', yanchor='bottom', yshift=3,
+            font=dict(size=10, color=color))
+        # Invisible hover anchor at the band's right edge carries the date
+        # window, which used to be the clipped fourth line of the callout.
+        fig.add_trace(go.Scatter(
+            x=[band_x1], y=[p_mid_vis], mode='markers',
+            marker=dict(size=18, color='rgba(0,0,0,0)'),
+            hovertemplate=f'{band_label}<br>{date_note}<extra></extra>',
+            showlegend=False))
 
     # Gold-specific: bull market support band (20-mo SMA / 21-mo EMA) overlay.
     # Populated only for gold (support_band_low/high columns on the bear_bottom
@@ -1847,7 +2043,7 @@ def _build_alt_chart(asset, filename, title, subtitle):
                     showlegend=False))
                 fig.add_annotation(
                     x='2022-01-01', y=sb_hi_f, xref='x', yref='y',
-                    text=f'<b>Support band ${sb_lo_f:,.0f}–${sb_hi_f:,.0f}</b>',
+                    text=_esc(f'<b>Support band ${sb_lo_f:,.0f}–${sb_hi_f:,.0f}</b>'),
                     showarrow=False, font=dict(size=9, color='#d4af37'),
                     bgcolor='rgba(10,14,26,0.85)', xanchor='left', xshift=4, yshift=4)
             except (ValueError, TypeError):
@@ -1945,7 +2141,7 @@ def _build_alt_chart(asset, filename, title, subtitle):
                             line=dict(color='white', width=1)),
                 hovertemplate=f"C4 top (observed)<br>{td}<br>${tp:,.2f}<extra></extra>",
                 showlegend=False))
-            fig.add_annotation(x=td, y=tp, text=f'<b>C4 top ${tp:,.0f}</b>',
+            fig.add_annotation(x=td, y=tp, text=_esc(f'<b>C4 top ${tp:,.0f}</b>'),
                 showarrow=True, arrowhead=2, arrowcolor=color,
                 ax=40, ay=-20, font=dict(size=9, color=color),
                 bgcolor='rgba(10,14,26,0.85)', borderpad=2)
@@ -1972,7 +2168,7 @@ def _build_alt_chart(asset, filename, title, subtitle):
                             line=dict(color='white', width=1.5)),
                 hovertemplate=f"B4 detected<br>{bd}<br>${bp:,.2f}<extra></extra>",
                 showlegend=False))
-            fig.add_annotation(x=bd, y=bp, text=f'<b>B4 detected ${bp:,.0f}</b>',
+            fig.add_annotation(x=bd, y=bp, text=_esc(f'<b>B4 detected ${bp:,.0f}</b>'),
                 showarrow=True, arrowhead=2, arrowcolor='#22c55e',
                 ax=-40, ay=25, font=dict(size=9, color='#22c55e'),
                 bgcolor='rgba(10,14,26,0.85)', borderpad=2)
@@ -2085,8 +2281,20 @@ def _build_alt_chart(asset, filename, title, subtitle):
                     zone_summary_parts.append(f"{zname}({os_[:10]}–{oe_[:10]}): envelope only")
             else:
                 zone_summary_parts.append(f"{zname}({os_[:10]}–{oe_[:10]}): envelope only")
+    # One footer line per zone rather than a single " | "-joined run-on. The
+    # joined form was 400+ characters and hard-wrapping it broke mid-token,
+    # producing a ragged column of fragments.
     if zone_summary_parts:
-        notes.append("Zones: " + " | ".join(zone_summary_parts))
+        notes.append("Zones:")
+        notes.extend("  " + part for part in zone_summary_parts)
+
+    # Disclose any band edge outside the capped axis, so the clipping introduced
+    # by AXIS_HEADROOM is visible rather than silently hiding a projection edge.
+    if clipped_bands:
+        notes.append("Off-scale band edge(s), clipped to keep price history legible:")
+        for zone, edge, val, lim in clipped_bands:
+            notes.append(f"  {zone} {edge} {fmt_price(val)} "
+                         f"(axis reaches {fmt_price(lim)})")
 
     # Note 4: B4 detected vs BTC projection — alt-leads-BTC pattern
     # When the asset's bear bottom has already been detected (alt_cycle_metrics
@@ -2124,22 +2332,62 @@ def _build_alt_chart(asset, filename, title, subtitle):
                     f"ETH/XRP ~156d before BTC)."
                 )
 
-    for i, note in enumerate(notes):
+    # Footer notes. Each was one long unwrapped line anchored at x=0 paper, so
+    # the widest ran past the right edge of the plot and was clipped mid-sentence,
+    # and the block sat on top of the rotated x-axis tick labels. Notes are now
+    # hard-wrapped, positioned in *pixel* offsets (a paper fraction shrinks as
+    # the bottom margin grows, which made the lines overprint each other),
+    # starting below the rotated tick labels, with the margin sized to fit.
+    FOOTER_COLS = 118
+    wrapped = []
+    for note in notes:
+        text = str(note)
+        while len(text) > FOOTER_COLS:
+            cut = text.rfind(' ', 0, FOOTER_COLS)
+            if cut <= 0:
+                cut = FOOTER_COLS
+            wrapped.append(text[:cut].rstrip())
+            text = text[cut:].lstrip()
+        if text:
+            wrapped.append(text)
+
+    X_TICK_PX = 46          # room for the -45deg year labels
+    NOTE_LINE_PX = 15       # 9px text
+    for i, note in enumerate(wrapped):
         fig.add_annotation(
-            x=0.0, y=-0.05 - i * 0.04, xref='paper', yref='paper',
-            text=note, showarrow=False,
+            x=0.0, y=-(X_TICK_PX + 6 + i * NOTE_LINE_PX) / float(PLOT_H),
+            xref='paper', yref='paper',
+            text=_esc(note), showarrow=False,
             font=dict(size=9, color='#b0bdc7'),
             bgcolor='rgba(20,26,40,0.9)',
-            align='left',
+            align='left', xanchor='left',
         )
 
+    bottom_margin = X_TICK_PX + 14 + max(1, len(wrapped)) * NOTE_LINE_PX
+
+    # Wrap the subtitle: several are long enough to run off the right edge of
+    # the plot ("...Overlay: validated bull-market su"), and the single-line
+    # title also collided with the top-edge event labels. Wrapping onto <br>
+    # and sizing the top margin to the result fixes both.
+    SUB_COLS = 96
+    sub_lines = [subtitle]
+    while len(sub_lines[-1]) > SUB_COLS:
+        prev = sub_lines[-1]
+        cut = prev.rfind(' ', 0, SUB_COLS)
+        if cut <= 0:
+            cut = SUB_COLS
+        sub_lines[-1] = prev[:cut].rstrip()
+        sub_lines.append(prev[cut:].lstrip())
+    top_margin = 44 + 17 * len(sub_lines)
+
     fig.update_layout(
-        title=dict(text=title + '<br><sub>' + subtitle + '</sub>',
-                   font=dict(size=14, color='#e6edf3')),
+        title=dict(text=title + '<br><sub>' + '<br>'.join(sub_lines) + '</sub>',
+                   font=dict(size=14, color='#e6edf3'), y=0.99, yanchor='top'),
         template='plotly_dark', paper_bgcolor='#0a0e1a', plot_bgcolor='#0a0e1a',
         font=dict(color='#e6edf3'), height=700,
         autosize=True,
-        showlegend=False, margin=dict(t=80, b=170, l=90, r=40),
+        showlegend=False,
+        margin=dict(t=top_margin, b=bottom_margin, l=90, r=40),
     )
     _safe_write_html(fig, CHARTS_DIR / filename, config={'responsive': True})
     _safe_write_image(fig, CHARTS_DIR / filename.replace('.html', '.png'), scale=2)
@@ -2253,6 +2501,7 @@ def build_c8_macro():
         return f'${p:.2f}'
 
     notes_per_asset = {}
+    panel_zone_spans = {}
     for row_idx, asset in enumerate(assets, start=1):
         label, color = ASSET_DISPLAY[asset]
         df = pd.read_csv(asset_files[asset], parse_dates=['date']).sort_values('date')
@@ -2292,9 +2541,8 @@ def build_c8_macro():
                 fig.add_vrect(x0=os_, x1=oe_, row=row_idx, col=1,
                               fillcolor=zone_fill.get(zone, 'gray'),
                               line_width=0, layer='below')
-                fig.add_annotation(x=os_, y=0.97, yref='paper', row=row_idx, col=1,
-                                   text=f"<b>{zone.upper()}</b>", showarrow=False,
-                                   font=dict(size=7, color='white'), xanchor='left', xshift=2)
+                frac = _days_between(os_, oe_) / _days_between('2022-01-01', '2031-12-31')
+                panel_zone_spans.setdefault(row_idx, []).append((os_, zone, frac))
 
         # Price band rectangles + triangle markers
         for _, z in sub.iterrows():
@@ -2354,21 +2602,20 @@ def build_c8_macro():
                 hovertemplate=f'{band_label}<br>{mid_str}<br>${p_mid:,.2f}<br>'
                               f'band {fmt_price_macro(p_lo)}-{fmt_price_macro(p_hi)}<extra></extra>',
                 showlegend=False, xaxis=xref, yaxis=yref))
-            # Arrow annotation at band right edge (base window)
-            date_note = f"<span style='font-size:9px'>{band_x0} → {band_x1}"
-            if (band_x0, band_x1) != (x0, x1):
-                date_note += f" (outer {x0} → {x1})"
-            date_note += "</span>"
+            # Band tag. This replaces a four-line arrowed callout per band
+            # (12 of them across the 4 panels) anchored at a constant -55px
+            # offset from the band's right edge. Because the offsets were fixed
+            # in pixels while the anchors all clustered in 2029-2032, the blocks
+            # from all four panels piled through the middle of the figure and
+            # were unreadable. A short tag above its own band cannot collide
+            # across panels (separate y axes) or within one (very different
+            # prices); the detail moves to hover and the panel caption.
+            short_tag = {'bottom': 'B4', 'top': 'C5', 'b5_bottom': 'B5'}.get(zone, zone)
             fig.add_annotation(
-                x=band_x1, y=p_mid, xref=xref, yref=yref,
-                text=(f"<b>{band_label}</b><br>"
-                      f"{fmt_price_macro(p_lo)} - {fmt_price_macro(p_hi)}<br>"
-                      f"(center {fmt_price_macro(p_mid)})<br>{date_note}"),
-                showarrow=True, arrowhead=2, arrowcolor=color,
-                ax=-55, ay=0,
-                font=dict(size=10, color='#ffffff'),
-                bgcolor='rgba(10,14,26,0.90)', borderpad=4,
-                xanchor='right', yanchor='middle')
+                x=mid_str, y=p_hi, xref=xref, yref=yref,
+                text=f"<b>{short_tag}</b>",
+                showarrow=False, xanchor='center', yanchor='bottom', yshift=2,
+                font=dict(size=9, color=color))
 
         # Price line
         fig.add_trace(go.Scatter(
@@ -2393,7 +2640,7 @@ def build_c8_macro():
                     hovertemplate=f"C4 top (observed)<br>{td}<br>${tp:,.2f}<extra></extra>",
                     showlegend=False), row=row_idx, col=1)
                 fig.add_annotation(x=td, y=tp, xref=xref, yref=yref,
-                    text=f'<b>C4 top ${tp:,.0f}</b>',
+                    text=_esc(f'<b>C4 top ${tp:,.0f}</b>'),
                     showarrow=True, arrowhead=2, arrowcolor=color,
                     ax=40, ay=-20, font=dict(size=9, color=color),
                     bgcolor='rgba(10,14,26,0.85)', borderpad=2)
@@ -2492,6 +2739,27 @@ def build_c8_macro():
             'c4_top': (tp, td) if (tp and td) else None,
         }
 
+    # Zone labels, placed per panel with the same collision-aware row
+    # assignment as the single-asset charts. yref was 'paper' while row/col was
+    # also supplied, which pinned EVERY panel's label to the top of the whole
+    # figure -- all four panels' labels landed on top of each other above SPX.
+    # '<axis> domain' puts a label inside its own panel, and the row assignment
+    # stops "ACCUMULATION" and "TOP" overprinting inside a panel (DXY/TLT).
+    def _c8d_label_width(payload):
+        text = payload[0] if isinstance(payload, tuple) else payload
+        return (len(str(text)) * 5.4 + 12) / 600.0
+
+    for row_idx, spans in sorted(panel_zone_spans.items()):
+        yref = f'y{row_idx}' if row_idx > 1 else 'y'
+        for zx, zrow, (_zx0, zone) in place_x_labels(
+                [(x0, frac, (x0, zone)) for x0, zone, frac in spans],
+                '2022-01-01', '2031-12-31', n_rows=3, width_fn=_c8d_label_width):
+            fig.add_annotation(x=zx, y=0.97 - zrow * 0.055, yref=f'{yref} domain',
+                               row=row_idx, col=1,
+                               text=f"<b>{zone.upper()}</b>", showarrow=False,
+                               font=dict(size=7, color='white'),
+                               xanchor='left', xshift=2)
+
     # Bottom-of-chart summary notes (one block, summarizing all 4 macros)
     summary_lines = [
         "<b>I-19 macro cycle-tied 2-stage projection (NEW):</b> "
@@ -2541,22 +2809,49 @@ def build_c8_macro():
             line += " | ".join(zs)
         summary_lines.append(line)
 
-    for i, note in enumerate(summary_lines):
+    # Footer. Wrapped to a fixed column and positioned in pixel offsets below
+    # the x-axis title; previously each of the 8 lines was one long unwrapped
+    # string at a fixed paper step, so the longest ran off the right edge, the
+    # per-asset zone lists were unreadable, and the block collided with the
+    # x-axis tick labels.
+    FOOTER_COLS = 118
+    wrapped = []
+    for note in summary_lines:
+        text = str(note)
+        while len(text) > FOOTER_COLS:
+            cut = text.rfind(' ', 0, FOOTER_COLS)
+            if cut <= 0:
+                cut = FOOTER_COLS
+            wrapped.append(text[:cut].rstrip())
+            text = text[cut:].lstrip()
+        if text:
+            wrapped.append(text)
+
+    # 4 stacked panels at 2000px left each one ~490px tall for 10 years of
+    # daily bars and three zones -- mostly empty space, with the callouts
+    # crowding what little plot there was. 1500 keeps each panel readable.
+    C8D_HEIGHT = 1500
+    NOTE_LINE_PX = 13       # 8px text
+    plot_h = C8D_HEIGHT - 80 - 160
+    for i, note in enumerate(wrapped):
         fig.add_annotation(
-            x=0.0, y=-0.04 - i * 0.025, xref='paper', yref='paper',
-            text=note, showarrow=False,
+            x=0.0, y=-(52 + i * NOTE_LINE_PX) / float(plot_h),
+            xref='paper', yref='paper',
+            text=_esc(note), showarrow=False,
             font=dict(size=8, color='#b0bdc7'),
             bgcolor='rgba(20,26,40,0.9)',
-            align='left',
+            align='left', xanchor='left',
         )
 
     fig.update_layout(
         title=dict(text='C8d — Macro Assets Cycle-Tied Projection (I-19)',
                    font=dict(size=14, color='#e6edf3')),
         template='plotly_dark', paper_bgcolor='#0a0e1a', plot_bgcolor='#0a0e1a',
-        font=dict(color='#e6edf3'), height=2000,
+        font=dict(color='#e6edf3'), height=C8D_HEIGHT,
         autosize=True,
-        showlegend=False, margin=dict(t=80, b=160, l=90, r=40))
+        showlegend=False,
+        margin=dict(t=80, b=52 + 10 + max(1, len(wrapped)) * NOTE_LINE_PX,
+                    l=90, r=40))
     fig.update_xaxes(title_text='Date', row=len(assets), col=1)
     _safe_write_html(fig, CHARTS_DIR / 'C8d.html', config={'responsive': True})
     _safe_write_image(fig, CHARTS_DIR / 'C8d.png', scale=2)
@@ -2671,11 +2966,27 @@ def build_c8h():
         if i == len(rs) or rs[i] != rs[start]:
             runs.append((start, i - 1, rs[start]))
             start = i
-    for s, e, state in runs:
+    epoch_spans = []
+    for s, e, rstate in runs:
         ndays = e - s + 1
-        if ndays >= 180 and state != 'unclassified':
-            fig.add_annotation(
-                x=dstr[(s + e) // 2], y=0, xref='x', yref='y3',
+        if ndays >= 180 and rstate != 'unclassified':
+            mid = dstr[(s + e) // 2]
+            frac = _days_between(dstr[s], dstr[e]) / _days_between('2010-01-01', dstr[-1])
+            epoch_spans.append((mid, frac, rstate, ndays))
+
+    # Anchored at each run's midpoint with no collision handling, adjacent
+    # >=180d runs on a 16-year axis overprinted into one garbled string
+    # ("bear_steepbull 182dnormal 184d820dnormal"). Each label's span is its own
+    # run's date width, so the same collision-aware row assignment used by the
+    # zone charts separates them.
+    def _epoch_width(payload):
+        return (len(str(payload[0])) * 5.0 + 16) / 600.0
+
+    for ex, erow, (state, ndays) in place_x_labels(
+            [(m, f, (st, nd)) for m, f, st, nd in epoch_spans],
+            '2010-01-01', dstr[-1], n_rows=3, width_fn=_epoch_width):
+        fig.add_annotation(
+            x=ex, y=0.55 - erow * 0.32, xref='x', yref='y3',
                 text=f"{state} \u00b7 {ndays}d", showarrow=False,
                 font=dict(size=8, color='#0a0e1a' if state != 'normal' else '#0a0e1a'))
 
@@ -2711,8 +3022,12 @@ def build_c8h():
                            bgcolor='rgba(10,14,26,0.85)', borderpad=3)
 
     # --- Decision-rule box ---
+    # Placed in pixels below the plot area. At the old fixed paper offset
+    # (y=-0.16) this text sat inside the legend's band (legend y=-0.22 on a
+    # 760px figure) and the legend's second row was drawn straight through it.
     fig.add_annotation(
-        x=0, y=-0.16, xref='paper', yref='paper', xanchor='left',
+        x=0, y=-(96 + 40) / float(760 - 60 - 150),
+        xref='paper', yref='paper', xanchor='left',
         text=("<b>I-21 rule:</b> the gated curve regime scales each asset's B4 price corridor "
               "only (\u00d7 mean-dd ratio, n\u22653 else fallback \u00d71.000) \u2014 windows unchanged \u00b7 "
               "gate: 5 consecutive days \u00b7 pipeline re-run auto-adjusts \u00b7 "
@@ -2728,7 +3043,7 @@ def build_c8h():
                     tickangle=-45, gridcolor='#2a3349', tickfont=dict(size=9, color='#b0bdc7')),
         legend=dict(orientation='h', yanchor='bottom', y=-0.22, xanchor='center', x=0.5,
                     font=dict(size=9)),
-        margin=dict(t=60, b=110),
+        margin=dict(t=60, b=150),
     )
     _safe_write_html(fig, CHARTS_DIR / 'C8h.html', config={'responsive': True})
     _safe_write_image(fig, CHARTS_DIR / 'C8h.png', scale=2)
