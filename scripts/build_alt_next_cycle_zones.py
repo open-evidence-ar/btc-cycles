@@ -243,6 +243,70 @@ def _own_history_window(anchor, durations, label):
             note)
 
 
+def _all_time_max_drawdown(asset):
+    """The asset's worst peak-to-trough drawdown over its FULL raw history.
+
+    Used by the record-freak test below. Returns a positive fraction
+    (e.g. 0.551 for TLT's 2020-2023 collapse) or None when no snapshot exists.
+    """
+    import pandas as pd
+    raw_dir = Path(__file__).resolve().parent.parent / "data" / "raw"
+    cands = sorted(raw_dir.glob(f"{asset}_yahoo_*.csv"))
+    if not cands:
+        return None
+    try:
+        d = pd.read_csv(cands[-1], usecols=["close"])
+    except Exception:
+        return None
+    px = pd.to_numeric(d["close"], errors="coerce").dropna().values
+    if len(px) < 10:
+        return None
+    peak = np.maximum.accumulate(px)
+    return float(-np.min((px - peak) / peak))
+
+
+#: A sample's max drawdown counts as "the record episode" when it reaches this
+#: share of the asset's all-time worst. TLT's cycle-measured dd (0.488, from
+#: the 2020-11 cycle top) is the same 2020->2023 collapse as its 0.551
+#: peak-to-trough record measured from the Aug-2020 high -- the gap is peak
+#: choice, not a different event -- so the threshold is "same episode", not an
+#: arbitrary size cut.
+RECORD_SHARE = 0.85
+
+
+def _record_freak_dd(dds, all_time_dd):
+    """Detect a record drawdown being extrapolated as a recurring cycle.
+
+    Fires only when BOTH hold:
+
+    1. statistical extremity within the sample: max dd > 2x the median dd.
+       With n=3 one extreme point is not evidence of a recurring property --
+       it is one event. (NDX passes this test: 0.356 vs median 0.156.)
+    2. the sample contains the asset's ALL-TIME record: max dd >=
+       RECORD_SHARE x the full-history worst. A drawdown that is (essentially)
+       the worst thing the asset has ever done has no evidence of recurrence;
+       extrapolating it as the base case assumes the record gets broken.
+       (NDX fails this: its 0.356 sample max is 43% of its 0.829 record --
+       a 36% Nasdaq bear is historically normal, and the model if anything
+       understates it.)
+
+    Concrete case (2026-10-17): TLT. dds=[0.167, 0.080, 0.488]; median 0.167;
+    all-time worst 0.551 (2020->2023). The power-law fit extrapolates the
+    record to a projected dd of 0.340 -> B4 $62.30, implying a ~15.8y-duration
+    ETF at levels consistent with a 30y yield near 7% -- above its all-time
+    high. The 2020->2023 collapse was a policy-regime shock (0% -> 5% rates),
+    not a cycle property of bonds.
+
+    Returns (freak: bool, median_dd: float).
+    """
+    if not dds or all_time_dd is None or all_time_dd <= 0:
+        return False, (float(np.median(dds)) if dds else 0.0)
+    med = float(np.median(dds))
+    mx = float(np.max(dds))
+    freak = len(dds) >= 3 and mx > 2.0 * med and mx >= RECORD_SHARE * all_time_dd
+    return freak, med
+
+
 def _load_btc_projected_b4_center():
     """Load BTC's projected B4 date (center of bear_bottom base band) from
     next_cycle_zones.csv. This is the BTC driver timing — alts should lag
@@ -1167,6 +1231,55 @@ def _project_asset_chain(metrics_df, asset, is_macro):
                 dd_floor=macro_dd_floor,
                 mult_floor=macro_mult_floor,
             )
+
+            # --- Record-drawdown override (2026-10-17) ---
+            # If the sample's max drawdown is both >2x the median AND
+            # essentially the asset's all-time worst (see
+            # _record_freak_dd), the power-law fit is extrapolating a
+            # one-off policy shock as a recurring cycle property. The base
+            # case then uses the MEDIAN observed drawdown instead of the
+            # fitted extrapolation; the record stays in the band as the tail
+            # edge (it can happen, it is just not the base case).
+            #
+            # For TLT this moves the projected dd from the fitted 0.340 to
+            # the observed median 0.167 (B4 $62.30 -> $78.63), and the whole
+            # downstream chain (C5, B5) recomputes consistently from the
+            # helper's own composition rules.
+            freak, dd_med = _record_freak_dd(dds, _all_time_max_drawdown(asset))
+            freak_note = ''
+            if freak:
+                c4 = float(observed_c4_top_price)
+                old_b4 = proj['b4_stage1']
+                old_c5lo = proj['c5_top_band_low']
+                old_c5hi = proj['c5_top_band_high']
+                proj['c4_dd'] = dd_med
+                proj['b4_stage1'] = proj['b4_via_drawdown'] = c4 * (1.0 - dd_med)
+                # Band = the asset's OWN observed dd range. The record (max
+                # dd) is deliberately retained as the deep tail edge.
+                proj['b4_band_low'] = c4 * (1.0 - max(dds))
+                proj['b4_band_high'] = c4 * (1.0 - max(min(dds), 0.10))
+                # C5 recomposes exactly as the helper does:
+                # C5 = B4 x mult; C5 band = B4 band x mult band.
+                proj['c5_top'] = proj['b4_stage1'] * proj['mult_c5']
+                proj['c5_top_band_low'] = proj['b4_band_low'] * proj['mult_c5_band_low']
+                proj['c5_top_band_high'] = proj['b4_band_high'] * proj['mult_c5_band_high']
+                # B5 = C5 x (1 - dd_C5); preserve the helper's dd_C5 by
+                # scaling B5 with the C5 change.
+                if old_c5lo and old_c5hi:
+                    lo_r = proj['c5_top_band_low'] / old_c5lo
+                    hi_r = proj['c5_top_band_high'] / old_c5hi
+                    proj['b5_center'] = proj['b5_center'] * (proj['c5_top'] / (old_b4 * proj['mult_c5']))
+                    proj['b5_band_low'] = proj['b5_band_low'] * lo_r
+                    proj['b5_band_high'] = proj['b5_band_high'] * hi_r
+                chain_d = "[" + ", ".join("%.3f" % d for d in dds) + "]"
+                freak_note = (
+                    f" RECORD-DRAWDOWN OVERRIDE: max dd {max(dds):.3f} is >2x the "
+                    f"median ({dd_med:.3f}) and is the asset's all-time-worst "
+                    f"episode, so the base case uses the median dd, not the "
+                    f"fitted extrapolation ({proj['c4_dd']:.3f} replaces the "
+                    f"fit). The record stays in the band as the deep tail edge. "
+                    f"dds={chain_d}."
+                )
             # The borrowed-shape function's B4 band is derived from a power-
             # law extrapolation of the macro dd series (n=3), which can inflate
             # the implied drawdown toward BTC-like depths (up to 0.95) and
@@ -1182,8 +1295,9 @@ def _project_asset_chain(metrics_df, asset, is_macro):
             chain_mults = "[" + ", ".join("%.3f" % m for m in mults) + "]"
             fit_note = (
                 "mode=macro_2_stage_own_shape; "
-                "macro assets (SPX/NDX/DXY/TLT) DO pivot around BTC halvings "
-                "(I-19 revision; see docs/blockers/I-19-macro-2stage.md). "
+                "macro zone DATES come from each macro's own observed cycle "
+                "durations (2026-10-16; the halving anchor was withdrawn -- "
+                "see scripts/check_cycle_tie.py). "
                 "Anchor = own observed C4 top "
                 f"{observed_c4_top_date} @ {_fmt_usd(observed_c4_top_price)}; "
                 f"shape fit on macro's own series (dds={chain_dds} n={len(dds)}, "
@@ -1195,7 +1309,7 @@ def _project_asset_chain(metrics_df, asset, is_macro):
                 f"Projected C5 multiplier = {proj['mult_c5']:.2f} -> "
                 f"C5 top = {_fmt_usd(proj['c5_top'])} "
                 f"(band {_fmt_usd(proj['c5_top_band_low'])} - "
-                f"{_fmt_usd(proj['c5_top_band_high'])})."
+                f"{_fmt_usd(proj['c5_top_band_high'])}).{freak_note}"
             )
             return {
                 'available': True,
