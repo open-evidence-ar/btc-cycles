@@ -53,7 +53,7 @@ forward-range statistics table (n=3-4 cycles, **LOOCO** sensitivity) are
 fully documented in [Appendix A - Methodology](#methodology).
 The chart below renders the published windows.
 
-{% include chart.html id="C6" height="1000px" caption="C6 — BTC next-cycle (C5) price predictions, 2-stage model anchored on observed C4 top. Single tall log-scale panel: BTC price line 2022-09 to 2031-06 with zone shading (ACC/TOP/B5), event markers (B3, H4, observed C4 top, projected B4, H5), and prediction bands. C5 TOP band (orange): $187k–$339k during distribution window. B5 BOTTOM band (blue): $58k–$80k during re-entry window. The translucent **purple** folklore band marks the B4-anchored C5 top of 2029-09-15 (see Appendix B). Muted dotted 50w/200w SMA floor overlays (gray) cross-reference the B4 in-band confirmation rule (see decision table row 1). Bands narrowed (0.75x residual std)." %}
+{% include chart.html id="C6" height="1000px" caption=site.data.chart_captions.C6 %}
 
 
 ---

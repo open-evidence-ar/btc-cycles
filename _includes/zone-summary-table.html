@@ -1,0 +1,25 @@
+<table class="table-dense">
+<thead><tr><th>Order</th><th>Asset</th><th>B4 window (base)</th><th>B4 price corridor</th><th>C5 (distribution) window</th><th>C5 price corridor</th><th>What to do</th></tr></thead>
+<tbody>
+<tr><td>1</td><td><strong>TLT</strong></td><td>2025-04-27 → 2026-08-03</td><td>$37.76 – $84.95</td><td>2029-08-10 → 2031-07-25</td><td>$9.29 – $110</td><td>Macro, own-history timing — crypto-entry context. <sup>6</sup></td></tr>
+<tr><td>2</td><td><strong>DXY</strong></td><td>2025-12-26 → 2026-02-28</td><td>$88.95 – $98.96</td><td>2028-01-11 → 2028-12-29</td><td>$88.30 – $114</td><td>Macro, own-history timing — crypto-entry context. <sup>6</sup></td></tr>
+<tr><td>3</td><td><strong>XRP</strong></td><td>2026-03-20 → 2026-07-18</td><td>$0.7761 – $0.9113</td><td>2029-04-03 → 2029-06-02</td><td>$3.28 – $8.21</td><td>Earliest crypto bottom watch. <sup>1</sup></td></tr>
+<tr><td>4</td><td><strong>GOLD</strong></td><td>2026-05-31 → 2027-06-11</td><td>$3,242 – $4,787</td><td>2031-05-09 → 2032-03-27</td><td>$5,339 – $18,971</td><td>Macro, own-history timing. Bull support band (20-mo SMA / 21-mo EMA) is the empirical floor. <sup>8</sup></td></tr>
+<tr><td>5</td><td><strong>ETH</strong></td><td>2026-06-27 → 2026-09-13</td><td>$1,154 – $2,092</td><td>2029-08-31 → 2029-10-02</td><td>$16,649 – $190,053</td><td>~3 months before BTC. <sup>2</sup></td></tr>
+<tr><td>6</td><td><strong>SOL</strong></td><td>2026-09-30 → 2027-01-28</td><td>$57.16 – $67.12</td><td>2029-03-07 → 2029-07-21</td><td>$242 – $604</td><td>Lags BTC — the later crypto B4. <sup>4</sup></td></tr>
+<tr><td>7</td><td><strong>MSTR</strong></td><td>2026-09-30 → 2027-01-28</td><td>$103 – $121</td><td>2028-11-16 → 2028-12-16</td><td>$438 – $1,093</td><td>BTC-leveraged equity — window near SOL's. <sup>5</sup></td></tr>
+<tr><td>8</td><td><strong>BTC</strong></td><td>(see <a href="/btc-cycles/predictive-ranges/">The Prediction (BTC)</a>) 2026-10-12 → 2026-11-02</td><td>$29,596 – $53,673</td><td>2029-07-31 → 2029-09-20</td><td>$186,863 – $338,883</td><td>Anchor for XRP/SOL — they borrow BTC's projected B4. <sup>3</sup></td></tr>
+<tr><td>9</td><td><strong>WGMI</strong></td><td>2027-04-10 → 2027-11-07</td><td>$15.74 – $18.48</td><td>2029-07-05 → 2030-05-04</td><td>$66.57 – $166</td><td>BTC miners ETF — MARA proxy supplies pre-launch cycles C1-C3. <sup>7</sup></td></tr>
+<tr><td>10</td><td><strong>NDX</strong></td><td>2027-05-15 → 2027-08-23</td><td>$14,568 – $28,102</td><td>2031-03-10 → 2031-09-05</td><td>$30,781 – $95,622</td><td>Macro, own-history timing — crypto-entry context. <sup>6</sup></td></tr>
+<tr><td>11</td><td><strong>SPX</strong></td><td>2027-06-16 → 2027-07-07</td><td>$4,763 – $5,992</td><td>2030-07-27 → 2031-03-28</td><td>$8,230 – $14,276</td><td>Macro, own-history timing — crypto-entry context. <sup>6</sup></td></tr>
+</tbody></table>
+<ol class="table-dense-footnotes">
+<li><sup>1</sup> <strong>XRP.</strong> Timing: BTC-borrowed (BTC B4 + own lag). Method: <code>borrowed_2_stage_from_BTC</code>.</li>
+<li><sup>2</sup> <strong>ETH.</strong> Method: <code>naive_median_own_dd</code>. Note: ETH's published B4 comes from the BTC ratio-of-ratios path while C5 derives from the naive-median B4 band — different anchors (see AGENTS.md, "dual-path asymmetry").</li>
+<li><sup>3</sup> <strong>BTC.</strong> Method: BTC 2-stage (Stage 1 + Stage 2). Full disclosure on The Prediction (BTC) page.</li>
+<li><sup>4</sup> <strong>SOL.</strong> Timing: BTC-borrowed (B4 window = BTC B4 + SOL lag). Method: <code>borrowed_2_stage_from_BTC</code>.</li>
+<li><sup>5</sup> <strong>MSTR.</strong> Timing: BTC-borrowed. Method: <code>borrowed_2_stage_from_BTC</code>.</li>
+<li><sup>6</sup> <strong>SPX/NDX/DXY/TLT.</strong> Method: <code>macro_2_stage_own_shape</code> (I-19): drawdown depth and bottom-to-top multiplier fit on the macro's OWN series. Zone DATES come from each macro's own observed cycle durations since 2026-10-16 — NOT from BTC's halving calendar (halving-to-top lag spread 1.4y-2.6y vs ~0.2y for BTC; scripts/check_cycle_tie.py). See docs/blockers/I-19-macro-2stage.md.</li>
+<li><sup>7</sup> <strong>WGMI.</strong> Timing: BTC-borrowed. Method: <code>borrowed_2_stage_from_BTC</code>. MARA proxy for pre-launch cycles C1-C3 (MARA is a data source, never projected itself).</li>
+<li><sup>8</sup> <strong>GOLD (GC=F).</strong> Method: <code>macro_2_stage_own_shape</code> (I-19b). Own-history timing. Bull-market support band (20-mo SMA / 21-mo EMA) at $3,956 – $4,059 — the projected B4 is cross-checked against this floor (docs/gold_seasonality.md). See chart C8g.</li>
+</ol>

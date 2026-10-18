@@ -60,13 +60,9 @@ relationship with the dollar or long bonds. Two practical consequences:
 
 ## Macro 2-stage projections (moved from Per-Asset Decision Windows)
 
-Macro assets (SPX, NDX, DXY, TLT, GOLD) use the I-19 cycle-tied
-2-stage projection — anchor = own observed C4 top; shape (drawdown and
-bottom-to-top multiplier) fit on the macro's OWN series (n=3 from
-C1-C3). B4 band drawdown clamped to the macro's observed dd range.
-See `docs/blockers/I-19-macro-2stage.md` for full methodology.
+Macro assets (SPX, NDX, DXY, TLT, GOLD) use the I-19 2-stage price shape fit on their own series, but their zone dates come from each macro's own cycle history since 2026-10-16, not the BTC halving calendar. See `docs/blockers/I-19-macro-2stage.md` for full methodology.
 
-{% include chart.html id="C8d" height="1500px" caption="C8d - Macro assets with cycle-tied 2-stage projection (I-19). Anchor = own observed C4 top; shape (drawdown depth at C4, bottom-to-top multiplier at C5) fit on the macro's OWN series (n=3 from C1-C3). B4 band drawdown clamped to the macro's observed dd range. I-21 regime status line at bottom (adjustments apply automatically when computed). See docs/blockers/I-19-macro-2stage.md." %}
+{% include chart.html id="C8d" height="1500px" caption=site.data.chart_captions.C8d %}
 
 ## BTC calendar with alt local-top overlays
 
