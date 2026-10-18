@@ -688,11 +688,29 @@ price-free; and label/direction consistency against `ZONE_SEMANTICS`.
 
 **Side observation, not fixed here.** DXY and TLT do not satisfy
 "successive bear bottoms rise": their projected B5 centre sits below the B4
-centre (dxy 85.41 vs 93.96; tlt 39.38 vs 61.35), and TLT's projected C5 top
-centre (59.66) is itself below its projected B4 centre — neither instrument has
-a rise-then-fall projected shape. The exception set is pinned in
+centre, and their fitted idx=5 drawdown lands at or below the current-cycle B4
+level. The exception set is pinned in
 `test_rising_bear_bottoms_outside_documented_exceptions` so a NEW violation
 fails rather than being silently tolerated.
+
+*Superseded 2026-10-16.* This paragraph originally quoted concrete centres
+(`dxy 85.41 vs 93.96; tlt 39.38 vs 61.35`, and "TLT's projected C5 top centre
+(59.66) ... below its projected B4 centre"). Every one of those figures was a
+**band midpoint**, not a projection — the zone CSVs published no central
+estimate, so consumers reconstructed one as `(price_low + price_high) / 2`.
+Band midpoints are biased for geometric bands and diverge without bound as a
+band widens: ETH's C5 top band spans $16,649–$190,053, whose midpoint ($103,351)
+is 2.8× the model's $36,795. Zone rows now publish `price_center`, and on those
+numbers:
+
+- The **B5-below-B4 claim stands** — dxy 81.68 vs 92.77; tlt 43.83 vs 62.30 — so
+  the exception set remains justified.
+- The **C5-below-B4 claim is withdrawn** — TLT's C5 centre ($73.37) sits *above*
+  its B4 centre ($62.30).
+
+What genuinely still fails for these two is band-**edge** ordering
+(`top.price_low >= bottom.price_high`), pinned in
+`test_c5_top_band_sits_above_b4_band`.
 
 ##### R-6.  Macro assets become cycle-tied; gold (GC=F) added (I-19, I-19b)
 

@@ -134,6 +134,115 @@ def _shift_after(band_start, band_end, floor_date):
     return band_start, band_end
 
 
+def _resolve_center(proj_out, anchor_price, *keys):
+    """Pull a model's central price estimate out of a projection result.
+
+    Zone CSVs used to publish only ``price_low``/``price_high``, so every
+    consumer reconstructed a "centre" as ``(low + high) / 2``. That is a band
+    midpoint, not a projection: for a geometric band the midpoint is biased, and
+    for a wide band it is simply wrong. ETH's C5 top band spans $16,649-$190,053
+    -- midpoint $103,351 -- while the model actually projects $36.8k. Charts,
+    captions and the site banner all published the midpoint.
+
+    The centres were always computed by the projection paths; they just were
+    never written out. This resolves them across the different key names each
+    path happens to use, falling back to ``anchor * multiplier`` which is the
+    definition of the C5 centre everywhere.
+    """
+    if not proj_out:
+        return None
+    proj = proj_out.get("proj") or {}
+    for src in (proj_out, proj):
+        for k in keys:
+            v = src.get(k)
+            if v is None or v == "":
+                continue
+            try:
+                f = float(v)
+            except (TypeError, ValueError):
+                continue
+            if math.isfinite(f) and f > 0:
+                return f
+    mult = proj_out.get("mult_proj") or proj.get("mult_c5")
+    if mult and anchor_price:
+        try:
+            f = float(anchor_price) * float(mult)
+            if math.isfinite(f) and f > 0:
+                return f
+        except (TypeError, ValueError):
+            pass
+    return None
+
+
+def _fmt_center(v):
+    if v is None:
+        return ""
+    try:
+        f = float(v)
+    except (TypeError, ValueError):
+        return ""
+    return "%.4f" % f if math.isfinite(f) else ""
+
+
+def _macro_own_durations(metrics_df, asset):
+    """A macro's own bottom->top and top->bottom durations, in days.
+
+    Read straight off that asset's own cycle metrics. Used to date the macro
+    zones WITHOUT reference to BTC: the I-19 macro windows were previously
+    anchored on H5 (the next BTC halving) plus BTC's own D_halving_to_top /
+    D_top_to_bottom statistics, which imports BTC's calendar into an asset that
+    is not coupled to it -- measured halving-to-top lag spread is 1.4y (SPX)
+    to 2.6y (TLT) against ~0.2y for BTC itself (scripts/check_cycle_tie.py).
+    """
+    bt, tb = [], []
+    if metrics_df is None:
+        return bt, tb
+    rows = metrics_df[metrics_df["asset"] == asset]
+    for _, r in rows.iterrows():
+        b = str(r.get("asset_pre_halving_bottom_date", "") or "")
+        t = str(r.get("asset_local_top_date", "") or "")
+        nb = str(r.get("asset_next_bear_bottom_date", "") or "")
+        if b and t and b != "nan" and t != "nan":
+            try:
+                d = (pd.to_datetime(t) - pd.to_datetime(b)).days
+                if d > 0:
+                    bt.append(int(d))
+            except (ValueError, TypeError):
+                pass
+        if t and nb and t != "nan" and nb != "nan":
+            try:
+                d = (pd.to_datetime(nb) - pd.to_datetime(t)).days
+                if d > 0:
+                    tb.append(int(d))
+            except (ValueError, TypeError):
+                pass
+    return bt, tb
+
+
+def _own_history_window(anchor, durations, label):
+    """Project a date window from an anchor using an asset's OWN duration set.
+
+    Returns ``(base_start, base_end, outer_start, outer_end, note)``. The
+    centre is the median duration; the base window is the interquartile range
+    and the outer window the full observed min/max, mirroring how the
+    BTC-anchored path used q25/q75/min/max of BTC's statistics.
+    """
+    if anchor is None or not durations:
+        return None, None, None, None, ""
+    a = np.asarray(sorted(durations), dtype=float)
+    med = float(np.median(a))
+    q25 = float(np.percentile(a, 25))
+    q75 = float(np.percentile(a, 75))
+    note = (f"own {label} (n={len(a)}, median={med:.0f}d, IQR {q25:.0f}-{q75:.0f}d, "
+            f"range {a.min():.0f}-{a.max():.0f}d) from anchor "
+            f"{anchor.strftime('%Y-%m-%d')}; NOT halving-anchored")
+    return (anchor + timedelta(days=int(q25)),
+            anchor + timedelta(days=int(q75)),
+            anchor + timedelta(days=int(a.min())),
+            anchor + timedelta(days=int(a.max())),
+            note)
+
+
 def _load_btc_projected_b4_center():
     """Load BTC's projected B4 date (center of bear_bottom base band) from
     next_cycle_zones.csv. This is the BTC driver timing — alts should lag
@@ -857,8 +966,33 @@ def _project_asset_chain(metrics_df, asset, is_macro):
         dd_min = float(np.min(dds))
         dd_max = float(np.max(dds))
         mult_med = float(np.median(mults))
-        mult_min = float(np.min(mults))
-        mult_max = float(np.max(mults))
+        # Band = the empirical envelope of the own multiplier series. With n=3
+        # that envelope is set entirely by the most extreme historical cycle:
+        # ETH's C1 at 190.5x against a median of 57.1x gave a 43x band, which
+        # propagated to a C5 top band of $1,281-$190,053 -- 148x wide, with its
+        # LOWER edge sitting below the B4 band, which is structurally impossible
+        # for a cycle top (B4 -> accumulation -> C5 top must rise).
+        #
+        # With n>=3 the single most extreme observation (farthest from the
+        # median in log space, i.e. multiplicative distance) is dropped from the
+        # band. The median itself still uses every observation, so the centre
+        # estimate is unchanged; only the envelope narrows. n=2 has nothing to
+        # drop, so min/max is kept as before.
+        trimmed_mult = ''
+        if len(mults) >= 3:
+            logs = np.log(np.asarray(mults, dtype=float))
+            far = int(np.argmax(np.abs(logs - np.log(mult_med))))
+            kept = [m for i, m in enumerate(mults) if i != far]
+            mult_min = float(np.min(kept))
+            mult_max = float(np.max(kept))
+            trimmed_mult = (
+                f" Band outlier-trimmed: dropped the {mults[far]:.3f}x cycle "
+                f"(farthest from the median in log space) from the envelope "
+                f"(n={len(mults)}); centre unchanged."
+            )
+        else:
+            mult_min = float(np.min(mults))
+            mult_max = float(np.max(mults))
 
         c4 = float(observed_c4_top_price)
         b4_center = c4 * (1.0 - dd_med)
@@ -894,7 +1028,7 @@ def _project_asset_chain(metrics_df, asset, is_macro):
             f"(band {_fmt_usd(b4_low)} - {_fmt_usd(b4_high)}). "
             f"Multiplier median={mult_med:.2f} (band {mult_min:.2f}-{mult_max:.2f}) "
             f"-> C5 center={_fmt_usd(c5_center)} "
-            f"(band {_fmt_usd(c5_low)} - {_fmt_usd(c5_high)}). "
+            f"(band {_fmt_usd(c5_low)} - {_fmt_usd(c5_high)}).{trimmed_mult} "
             f"B5 (post-C5 bottom)={_fmt_usd(b5_center)} "
             f"(band {_fmt_usd(b5_low)} - {_fmt_usd(b5_high)})."
         )
@@ -1436,6 +1570,36 @@ def main() -> None:
         #   explain the macro omission.
         obs_c4_date = proj_out.get('observed_c4_top_date') if proj_out.get('available') else None
         obs_c4_price = proj_out.get('observed_c4_top_price') if proj_out.get('available') else None
+
+        # --- Macro timing: OWN history, not the BTC calendar (2026-10-16) ---
+        # The I-19 macro windows were H5 + BTC's own D_halving_to_top /
+        # D_top_to_bottom, which imports BTC's halving calendar into assets the
+        # data does not couple to: measured halving-to-top lag spread is 1.4y
+        # (SPX) to 2.6y (TLT) against ~0.2y for BTC itself, while the crypto
+        # alts sit at 0.2-0.7y. See scripts/check_cycle_tie.py. Macros now date
+        # their zones from their OWN observed cycle durations, anchored on their
+        # own last observed C4 top. PRICE shape still comes from the macro's own
+        # history (unchanged, I-19); only the DATES stop being BTC's.
+        own_timing = None
+        if asset in MACRO_ASSETS:
+            _bt, _tb = _macro_own_durations(metrics_df, asset)
+            _anchor = pd.to_datetime(obs_c4_date) if obs_c4_date else None
+            _b4w = _own_history_window(_anchor, _tb, "top->bear-bottom duration")
+            # Anchor the top window on the B4 window's OUTER END, not its start:
+            # anchoring on the start let the top window begin before the bear
+            # bottom completed, which inverted TLT's accumulation window
+            # (base_start after base_end).
+            _bt_bs, _bt_be, _bt_os, _bt_oe, _bt_note = (
+                _own_history_window(_b4w[3], _bt, "bottom->top duration")
+                if _b4w[3] is not None else (None,) * 4 + ("no own bottom->top history",))
+            _b5w = (None,) * 4 + ("no own history",)
+            if _bt_bs is not None:
+                _b5w = _own_history_window(_bt_oe, _tb, "top->bear-bottom duration")
+            if _b4w[0] is not None:
+                own_timing = {"b4": _b4w, "top": _bt_bs and
+                              ( _bt_bs, _bt_be, _bt_os, _bt_oe, _bt_note),
+                              "b5": _b5w}
+
         b4_proj = proj_out.get('proj') if proj_out.get('available') else None
         # Crypto modes (and macro-2-stage since I-19) that use the new
         # BTC-anchored B4 design (any path with an observed C4 top -- the
@@ -1524,6 +1688,14 @@ def main() -> None:
             else:
                 b4_base_start = b4_base_end = b4_outer_start = b4_outer_end = ""
                 timing_src = "no BTC B4 data"
+
+            # Macro override: replace the BTC-calendar B4 window with one
+            # projected from this macro's OWN top->bottom durations.
+            if own_timing and own_timing["b4"][0] is not None:
+                _bs, _be, _os, _oe, _note = own_timing["b4"]
+                b4_base_start, b4_base_end = _bs.strftime("%Y-%m-%d"), _be.strftime("%Y-%m-%d")
+                b4_outer_start, b4_outer_end = _os.strftime("%Y-%m-%d"), _oe.strftime("%Y-%m-%d")
+                timing_src = _note
 
             # Price band: prefer ETH ror path when available (ETH only).
             # Then Stage 1 ratio-path band, then drawdown envelope.
@@ -1691,6 +1863,9 @@ def main() -> None:
             "outer_start": b4_outer_start, "outer_end": b4_outer_end,
             "price_low": "" if b4_price_low is None or not math.isfinite(b4_price_low) else "%.4f" % b4_price_low,
             "price_high": "" if b4_price_high is None or not math.isfinite(b4_price_high) else "%.4f" % b4_price_high,
+            # The model's own B4 estimate. price_low/high are the band; this is
+            # the point projection, and the two are NOT interchangeable.
+            "price_center": _fmt_center(b4_anchor_price),
             "regime_state_at_anchor": regime_state_at_anchor,
             "regime_multiplier_b4": regime_multiplier_b4,
             "b4_price_low_unconditional": b4_price_low_unconditional,
@@ -1737,8 +1912,22 @@ def main() -> None:
             if acc_base_start < acc_outer_start:
                 acc_base_start = acc_outer_start
 
-        # Accumulation zone: starts right after the B4 event, runs to H5.
-        # Price-free (the B4 zone above IS the accumulation-entry bottom).
+        # Accumulation zone: starts right after the B4 event, runs to the top
+        # window. Price-free (the B4 zone above IS the accumulation-entry
+        # bottom). For macros the run ends at the OWN-history top window, not
+        # at BTC's H5.
+        acc_anchor_event = "H5"
+        if own_timing and own_timing["top"] and own_timing["top"][0] is not None:
+            _bs, _be, _os, _oe, _ = own_timing["top"]
+            # Accumulation ends where the top window can FIRST begin, i.e. the
+            # top window's OUTER start -- not its base start. Using the base
+            # start pushed accumulation past the top's outer start (the two
+            # outer windows then overlapped), and clamping the outer end up to
+            # the base end broke it the other way. Ending both at the top's
+            # outer start satisfies non-overlap and base-within-outer together.
+            acc_base_end = _os
+            acc_outer_end = _os
+            acc_anchor_event = "own cycle (not halving-anchored)"
         zone_rows.append({
             "asset": asset, "zone": "accumulation",
             "base_start": acc_base_start.strftime("%Y-%m-%d"),
@@ -1746,7 +1935,7 @@ def main() -> None:
             "outer_start": acc_outer_start.strftime("%Y-%m-%d"),
             "outer_end": acc_outer_end.strftime("%Y-%m-%d"),
             "price_low": "", "price_high": "",
-            "anchor_event": "H5", "anchor_price": "",
+            "anchor_event": acc_anchor_event, "anchor_price": "",
             "observed_c4_top_price":
                 "" if obs_c4_price is None else "%.4f" % obs_c4_price,
             "observed_c4_top_date":
@@ -1766,6 +1955,10 @@ def main() -> None:
         dist_base_end = H5_DATE + timedelta(days=int(d_ht["q75"]))
         dist_outer_start = H5_DATE + timedelta(days=int(_num(d_ht["min"])))
         dist_outer_end = H5_DATE + timedelta(days=int(_num(d_ht["max"])))
+        if own_timing and own_timing["top"] and own_timing["top"][0] is not None:
+            _bs, _be, _os, _oe, _ = own_timing["top"]
+            dist_base_start, dist_base_end = _bs, _be
+            dist_outer_start, dist_outer_end = _os, _oe
         ht_median = _num(d_ht["median"])
 
         # The new _project_asset_chain returns pre-computed dist_price_low/high
@@ -1791,6 +1984,12 @@ def main() -> None:
             "outer_end": dist_outer_end.strftime("%Y-%m-%d"),
             "price_low": "" if dist_price_low is None else "%.4f" % dist_price_low,
             "price_high": "" if dist_price_high is None else "%.4f" % dist_price_high,
+            # C5 centre = B4 anchor x fitted C5 multiplier. Never the band
+            # midpoint: for ETH's 11.4x-wide band that midpoint ($103,351) is
+            # 2.8x the model's $36.8k.
+            "price_center": _fmt_center(
+                _resolve_center(proj_out, anchor_price, "c5_center", "c5_top")
+            ),
             "anchor_event": anchor_event,
             "anchor_price": "" if anchor_price is None else "%.4f" % anchor_price,
             "compression_fit_used": proj_out.get('mode', 'no_data'),
@@ -1812,6 +2011,11 @@ def main() -> None:
         exit_base_end = H5_DATE + timedelta(days=int(ht_median) + int(d_tnb["q75"]))
         exit_outer_start = H5_DATE + timedelta(days=int(_num(d_ht["min"])) + int(_num(d_tnb["min"])))
         exit_outer_end = H5_DATE + timedelta(days=int(_num(d_ht["max"])) + int(_num(d_tnb["max"])))
+        # Macro override: own top->bottom durations measured from the top
+        # window's outer end, rather than BTC's halving calendar.
+        if own_timing and own_timing["b5"] and own_timing["b5"][0] is not None:
+            exit_base_start, exit_base_end = own_timing["b5"][0], own_timing["b5"][1]
+            exit_outer_start, exit_outer_end = own_timing["b5"][2], own_timing["b5"][3]
 
         # DESIGN.md §9.4 R-5: the four zones are mutually non-overlapping. The
         # exit band is computed independently as
@@ -1886,6 +2090,9 @@ def main() -> None:
             "outer_end": exit_outer_end.strftime("%Y-%m-%d"),
             "price_low": "" if exit_price_low is None else "%.4f" % exit_price_low,
             "price_high": "" if exit_price_high is None else "%.4f" % exit_price_high,
+            "price_center": _fmt_center(
+                _resolve_center(proj_out, exit_anchor_price, "b5_center")
+            ),
             "anchor_event": exit_anchor_kind or "",
             "anchor_price": "" if exit_anchor_price is None else "%.4f" % exit_anchor_price,
             "compression_fit_used": proj_out.get('mode', 'no_data'),

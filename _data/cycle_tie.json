@@ -1,0 +1,118 @@
+{
+  "generated_for": "I-19 halving-anchor premise audit",
+  "max_spread_years": 0.75,
+  "assets": {
+    "dxy": {
+      "lags_days": {
+        "C1": 835,
+        "C2": 180,
+        "C3": 869,
+        "C4": 268
+      },
+      "spread_years": 1.89,
+      "halving_tie_supported": false
+    },
+    "eth": {
+      "lags_days": {
+        "C2": 553,
+        "C3": 546,
+        "C4": 489
+      },
+      "spread_years": 0.18,
+      "halving_tie_supported": true
+    },
+    "gold": {
+      "lags_days": {
+        "C1": 272,
+        "C2": 1132,
+        "C3": 1088,
+        "C4": 649
+      },
+      "spread_years": 2.35,
+      "halving_tie_supported": false
+    },
+    "mara": {
+      "lags_days": {
+        "C1": 755,
+        "C2": 200,
+        "C3": 547,
+        "C4": 223
+      },
+      "spread_years": 1.52,
+      "halving_tie_supported": false
+    },
+    "mstr": {
+      "lags_days": {
+        "C3": 274,
+        "C4": 214
+      },
+      "spread_years": 0.16,
+      "halving_tie_supported": true
+    },
+    "ndx": {
+      "lags_days": {
+        "C1": 964,
+        "C2": 1112,
+        "C3": 557,
+        "C4": 899
+      },
+      "spread_years": 1.52,
+      "halving_tie_supported": false
+    },
+    "riot": {
+      "lags_days": {
+        "C2": 528,
+        "C3": 282,
+        "C4": 794
+      },
+      "spread_years": 1.4,
+      "halving_tie_supported": false
+    },
+    "sol": {
+      "lags_days": {
+        "C3": 544,
+        "C4": 273
+      },
+      "spread_years": 0.74,
+      "halving_tie_supported": true
+    },
+    "spx": {
+      "lags_days": {
+        "C1": 904,
+        "C2": 1112,
+        "C3": 602,
+        "C4": 899
+      },
+      "spread_years": 1.4,
+      "halving_tie_supported": false
+    },
+    "tlt": {
+      "lags_days": {
+        "C1": 793,
+        "C2": 1132,
+        "C3": 193,
+        "C4": 230
+      },
+      "spread_years": 2.57,
+      "halving_tie_supported": false
+    },
+    "wgmi": {
+      "lags_days": {
+        "C1": 755,
+        "C2": 200,
+        "C3": 547,
+        "C4": 789
+      },
+      "spread_years": 1.61,
+      "halving_tie_supported": false
+    },
+    "xrp": {
+      "lags_days": {
+        "C3": 338,
+        "C4": 457
+      },
+      "spread_years": 0.33,
+      "halving_tie_supported": true
+    }
+  }
+}

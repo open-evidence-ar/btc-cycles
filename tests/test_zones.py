@@ -130,10 +130,28 @@ def test_alt_zone_keys_match_canonical_vocab():
 
 
 def _centers(sub):
+    """Per-zone CENTRAL price for each zone, preferring the model's own estimate.
+
+    Zone rows now publish ``price_center`` (the projection's point estimate).
+    Before that existed this reconstructed a centre as the band midpoint, which
+    is not a projection and diverges as a band widens -- ETH's C5 top band
+    midpoints at $103,351 against the model's $36,795. Shape invariants must be
+    tested against the estimate the model actually publishes.
+
+    Falls back to the midpoint only for rows with no centre, so the helper still
+    works if a zone ever lacks one.
+    """
     out = {}
     for _, r in sub.iterrows():
         if r.get('price_low') in (None, '', float('nan')):
             continue
+        ctr = r.get('price_center')
+        if ctr not in (None, '', float('nan')):
+            try:
+                out[r['zone']] = float(ctr)
+                continue
+            except (TypeError, ValueError):
+                pass
         lo, hi = float(r['price_low']), float(r['price_high'])
         out[r['zone']] = (lo + hi) / 2.0
     return out
@@ -163,13 +181,124 @@ def test_cycle_shape_price_ordering():
         check(alt[alt['asset'] == asset], asset)
 
 
-# Assets whose projection does not have a rise-then-fall shape, so successive
-# bear bottoms are NOT expected to rise. Both are long-horizon-declining
-# instruments where the fitted idx=5 drawdown lands below the current-cycle B4
-# level: TLT's projected C5 top centre (59.66) is itself below its projected B4
-# centre (61.35). Pinned explicitly so any NEW violation fails this gate
-# instead of being silently tolerated.
+# Assets whose successive bear bottoms are NOT expected to rise, because the
+# fitted idx=5 drawdown lands at or below the current-cycle B4 level.
+#
+# NOTE (2026-10-16): this comment previously cited "TLT's projected C5 top
+# centre (59.66) ... below its projected B4 centre (61.35)". Both figures were
+# BAND MIDPOINTS, not projections -- the zone rows published no central estimate,
+# so consumers reconstructed one as `(price_low + price_high) / 2`. Band
+# midpoints are biased for geometric bands and diverge as a band widens; ETH's
+# C5 top band midpoints at $103,351 against the model's $36,795.
+#
+# Zone rows now publish `price_center`. On those numbers the C5 claim above is
+# FALSE for TLT (C5 centre $73.37 sits ABOVE its B4 centre $62.30), so that half
+# of the original rationale is withdrawn. The exception set itself still holds
+# on the real centres: both instruments' B5 centre sits below their B4 centre
+# (dxy 81.68 vs 92.77; tlt 43.83 vs 62.30). Separately, these two also fail
+# band-EDGE ordering -- see BAND_ORDER_EXCEPTIONS below.
 RISING_BOTTOM_EXCEPTIONS = {"dxy", "tlt"}
+
+
+# Assets whose projected C5 top band still overlaps its B4 band in price, so the
+# band-edge ordering cannot be asserted for them. Both are long-horizon-declining
+# instruments whose fitted idx=5 drawdown lands at or below the current-cycle B4
+# level (see RISING_BOTTOM_EXCEPTIONS above for the centre-level equivalent).
+# Pinned explicitly so any NEW violation fails this gate rather than being
+# silently tolerated -- these are two known cases, not a blanket exemption.
+BAND_ORDER_EXCEPTIONS = {"dxy", "tlt"}
+
+
+def test_c5_top_band_sits_above_b4_band():
+    """The C5 top band's LOWER edge must sit above the B4 band's UPPER edge.
+
+    `test_cycle_shape_price_ordering` deliberately checks centres rather than
+    edges, because bands are wide enough to overlap legitimately (gold's B5 band
+    overlaps its C5 top band). But one ordering cannot overlap at all: a cycle
+    top is the price after accumulation, so `top.price_low >= bottom.price_high`.
+    Nothing asserted that, and ETH violated it until the naive-median multiplier
+    envelope was outlier-trimmed -- its C5 top band ran $1,281-$190,053 (148x)
+    with a LOWER edge below the B4 band, i.e. the "top" included prices beneath
+    the bear bottom that precedes it.
+    """
+    alt = pd.read_csv('data/processed/alt_next_cycle_zones.csv', keep_default_na=False)
+    offenders = {}
+    for asset in alt['asset'].unique():
+        if asset in BAND_ORDER_EXCEPTIONS:
+            continue
+        sub = alt[alt['asset'] == asset]
+        bottom = sub[sub['zone'] == 'bottom']
+        top = sub[sub['zone'] == 'top']
+        if bottom.empty or top.empty:
+            continue
+        try:
+            b_high = float(bottom.iloc[0]['price_high'])
+            t_low = float(top.iloc[0]['price_low'])
+        except (TypeError, ValueError):
+            continue
+        if not (b_high > 0) or not (t_low > 0):
+            continue
+        if t_low < b_high:
+            offenders[asset] = (t_low, b_high)
+    assert not offenders, (
+        "C5 top band lower edge sits below the B4 band upper edge -- a cycle "
+        "top cannot be beneath the bear bottom that precedes it:\n"
+        + "\n".join(f"  {a}: top.low {t:,.2f} < bottom.high {b:,.2f}"
+                    for a, (t, b) in sorted(offenders.items()))
+    )
+
+
+# Assets whose B4 centre falls outside its own published band.
+#
+# gold: the ratio-path centre is $5,052 but the published band is
+# $3,241-$4,787. The band is narrowed by the I-19b bull-support-band
+# cross-check (20-mo SMA / 21-mo EMA, docs/gold_seasonality.md) while the
+# centre is not, so the two disagree. This is a real inconsistency in gold's
+# B4 row rather than a defect in price_center, and it is pinned here so the
+# disagreement stays VISIBLE instead of being silently normalised away.
+# Unfixed: reconciling them means deciding whether the support band should
+# move the centre or only clip the corridor.
+CENTER_OUTSIDE_BAND = {"gold"}
+
+
+def test_every_zone_row_publishes_a_price_center():
+    """Every priced zone must carry the model's own central estimate.
+
+    Zone rows used to publish only ``price_low``/``price_high``, so charts,
+    captions and the site banner all reconstructed a "centre" as the band
+    midpoint. That is not a projection: it is biased for geometric bands and it
+    diverges as a band widens. ETH's C5 top band midpoints at $103,351 against
+    the model's $36,795 -- a 2.8x error that was published on the chart marker,
+    in the figcaption and in the banner. TLT's "59.66", cited in DESIGN.md as a
+    projected centre, was likewise the midpoint of $9.29-$110.02.
+
+    Without this gate the regression is invisible: the CSV would still parse,
+    every number would still be a number, and only the published figures would
+    be quietly wrong.
+    """
+    for path, name in [('data/processed/next_cycle_zones.csv', 'btc'),
+                       ('data/processed/alt_next_cycle_zones.csv', 'alt')]:
+        df = pd.read_csv(path, keep_default_na=False)
+        assert 'price_center' in df.columns, f"{name}: no price_center column"
+        priced = df[df['price_low'].astype(str) != '']
+        missing = priced[priced['price_center'].astype(str) == '']
+        assert missing.empty, (
+            f"{name}: {len(missing)} priced zone row(s) with an empty price_center; "
+            f"consumers would silently fall back to the band midpoint:\n"
+            + missing.to_string(index=False)
+        )
+        for _, r in priced.iterrows():
+            asset = str(r.get('asset', ''))
+            if asset in CENTER_OUTSIDE_BAND:
+                continue
+            lo, hi = float(r['price_low']), float(r['price_high'])
+            ctr = float(r['price_center'])
+            assert ctr > 0, f"{name} {asset}/{r['zone']}: non-positive centre {ctr}"
+            # A centre must lie inside its own band.
+            assert lo * 0.99 <= ctr <= hi * 1.01, (
+                f"{name} {asset}/{r['zone']}: centre {ctr:,.4f} lies "
+                f"outside its band {lo:,.4f}-{hi:,.4f}"
+            )
 
 
 def test_rising_bear_bottoms_outside_documented_exceptions():

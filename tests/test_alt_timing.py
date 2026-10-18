@@ -277,11 +277,71 @@ def test_gold_support_band_populated():
 MACRO_ASSETS_I19 = {"spx", "ndx", "dxy", "tlt", "gold"}
 
 
-def test_macro_assets_use_cycle_tied_projection():
+def test_macro_zone_dates_are_own_history():
+    """I-19 timing contract (2026-10-16): macro B4 windows must be derived from
+    the macro's OWN top->bear-bottom durations anchored on its own observed C4
+    top -- not from BTC's halving calendar.
+
+    Recomputes the expected window straight from alt_cycle_metrics.csv and
+    asserts the published zone rows match. Before the change these windows were
+    `H5 + BTC's D_halving_to_top/D_top_to_bottom`; the halving-to-top lag
+    spread measured 1.4y-2.6y for macros vs ~0.2y for BTC itself
+    (scripts/check_cycle_tie.py), so the halving anchor was withdrawn. This gate
+    keeps it withdrawn: if a refactor reintroduces the BTC calendar here, the
+    recomputed windows stop matching and the build says so.
+    """
+    metrics = pd.read_csv(ALT_METRICS, keep_default_na=False)
+    zones = pd.read_csv(ALT_ZONES, keep_default_na=False)
+    for asset in sorted(MACRO_ASSETS_I19):
+        rows = metrics[metrics["asset"] == asset]
+        tbs = []
+        anchor = None
+        for _, r in rows.iterrows():
+            top = str(r.get("asset_local_top_date", "") or "")
+            nb = str(r.get("asset_next_bear_bottom_date", "") or "")
+            if top and nb and top != "nan" and nb != "nan":
+                d = (pd.to_datetime(nb) - pd.to_datetime(top)).days
+                if d > 0:
+                    tbs.append(int(d))
+        # The anchor is the asset's own last observed C4 top.
+        c4 = rows[rows["cycle_id"] == "C4"]
+        if not c4.empty:
+            d = str(c4.iloc[0].get("asset_local_top_date", "") or "")
+            if d and d != "nan":
+                anchor = pd.to_datetime(d)
+        assert anchor is not None, f"{asset}: no observed C4 top to anchor on"
+        assert len(tbs) >= 1, f"{asset}: no own top->bottom durations measured"
+
+        zrow = zones[(zones["asset"] == asset) & (zones["zone"] == "bottom")]
+        assert not zrow.empty, f"{asset}: no bottom zone row"
+        z = zrow.iloc[0]
+        import numpy as np
+        q25 = int(np.percentile(sorted(tbs), 25))
+        q75 = int(np.percentile(sorted(tbs), 75))
+        expect_start = (anchor + pd.Timedelta(days=q25)).strftime("%Y-%m-%d")
+        expect_end = (anchor + pd.Timedelta(days=q75)).strftime("%Y-%m-%d")
+        got_start, got_end = str(z["base_start"]), str(z["base_end"])
+        assert got_start == expect_start and got_end == expect_end, (
+            f"{asset}: B4 base window {got_start}..{got_end} does not match its "
+            f"own-history derivation {expect_start}..{expect_end} (C4 top "
+            f"{anchor.date()} + own top->bottom IQR {q25}..{q75}d). If this "
+            "failed after a refactor, the BTC halving calendar has leaked back "
+            "into the macro timing."
+        )
+
+
+def test_macro_assets_use_own_shape_projection():
     """I-19: macro assets (SPX/NDX/DXY/TLT/GOLD) must NOT use the legacy
     'macro_not_cycle_tied' mode when they have an observed C4 top + >=1 own
-    drawdown/multiplier sample. Each must emit a cycle-tied 2-stage
-    projection (mode='macro_2_stage_own_shape')."""
+    drawdown/multiplier sample. Each must emit a 2-stage PRICE projection
+    (mode='macro_2_stage_own_shape') fit on the macro's own series.
+
+    Renamed 2026-10-16: this was 'test_macro_assets_use_cycle_tied_projection'.
+    The price mode is unchanged, but the macro zone DATES no longer come from
+    the BTC halving calendar -- see scripts/check_cycle_tie.py for the
+    measurement that withdrew that premise, and
+    tests/test_alt_timing.py::test_macro_zone_dates_are_own_history for the
+    timing contract."""
     df = pd.read_csv(ALT_ZONES, keep_default_na=False)
     for asset in MACRO_ASSETS_I19:
         sub = df[df["asset"] == asset]

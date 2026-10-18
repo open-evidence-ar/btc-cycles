@@ -182,6 +182,16 @@ def build_pipeline(skip_fetch: bool = False) -> list[Stage]:
                 label="Alt next-cycle zones (I-21.5 regime-adjusted B4)",
             ),
             Step(
+                name="chart_captions",
+                cmd=[sys.executable, str(SCRIPTS_DIR / "build_chart_captions.py")],
+                label="Chart captions (data-derived, _data/chart_captions.json)",
+            ),
+            Step(
+                name="cycle_tie",
+                cmd=[sys.executable, str(SCRIPTS_DIR / "check_cycle_tie.py")],
+                label="Halving-anchor premise audit (I-19 macro coupling)",
+            ),
+            Step(
                 name="tv_pine",
                 cmd=[sys.executable, str(SCRIPTS_DIR / "export_tradingview_pine.py")],
                 label="TradingView Pine exports",

@@ -124,37 +124,47 @@ def fmt_price(usd_str):
     return "${}".format(s)
 
 
-def _zone_center(low_str, high_str, anchor_str):
+def _zone_center(low_str, high_str, anchor_str, center_str=""):
     """Return the canonical center price for a published zone row.
 
-    The alt_next_cycle_zones.csv / next_cycle_zones.csv rows carry:
+    Zone rows carry three distinct things and conflating them is a
+    published-numbers bug:
 
-      - ``price_low`` / ``price_high`` : the published corridor edges for the
-        zone (always present, always lo < hi for a meaningful band).
-      - ``anchor_price`` : for the **bear_bottom** zone this IS the projected
-        B4 price (the chosen point estimate between low/high, used directly).
-        For **distribution** (C5 top) and **exit** (B5) zones, ``anchor_price``
-        is the projected *B4* that was used as the leverage point to derive
-        the zone's price band via the dd/multiplier — not the zone's own
-        center. Using it as the C5/B5 center would silently collapse C5 onto
-        B4 (rendering the C5 "top" the same price as the B4 bottom — a 6x
-        visual/interpretive error for assets where B4 == C5 anchor_price).
+      - ``price_low`` / ``price_high`` : the published corridor edges.
+      - ``anchor_price`` : for **bear_bottom** this is the projected B4 price;
+        for **distribution** (C5 top) and **exit** (B5) it is the projected
+        *B4* used as the leverage point to derive the zone's band via
+        dd/multiplier -- NOT the zone's own centre. Using it as the C5/B5
+        centre would silently collapse C5 onto B4.
+      - ``price_center`` : the model's point estimate for THIS zone. Added
+        2026-10-16; before that the C5/B5 "centre" in the banner, and the
+        marker drawn on every zone chart, was the band midpoint.
 
-    Convention:
-      - bear_bottom -> ``anchor_price`` (the projected B4 point estimate).
-      - distribution / exit -> midpoint of (price_low, price_high), since
-        those zones have no independent point estimate in the CSV.
+    The band midpoint is not a usable substitute -- it is biased for geometric
+    bands and diverges as a band widens. ETH's C5 top band spans
+    $16,649-$190,053: midpoint $103,351 vs the model's $36,795 (2.8x). TLT's
+    spans $9.29-$110.02: midpoint $59.66 vs the model's $73.37. Both midpoints
+    were published as "centre".
 
-    Falls back to ``anchor_str`` only when the band is unreadable.
+    Preference order: ``price_center`` -> ``anchor_price`` -> band midpoint,
+    so this still degrades sensibly on older rows.
     """
+    for cand in (center_str, anchor_str):
+        if cand not in (None, ""):
+            try:
+                f = float(cand)
+            except (TypeError, ValueError):
+                continue
+            if f > 0:
+                return fmt_price(f)
     try:
         lo = float(low_str)
         hi = float(high_str)
     except (TypeError, ValueError):
-        return anchor_str or ""
+        return ""
     if hi > lo and lo > 0:
         return fmt_price((lo + hi) / 2.0)
-    return anchor_str or ""
+    return ""
 
 
 def read_csv(path):
@@ -386,7 +396,7 @@ def _build_asset_block(asset_upper, zones, h5_date):
             "outer_end": (dist.get("outer_end") or dist["base_end"]).strip(),
             "price_low": fmt_price(dist.get("price_low", "")),
             "price_high": fmt_price(dist.get("price_high", "")),
-            "price_center": _zone_center(dist.get("price_low", ""), dist.get("price_high", ""), dist.get("anchor_price", "")),
+            "price_center": _zone_center(dist.get("price_low", ""), dist.get("price_high", ""), dist.get("anchor_price", ""), dist.get("price_center", "")),
             "role": "attention peak - top watch",
         })
     # B5 exit
@@ -400,7 +410,7 @@ def _build_asset_block(asset_upper, zones, h5_date):
             "outer_end": (b5_zone.get("outer_end") or b5_zone["base_end"]).strip(),
             "price_low": fmt_price(b5_zone.get("price_low", "")),
             "price_high": fmt_price(b5_zone.get("price_high", "")),
-            "price_center": _zone_center(b5_zone.get("price_low", ""), b5_zone.get("price_high", ""), b5_zone.get("anchor_price", "")),
+            "price_center": _zone_center(b5_zone.get("price_low", ""), b5_zone.get("price_high", ""), b5_zone.get("anchor_price", ""), b5_zone.get("price_center", "")),
             "role": "next attention peak - re-entry watch",
         })
 
@@ -600,14 +610,14 @@ def _build_btc_block(btc_zones, h5_date):
          "outer_start": dist["outer_start"], "outer_end": dist["outer_end"],
          "price_low": fmt_price(dist.get("price_low", "186863")),
          "price_high": fmt_price(dist.get("price_high", "338883")),
-         "price_center": _zone_center(dist.get("price_low", "186863"), dist.get("price_high", "338883"), "272004"),
+         "price_center": _zone_center(dist.get("price_low", "186863"), dist.get("price_high", "338883"), "272004", dist.get("price_center", "")),
          "role": "attention peak - top watch"},
         {"label": "B5 - post-C5-top bear bottom", "exec_label": "Post-top re-entry",
          "base_start": b5_zone["base_start"], "base_end": b5_zone["base_end"],
          "outer_start": b5_zone["outer_start"], "outer_end": b5_zone["outer_end"],
          "price_low": fmt_price(b5_zone.get("price_low", "58447")),
          "price_high": fmt_price(b5_zone.get("price_high", "79759")),
-         "price_center": _zone_center(b5_zone.get("price_low", "58447"), b5_zone.get("price_high", "79759"), "69103"),
+         "price_center": _zone_center(b5_zone.get("price_low", "58447"), b5_zone.get("price_high", "79759"), "69103", b5_zone.get("price_center", "")),
          "role": "next attention peak - re-entry watch"},
     ]
 

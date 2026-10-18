@@ -1747,8 +1747,37 @@ ASSET_DISPLAY = {
 }
 
 
-def _build_alt_chart(asset, filename, title, subtitle):
-    """Build an individual alt-coin chart (like C6 for BTC) with zones + markers."""
+def _mode_prose(mode):
+    """Human-readable description of a zone model's fitting mode.
+
+    Rendered into the chart subtitle. This is DATA-DRIVEN on purpose: the
+    subtitles used to be hand-written strings that went stale whenever a model
+    path changed, and C8a ended up claiming "Borrowed 2-stage from BTC" while the
+    very same chart's footer read "Model: naive_median_own_dd". Three of the six
+    alt charts had drifted (xrp/sol/mstr are all borrowed-from-BTC now).
+    """
+    return {
+        'naive_median_own_dd':
+            "Own-series naive median: drawdown + multiplier medians from this "
+            "asset's OWN cycles (no borrowed shape, no power-law). Multiplier "
+            "envelope outlier-trimmed at n>=3.",
+        'borrowed_2_stage_from_BTC':
+            "Borrowed 2-stage from BTC: shape (drawdown, multiplier) borrowed "
+            "from BTC's cycle series.",
+        'borrowed_2_stage_from_ETH':
+            "Borrowed 2-stage from ETH (ordinal-aligned by asset-cycle ordinal).",
+        'macro_2_stage_own_shape':
+            "I-19 macro 2-stage (own shape): drawdown at C4 and bottom-to-top "
+            "multiplier at C5 fit on this macro's OWN series.",
+    }.get(mode, f"Model mode: {mode}.")
+
+
+def _build_alt_chart(asset, filename, title, extra_note=''):
+    """Build an individual alt-coin chart (like C6 for BTC) with zones + markers.
+
+    ``extra_note`` is appended to a subtitle derived from the zone data; the
+    model description itself is never hand-written.
+    """
     label, color = ASSET_DISPLAY[asset]
     # Resolve the latest raw snapshot per asset via globbing rather than
     # hard-coding stale file dates.
@@ -1760,6 +1789,17 @@ def _build_alt_chart(asset, filename, title, subtitle):
     df = pd.read_csv(asset_file, parse_dates=['date']).sort_values('date')
     df = df[df['close'] > 0]
     sub = alt_zones[alt_zones['asset'] == asset]
+
+    # Subtitle from the data: model mode + the observed C4 top actually used.
+    _b = sub[sub['zone'] == 'bottom']
+    _mode = str(_b.iloc[0].get('compression_fit_used', '')) if not _b.empty else ''
+    _anchor_txt = ''
+    if not _b.empty:
+        _c4p = _to_float(_b.iloc[0].get('observed_c4_top_price'))
+        _c4d = str(_b.iloc[0].get('observed_c4_top_date', '') or '')
+        if _c4p and _c4d:
+            _anchor_txt = f" Anchor: observed C4 top {_c4d} @ ${_c4p:,.0f}."
+    subtitle = _mode_prose(_mode) + _anchor_txt + (f" {extra_note}" if extra_note else "")
 
     # Visible (zoomed) price window: matches x-axis range [2022-01-01, 2031-12-31].
     # The full pre-2022 history is NOT plotted (it dilates the log y-axis and
@@ -1811,7 +1851,31 @@ def _build_alt_chart(asset, filename, title, subtitle):
         text = payload[0] if isinstance(payload, tuple) else payload
         return (len(str(text)) * 6.2 + 14) / 600.0
 
-    PLOT_H = 700 - 80 - 170          # provisional; final margin set at layout
+    PLOT_H = 700 - 80 - 170          # provisional; refined once margins are known
+
+    # Subtitle wrapping and top margin. Several subtitles are long enough to run
+    # off the right edge ("...Overlay: validated bull-market su"), and the
+    # single-line title collided with the top-edge event labels. Those labels sit
+    # ABOVE the plot area (y > 1 paper), so the top margin must hold the title
+    # block AND up to TOP_LABEL_ROWS label rows -- sizing it from the subtitle
+    # alone clipped the title once the subtitle wrapped to two lines.
+    SUB_COLS = 100
+    sub_lines = [subtitle]
+    while len(sub_lines[-1]) > SUB_COLS:
+        prev = sub_lines[-1]
+        cut = prev.rfind(' ', 0, SUB_COLS)
+        if cut <= 0:
+            cut = SUB_COLS
+        sub_lines[-1] = prev[:cut].rstrip()
+        sub_lines.append(prev[cut:].lstrip())
+    TOP_LABEL_ROWS = 4
+    # Plotly renders the title from the TOP of the figure, and the top-edge event
+    # labels are placed just ABOVE the plot area -- so the top margin must hold
+    # the title block AND TOP_LABEL_ROWS label rows. 20px per line is
+    # deliberately generous: under-sizing it put the last subtitle line on top
+    # of the H4/H5/B4-proj labels.
+    top_margin = (30 + 20 * (1 + len(sub_lines))) + TOP_LABEL_ROWS * 13 + 14
+    PLOT_H = 700 - top_margin - 170
 
     fig = go.Figure()
 
@@ -1937,7 +2001,13 @@ def _build_alt_chart(asset, filename, title, subtitle):
         color, marker_sym, marker_sz, band_label, arrow_col = _band_styles.get(
             zone, ('#888', 'circle', 10, zone, '#888'))
 
-        p_mid = (p_lo + p_hi) / 2
+        p_mid = _to_float(z.get('price_center'))
+        if not p_mid:
+            # Fallback for rows without a centre: band midpoint. A poor proxy
+            # for a wide band -- ETH's 11.4x C5 band midpoints at $103,351 while
+            # the model projects $36.8k, so price_center is published and used
+            # everywhere instead.
+            p_mid = (p_lo + p_hi) / 2
         r_, g_, b_ = int(color[1:3], 16), int(color[3:5], 16), int(color[5:7], 16)
 
         # A band whose midpoint sits outside the (capped) axis would draw its
@@ -2353,9 +2423,13 @@ def _build_alt_chart(asset, filename, title, subtitle):
 
     X_TICK_PX = 46          # room for the -45deg year labels
     NOTE_LINE_PX = 15       # 9px text
+    bottom_margin = X_TICK_PX + 14 + max(1, len(wrapped)) * NOTE_LINE_PX
+    # Exact plot height now that both margins are known, so footer rows land
+    # where they were measured from.
+    plot_h = 700 - top_margin - bottom_margin
     for i, note in enumerate(wrapped):
         fig.add_annotation(
-            x=0.0, y=-(X_TICK_PX + 6 + i * NOTE_LINE_PX) / float(PLOT_H),
+            x=0.0, y=-(X_TICK_PX + 6 + i * NOTE_LINE_PX) / float(plot_h),
             xref='paper', yref='paper',
             text=_esc(note), showarrow=False,
             font=dict(size=9, color='#b0bdc7'),
@@ -2365,24 +2439,14 @@ def _build_alt_chart(asset, filename, title, subtitle):
 
     bottom_margin = X_TICK_PX + 14 + max(1, len(wrapped)) * NOTE_LINE_PX
 
-    # Wrap the subtitle: several are long enough to run off the right edge of
-    # the plot ("...Overlay: validated bull-market su"), and the single-line
-    # title also collided with the top-edge event labels. Wrapping onto <br>
-    # and sizing the top margin to the result fixes both.
-    SUB_COLS = 96
-    sub_lines = [subtitle]
-    while len(sub_lines[-1]) > SUB_COLS:
-        prev = sub_lines[-1]
-        cut = prev.rfind(' ', 0, SUB_COLS)
-        if cut <= 0:
-            cut = SUB_COLS
-        sub_lines[-1] = prev[:cut].rstrip()
-        sub_lines.append(prev[cut:].lstrip())
-    top_margin = 44 + 17 * len(sub_lines)
-
     fig.update_layout(
+        # No explicit title y/yanchor: layout.title.y is normalised to the whole
+        # figure (0 = bottom, 1 = top), so y=0.995 pinned the title to the very
+        # top edge and clipped it, independent of the top margin. Left at
+        # Plotly's default the title is placed inside the top margin, which is
+        # what top_margin above sizes.
         title=dict(text=title + '<br><sub>' + '<br>'.join(sub_lines) + '</sub>',
-                   font=dict(size=14, color='#e6edf3'), y=0.99, yanchor='top'),
+                   font=dict(size=14, color='#e6edf3')),
         template='plotly_dark', paper_bgcolor='#0a0e1a', plot_bgcolor='#0a0e1a',
         font=dict(color='#e6edf3'), height=700,
         autosize=True,
@@ -2398,35 +2462,37 @@ def build_c8_eth():
     """C8a — ETH individual next-cycle projection chart."""
     _build_alt_chart('eth', 'C8.html',
         'C8a — ETH Next-Cycle (C5) Price Prediction',
-        'Borrowed 2-stage from BTC: anchor = observed C4 top ($4,836); shape (drawdown, multiplier) borrowed from BTC cycles 1-3.')
+        "ETH's published B4 uses the BTC ratio-of-ratios path while C5 uses the "
+        "naive-median B4 band — different anchors.")
 
 
 def build_c8_xrp():
     """C8b — XRP individual next-cycle projection chart."""
     _build_alt_chart('xrp', 'C8b.html',
         'C8b — XRP Next-Cycle (C5) Price Prediction',
-        'Borrowed 2-stage from BTC: anchor = observed C4 top ($3.55); shape (drawdown, multiplier) borrowed from BTC cycles 1-3 (XRP has <3 own bear bottoms).')
+        "XRP has fewer than 3 own bear bottoms, so the BTC shape is borrowed.")
 
 
 def build_c8_sol():
     """C8c — SOL individual next-cycle projection chart."""
     _build_alt_chart('sol', 'C8c.html',
         'C8c — SOL Next-Cycle (C5) Price Prediction',
-        'Borrowed 2-stage from ETH (ordinal-aligned): anchor = observed C4 top ($261.82); shape (drawdown, multiplier) borrowed from ETH cycles 2-4 aligned by asset-cycle ordinal (SOL C5 ~ ETH C4; SOL\'s own C3 502x mult makes its own-series naive-median absurd).')
+        "SOL's own C3 502x multiplier makes its own-series naive median absurd.")
 
 
 def build_c8_mstr():
     """C8e — MSTR individual next-cycle projection chart."""
     _build_alt_chart('mstr', 'C8e.html',
         'C8e — MSTR Next-Cycle (C5) Price Prediction',
-        'Naive median on own dd/mult series (n=2 cycles C3+C4). Anchor = observed C4 top ($473.83); B4 via own dd median [0.826, 0.893]; C5 via own mult median [13.8, 34.7]. BTC borrowed shape retired for MSTR (its compressing dd curve under-estimates MSTR\'s higher volatility).')
+        "BTC's borrowed shape under-estimates MSTR's volatility.")
 
 
 def build_c8_wgmi():
     """C8f — WGMI individual next-cycle projection chart."""
     _build_alt_chart('wgmi', 'C8f.html',
         'C8f — WGMI Next-Cycle (C5) Price Prediction',
-        'Borrowed 2-stage from BTC: anchor = observed C4 top; shape (drawdown, multiplier) borrowed from BTC cycles 1-3. MARA proxy for pre-launch cycles C1-C3 (WGMI is the CoinShares Bitcoin Miners ETF; MARA is the largest full-cycle-history miner in the basket).')
+        "MARA proxy for pre-launch cycles C1-C3 (WGMI is the CoinShares Bitcoin "
+        "Miners ETF; MARA is the largest full-cycle-history miner in the basket).")
 
 
 def build_c8_gold():
@@ -2441,11 +2507,11 @@ def build_c8_gold():
     """
     _build_alt_chart('gold', 'C8g.html',
         'C8g — GOLD (GC=F) Next-Cycle (C5) Price Prediction',
-        'I-19 macro 2-stage (own shape): anchor = observed C4 top; shape fit on gold\'s own dd/mult series. Overlay: validated bull-market support band (20-mo SMA + 21-mo EMA).')
+        "Overlay: validated bull-market support band (20-mo SMA + 21-mo EMA).")
 
 
 def build_c8_macro():
-    """C8d — Macro assets (SPX/NDX/DXY/TLT) cycle-tied projection (I-19).
+    """C8d - Macro assets (SPX/NDX/DXY/TLT) own-cycle projection (I-19 shape).
 
     Each macro gets its own panel with the full 4-zone map
     (B4 bear_bottom -> accumulation -> distribution = C5 top -> exit = B5)
@@ -2453,11 +2519,20 @@ def build_c8_macro():
     (macros historically range 1.1x-2.8x multipliers and 8-50% drawdowns, so
     log scale would compress the action). Reuses _project_asset_chain
     output: mode='macro_2_stage_own_shape' since I-19.
+
+    Zone DATES come from each macro's own observed cycle durations, anchored on
+    its own last C4 top -- NOT from BTC's halving calendar. That anchor was
+    dropped on 2026-10-16 after measuring that halving-to-top lag spread is
+    1.4y (SPX) to 2.6y (TLT), against ~0.2y for BTC and 0.2-0.7y for the
+    crypto alts; see scripts/check_cycle_tie.py. Only the PRICE shape is I-19.
     """
     from plotly.subplots import make_subplots
     assets = ['spx', 'ndx', 'dxy', 'tlt']
     fig = make_subplots(rows=len(assets), cols=1, shared_xaxes=False,
-                        subplot_titles=[f"<b>{ASSET_DISPLAY[a][0]}</b> — Cycle-tied 2-stage (I-19)" for a in assets],
+                        # Not "cycle-tied" any more: the macro zone DATES come from each macro's
+        # own observed cycle durations, not from BTC's halving calendar. The
+        # PRICE shape still comes from the macro's own history (I-19).
+        subplot_titles=[f"<b>{ASSET_DISPLAY[a][0]}</b> - own-cycle 2-stage (I-19 shape, own timing)" for a in assets],
                         vertical_spacing=0.06)
 
     # Resolve the latest raw snapshot per asset (mirror the pattern used by
@@ -2569,7 +2644,7 @@ def build_c8_macro():
 
             color, marker_sym, marker_sz, band_label = _band_styles.get(
                 zone, ('#888', 'circle', 8, zone))
-            p_mid = (p_lo + p_hi) / 2
+            p_mid = _to_float(z.get('price_center')) or ((p_lo + p_hi) / 2)
             r_, g_, b_ = int(color[1:3], 16), int(color[3:5], 16), int(color[5:7], 16)
 
             # Outer window: faint dashed rect behind the base band (same
@@ -2762,12 +2837,17 @@ def build_c8_macro():
 
     # Bottom-of-chart summary notes (one block, summarizing all 4 macros)
     summary_lines = [
-        "<b>I-19 macro cycle-tied 2-stage projection (NEW):</b> "
-        "macros pivot around BTC halving events (all 4 macro tops fall 0-3y after "
-        "each halving). Anchor = each macro's observed C4 top; shape (drawdown@idx=4, "
+        "<b>I-19 macro 2-stage projection:</b> "
+        "anchor = each macro's observed C4 top; shape (drawdown@idx=4, "
         "multiplier@idx=5) fit on the macro's OWN series (n=3 from C1-C3). "
         "Economic floors relaxed to macro levels (dd>=5%, mult>=1.05x) and B4 band "
         "clamped to the macro's observed dd range. See docs/blockers/I-19-macro-2stage.md.",
+        "<b>Timing premise NOT supported (2026-10-16):</b> the halving anchor is "
+        "unproven for these assets -- halving-to-top lag spread is 1.4y (SPX), "
+        "1.5y (NDX), 1.9y (DXY), 2.4y (GOLD), 2.6y (TLT), against ~0.2y for BTC "
+        "and 0.2-0.7y for the crypto alts. Prices are extrapolated from each "
+        "macro's own history; the DATES are not coupled to halvings. "
+        "See scripts/check_cycle_tie.py.",
     ]
     # I-21.6: regime overlay status line (single line, points to C8h).
     try:
@@ -2844,7 +2924,7 @@ def build_c8_macro():
         )
 
     fig.update_layout(
-        title=dict(text='C8d — Macro Assets Cycle-Tied Projection (I-19)',
+        title=dict(text='C8d - Macro Assets Own-Cycle Projection (I-19 shape, own timing)',
                    font=dict(size=14, color='#e6edf3')),
         template='plotly_dark', paper_bgcolor='#0a0e1a', plot_bgcolor='#0a0e1a',
         font=dict(color='#e6edf3'), height=C8D_HEIGHT,

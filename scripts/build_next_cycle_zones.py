@@ -362,6 +362,7 @@ def main():
         'outer_end': b4_outer_end,
         'price_low': b4_price_low_s,
         'price_high': b4_price_high_s,
+        'price_center': "" if b4 is None else f"{b4:.0f}",
         'anchor_event': "Stage 1 projected B4",
         'anchor_price': "" if b4 is None else f"{b4:.0f}",
         'observed_c4_top_price': f"{observed_c4_top_price:.0f}",
@@ -434,6 +435,10 @@ def main():
         'outer_end': dist_outer_end.strftime('%Y-%m-%d'),
         'price_low': "" if c5_low is None else f"{c5_low:.0f}",
         'price_high': "" if c5_high is None else f"{c5_high:.0f}",
+        # Model's point estimate, distinct from the band. Consumers used to
+        # reconstruct a centre as (low+high)/2, which is a band midpoint and
+        # not a projection.
+        'price_center': "" if c5_top is None else f"{c5_top:.0f}",
         'anchor_event': "projected B4",
         'anchor_price': "" if b4 is None else f"{b4:.0f}",
         'observed_c4_top_price': f"{observed_c4_top_price:.0f}",
@@ -466,6 +471,7 @@ def main():
         exit_base_start, exit_base_end,
         max(dist_base_end + timedelta(days=1), exit_outer_start))
 
+    b5_center = None
     if proj.get('available'):
         dd_fit = proj['dd_fit']
         if dd_fit.get('fit_a') is not None and dd_fit.get('fit_b') is not None:
@@ -478,13 +484,17 @@ def main():
             if stage1_b5 is not None and stage1_b5['used'] == 'power_law_fit':
                 b5_low = stage1_b5['price_band_low']
                 b5_high = stage1_b5['price_band_high']
+                b5_center = stage1_b5.get('projected_price')
             elif stage1_b5 is not None and math.isfinite(stage1_b5.get('projected_price', float('nan'))):
                 b5_low = b5_high = stage1_b5['projected_price']
+                b5_center = b5_low
             else:
                 # Fallback: use dd on C5
                 b5_low = b5_high = c5_top * (1.0 - dd_c5) if c5_top is not None and math.isfinite(dd_c5) else None
+                b5_center = b5_low
         except Exception:
             b5_low = b5_high = c5_top * (1.0 - dd_c5) if c5_top is not None and math.isfinite(dd_c5) else None
+            b5_center = b5_low
     else:
         b5_low = b5_high = None
         dd_c5 = None
@@ -497,10 +507,10 @@ def main():
         'outer_end': exit_outer_end.strftime('%Y-%m-%d'),
         'price_low': "" if b5_low is None else f"{b5_low:.0f}",
         'price_high': "" if b5_high is None else f"{b5_high:.0f}",
+        'price_center': "" if b5_center is None else f"{b5_center:.0f}",
         'anchor_event': "projected B5",
         'anchor_price': "" if b5_low is None or b5_high is None
-                          else f"{(b5_low + b5_high) / 2:.0f}",
-        'observed_c4_top_price': f"{observed_c4_top_price:.0f}",
+                          else f"{(b5_low + b5_high) / 2:.0f}",        'observed_c4_top_price': f"{observed_c4_top_price:.0f}",
         'observed_c4_top_date': observed_c4_top_date,
         'projected_b4_stage1': "" if b4 is None else f"{b4:.0f}",
         'projected_b4_via_drawdown':

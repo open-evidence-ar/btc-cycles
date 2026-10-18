@@ -109,7 +109,7 @@
           "label": "C5 top (distribution)",
           "outer_end": "2029-09-29",
           "outer_start": "2029-04-07",
-          "price_center": "$262,873",
+          "price_center": "$272,004",
           "price_high": "$338,883",
           "price_low": "$186,863",
           "role": "attention peak - top watch"
@@ -121,7 +121,7 @@
           "label": "B5 - post-C5-top bear bottom",
           "outer_end": "2030-11-09",
           "outer_start": "2030-04-06",
-          "price_center": "$69,103",
+          "price_center": "$68,276",
           "price_high": "$79,759",
           "price_low": "$58,447",
           "role": "next attention peak - re-entry watch"
@@ -622,9 +622,9 @@
           "label": "C5 distribution (top)",
           "outer_end": "2029-10-06",
           "outer_start": "2029-08-03",
-          "price_center": "$95,667",
+          "price_center": "$36,795",
           "price_high": "$190,053",
-          "price_low": "$1,281",
+          "price_low": "$16,649",
           "role": "attention peak - top watch"
         },
         {
@@ -634,9 +634,9 @@
           "label": "B5 - post-C5-top bear bottom",
           "outer_end": "2030-09-06",
           "outer_start": "2030-03-13",
-          "price_center": "$12,765",
+          "price_center": "$4,910",
           "price_high": "$25,359",
-          "price_low": "$170.92",
+          "price_low": "$2,221",
           "role": "next attention peak - re-entry watch"
         }
       ],
@@ -1203,7 +1203,7 @@
           "label": "C5 distribution (top)",
           "outer_end": "2028-12-31",
           "outer_start": "2028-11-01",
-          "price_center": "$765.48",
+          "price_center": "$693.89",
           "price_high": "$1,093",
           "price_low": "$437.51",
           "role": "attention peak - top watch"
@@ -1215,7 +1215,7 @@
           "label": "B5 - post-C5-top bear bottom",
           "outer_end": "2030-11-19",
           "outer_start": "2030-09-20",
-          "price_center": "$181.63",
+          "price_center": "$174.61",
           "price_high": "$259.46",
           "price_low": "$103.81",
           "role": "next attention peak - re-entry watch"
@@ -1784,7 +1784,7 @@
           "label": "C5 distribution (top)",
           "outer_end": "2029-09-27",
           "outer_start": "2028-12-30",
-          "price_center": "$423.05",
+          "price_center": "$383.49",
           "price_high": "$604.31",
           "price_low": "$241.79",
           "role": "attention peak - top watch"
@@ -1796,7 +1796,7 @@
           "label": "B5 - post-C5-top bear bottom",
           "outer_end": "2030-11-19",
           "outer_start": "2030-02-21",
-          "price_center": "$100.38",
+          "price_center": "$96.50",
           "price_high": "$143.39",
           "price_low": "$57.37",
           "role": "next attention peak - re-entry watch"
@@ -2365,7 +2365,7 @@
           "label": "C5 distribution (top)",
           "outer_end": "2030-05-30",
           "outer_start": "2028-10-18",
-          "price_center": "$116.48",
+          "price_center": "$105.58",
           "price_high": "$166.38",
           "price_low": "$66.57",
           "role": "attention peak - top watch"
@@ -2377,7 +2377,7 @@
           "label": "B5 - post-C5-top bear bottom",
           "outer_end": "2034-04-12",
           "outer_start": "2030-05-31",
-          "price_center": "$27.64",
+          "price_center": "$26.57",
           "price_high": "$39.48",
           "price_low": "$15.80",
           "role": "next attention peak - re-entry watch"
@@ -2938,7 +2938,7 @@
           "label": "C5 distribution (top)",
           "outer_end": "2029-07-02",
           "outer_start": "2029-03-05",
-          "price_center": "$5.74",
+          "price_center": "$5.21",
           "price_high": "$8.21",
           "price_low": "$3.28",
           "role": "attention peak - top watch"
@@ -2950,7 +2950,7 @@
           "label": "B5 - post-C5-top bear bottom",
           "outer_end": "2030-09-05",
           "outer_start": "2030-05-09",
-          "price_center": "$1.36",
+          "price_center": "$1.31",
           "price_high": "$1.95",
           "price_low": "$0.779",
           "role": "next attention peak - re-entry watch"
@@ -3521,7 +3521,7 @@
         "label": "C5 top (distribution)",
         "outer_end": "2029-09-29",
         "outer_start": "2029-04-07",
-        "price_center": "$262,873",
+        "price_center": "$272,004",
         "price_high": "$338,883",
         "price_low": "$186,863",
         "role": "attention peak - top watch"
@@ -3533,7 +3533,7 @@
         "label": "B5 - post-C5-top bear bottom",
         "outer_end": "2030-11-09",
         "outer_start": "2030-04-06",
-        "price_center": "$69,103",
+        "price_center": "$68,276",
         "price_high": "$79,759",
         "price_low": "$58,447",
         "role": "next attention peak - re-entry watch"

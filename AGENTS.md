@@ -118,7 +118,7 @@ Key data flow notes:
 | I-17 | Per-asset halving-cycle timing | `tests/test_alt_timing.py` | **done** |
 | I-18a | SMA valuation floors (decision overlay) | `tests/test_sma_floors.py` | **done** |
 | I-18b | Folklore bull-rhythm cross-check | `tests/test_forward_ranges.py::test_d_bottom_to_next_top_values` | **done** |
-| I-19 | Macro cycle-tied prediction | `tests/test_alt_timing.py::test_macro_assets_use_cycle_tied_projection` (+ 2 companions) | **done** |
+| I-19 | Macro own-shape 2-stage prediction (dates from each macro's own history since 2026-10-16; halving anchor withdrawn — see `scripts/check_cycle_tie.py`) | `tests/test_alt_timing.py::test_macro_assets_use_own_shape_projection` + `::test_macro_zone_dates_are_own_history` (+ 2 companions) | **done** |
 | I-19b | Gold (GC=F) in macro set + bull-support-band cross-check | `tests/test_alt_timing.py::test_gold_support_band_populated` (+ C8g presence/snapshot; `tests/test_macro_provenance.py` gold gates) | **done** |
 | I-21 | Curve-regime multiplier overlay on B4 bands (proper 10y-2y) | `tests/test_yield_provenance.py`, `tests/test_curve_state.py`, `tests/test_regime_mult.py`, `tests/test_regime_integration.py` | **done** |
 | I-22 | Provisional open-cycle bottoms (`bottom_status` + `bottom_tracking` banner) | `tests/test_bottom_status.py` | **done** |
@@ -226,5 +226,124 @@ I-03 date-gate relaxations (per §9.4; blocker notes in
   See `docs/blockers/I-19-macro-2stage.md`.
 - Helper: `two_stage_projection_with_observed_c4()` and
   `project_bear_bottom()` in `scripts/build_charts.py`.
+
+Naive-median multiplier envelope (outlier-trim, 2026-10-15):
+`naive_median_own_dd` takes its price band as the empirical min/max of the
+asset's own multiplier series. With n=3 that envelope is set entirely by the
+single most extreme historical cycle, and the result can be structurally
+impossible. ETH's own multipliers are `[190.508, 57.077, 4.391]` (C1-C3),
+median 57.08. Min/max gave a 43x band, which propagated to a C5 top band of
+**$1,281-$190,053 (148x)** whose **lower edge sat below the B4 band** -- a
+cycle top priced beneath the bear bottom that precedes it.
+
+With n>=3 the single most extreme observation (largest log-distance from the
+median) is now dropped **from the envelope only**; the centre estimate still
+uses every observation. ETH's band became `[57.08x, 190.51x]` -> **$16,649-$190,053
+(11.4x)** and the ordering violation cleared. Note the $190k ceiling survives:
+it comes from C1's 190x multiplier, which is still inside the envelope. The trim
+fixes the *shape*, not the small-sample problem -- n=3 multipliers cannot carry a
+credible band, and this is a display-and-structure fix, not a claim that ETH's
+C5 top is 11x uncertain.
+
+`tests/test_zones.py::test_c5_top_band_sits_above_b4_band` now asserts the one
+ordering that cannot legitimately overlap (`top.price_low >= bottom.price_high`),
+with `BAND_ORDER_EXCEPTIONS = {"dxy", "tlt"}` pinned for the two
+long-horizon-declining instruments whose fitted idx=5 drawdown lands at or below
+their current-cycle B4.
+
+Known dual-path asymmetry (ETH, open): ETH's *published* B4 band comes from the
+ratio-of-ratios path ($1,154-$2,092) while its *C5* band is derived inside
+`naive_median_own_dd` from a different B4 band ($292-$998). The two zones are
+therefore not mutually consistent, which is why ETH needs the trim to clear the
+band-ordering gate. Unfixed -- a fix means making C5 derive from the same B4 that
+gets published, which changes the stage-2 anchor for every naive-median asset.
+
+Chart captions are generated (2026-10-16): `scripts/build_chart_captions.py`
+reads the same zone CSVs the charts read and writes
+`_data/chart_captions.json`; markdown includes reference them as
+`caption=site.data.chart_captions.<ID>`. Captions used to be hand-written
+strings carrying hard-coded numbers and went stale silently on every refresh --
+C8's caption published a C5 top band of `$3,130-$9,652` while the zone CSV
+carried `$16,648.91-$190,052.96`, so the page contradicted the chart directly
+above it. The same transcription defect also lived in the chart *subtitles*
+(hard-coded prose; ETH, XRP, SOL and MSTR had all drifted from their actual
+`compression_fit_used` mode) -- those are now derived via `_mode_prose()`.
+`tests/test_chart_captions.py` forbids a `$` in any literal caption attribute,
+checks every referenced key exists, and verifies each generated band matches its
+zone row. Note a Jekyll include cannot take `{{ ... }}` inside a quoted
+parameter -- the rendered text is re-parsed as tag params and fails the build --
+so static caption prose lives in the generator, not the markdown.
+
+Zone rows publish a model centre (2026-10-16): `price_center` -- both
+`next_cycle_zones.csv` and `alt_next_cycle_zones.csv` now carry the
+projection's own point estimate for that zone (B4 / C5 / B5 centre). The CSVs
+published only `price_low`/`price_high`, so charts, figcaptions and the site
+banner each reconstructed a "centre" as `(price_low + price_high) / 2`. A band
+midpoint is not a projection: it is biased for geometric bands and diverges as
+a band widens. ETH's C5 top band spans $16,649-$190,053, whose midpoint
+($103,351) is 2.8x the model's actual $36,795; TLT's "59.66" -- cited in
+DESIGN.md as a projected centre -- was the midpoint of $9.29-$110.02 while the
+model projects $73.37. Both midpoints were published (chart marker, figcaption,
+banner) before the fix, and the regression was invisible: the CSV still parsed
+and every number was still a number.
+
+Consumers now prefer `price_center` -- chart markers (`build_charts.py`),
+generated captions (`build_chart_captions.py`), banner
+(`build_cycle_status.py::_zone_center`) -- with the midpoint kept only as a
+fallback for a row that has none. Gate:
+`tests/test_zones.py::test_every_zone_row_publishes_a_price_center` (no priced
+row without a centre; every centre inside its own band). Pinned exception
+`CENTER_OUTSIDE_BAND = {"gold"}`: gold's ratio-path centre ($5,052) sits ABOVE
+its own band ($3,241-$4,787) because the I-19b SMA/EMA support-band
+cross-check narrows the band but not the centre -- a real inconsistency in
+gold's B4 row, left visible rather than silently normalised. For DESIGN.md
+R-11: "B5 below B4" survives on real centres (dxy 81.68 vs 92.77; tlt 43.83 vs
+62.30); "TLT C5 below B4" is WITHDRAWN (73.37 vs 62.30).
+
+Macro zone timing uses each macro's own history (2026-10-16): the five macro
+windows (SPX/NDX/DXY/TLT/GOLD) were dated as `H5` + BTC's own
+`D_halving_to_top` / `D_top_to_bottom`, importing BTC's halving calendar into
+assets the data does not couple to. Measured evidence
+(`scripts/check_cycle_tie.py`): halving-to-local-top lag spread across cycles
+is 1.40y (SPX), 1.52y (NDX), 1.89y (DXY), 2.35y (GOLD), 2.57y (TLT) against
+~0.2y for BTC itself and 0.18-0.74y for ETH/MSTR/XRP/SOL. The old
+justification ("all 4 macro tops fall 0-3y after each halving") was a
+period-matching artifact -- halvings are ~4y apart and macro cycles are ~4y,
+so every macro top necessarily lands in some halving window.
+
+Macros now date themselves from their OWN observed durations anchored on their
+own last observed C4 top (`_macro_own_durations()` + `_own_history_window()` in
+`build_alt_next_cycle_zones.py`): B4 from own top->bear-bottom, accumulation
+ending where the C5 top window can first begin (its OUTER start, not its base
+start), C5 top from own bottom->top, B5 from own top->bottom. PRICE shape is
+unchanged -- still I-19 `macro_2_stage_own_shape` on the macro's own dd/mult
+series. Only the DATES stopped being BTC's. Consequence: TLT's B4 window moved
+to 2025-04-27 -> 2027-11-04 (own median top->bottom ~138d from its 2024-12-06
+top) -- already open, and a window TLT actually traded in -- versus the old
+halving-keyed 2027 dates. C8d is relabelled: title, subplot titles and footer
+no longer say "cycle-tied"; the footer states the premise is unsupported and
+carries the measured spreads.
+
+Halving-anchor premise audit (2026-10-16): `scripts/check_cycle_tie.py`
+measures, for every asset in `alt_cycle_metrics.csv`, the spread of
+halving->local-top lags across cycles, writes `_data/cycle_tie.json`, and runs
+as a DERIVED pipeline stage. Three classifications: TIED = {eth, mstr, xrp,
+sol} (stable lag; halving-anchored timing kept); COUPLED_LOOSE = {wgmi}
+(genuinely BTC-linked but the lag wanders at 1.61y spread, because miner tops
+are set by equity beta and mining economics too, so it keeps the halving anchor
+behind a wide honest window); NOT_COUPLED = {spx, ndx, dxy, tlt, gold}
+(own-history timing, per the note above).
+
+MARA and RIOT are PROXY DATA SOURCES, not projected assets: zero rows in
+`alt_next_cycle_zones.csv`, absent from `ASSET_DISPLAY`, present only to supply
+WGMI's pre-launch history (WGMI launched 2022; its C1-C3 IS MARA's). They are
+deliberately NOT classified: since WGMI's pre-launch history *is* MARA's, the
+two measure nearly the same lag spread (1.61y vs 1.52y) by construction, and
+classifying both would double-count one observation as two. Gates
+(`tests/test_cycle_tie.py`): the crypto alts must STAY tied (if that breaks,
+the framework's core premise is in question and the build says so); the
+NOT_COUPLED set is pinned so a newly-drifting macro fails the gate; proxies
+must never acquire zone rows or a classification; every measured asset must be
+classified exactly once.
 
 Update this table as increments complete.
