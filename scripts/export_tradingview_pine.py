@@ -1,7 +1,7 @@
 """Export next-cycle (C5) zone maps as a single TradingView Pine overlay.
 
 Reads the BTC zone map (data/processed/next_cycle_zones.csv) and the crypto
-alt zone maps (data/processed/alt_next_cycle_zones.csv, assets eth/xrp/sol)
+alt zone maps (data/processed/alt_next_cycle_zones.csv, assets eth/xrp/sol/mstr/wgmi)
 and emits one self-contained Pine Script:
 
   data/processed/tv_pine/crypto_zones.pine
@@ -102,8 +102,8 @@ def level_line(y: float, color: str) -> str:
     )
 
 
-def asset_block(asset: str, zones: dict) -> list[str]:
-    """Render one asset's draws guarded by its syminfo.basecurrency match."""
+def asset_block(asset: str, zones: dict, guard: str | None = None) -> list[str]:
+    """Render one asset's draws guarded by its syminfo match (basecurrency for crypto, ticker for equities)."""
     bear = zones["bottom"]
     dist = zones["top"]
     b5_ = zones["b5_bottom"]
@@ -179,7 +179,9 @@ def asset_block(asset: str, zones: dict) -> list[str]:
         )
         A("")
 
-    lines = ["    if syminfo.basecurrency == \"" + asset.upper() + "\""]
+    if guard is None:
+        guard = f'syminfo.basecurrency == "{asset.upper()}"'
+    lines = ["    if " + guard]
     lines += [("        " + ln if ln else "") for ln in body]
     return lines
 
@@ -188,8 +190,12 @@ def main() -> int:
     btc_df = pd.read_csv(INPUT_BTC)
     alts_df = pd.read_csv(INPUT_ALTS)
 
+    guards = {
+        "mstr": 'syminfo.ticker == "MSTR"',
+        "wgmi": 'syminfo.ticker == "WGMI"',
+    }
     blocks = []
-    for asset in ("btc", "eth", "xrp", "sol"):
+    for asset in ("btc", "eth", "xrp", "sol", "mstr", "wgmi"):
         df = btc_df if asset == "btc" else alts_df[alts_df["asset"] == asset]
         if df.empty:
             print(f"ERROR: no rows for {asset}", file=sys.stderr)
@@ -200,17 +206,17 @@ def main() -> int:
         if missing:
             print(f"ERROR {asset}: missing zones {missing}", file=sys.stderr)
             return 1
-        blocks.append(asset_block(asset, zones))
+        blocks.append(asset_block(asset, zones, guard=guards.get(asset)))
 
     header = [
-        "// TradingView Pine Script - Crypto next-cycle (C5) zones (BTC/ETH/XRP/SOL)",
+        "// TradingView Pine Script - Crypto next-cycle (C5) zones (BTC/ETH/XRP/SOL/MSTR/WGMI)",
         f"// Generated: {datetime.now().strftime('%Y-%m-%d')} by scripts/export_tradingview_pine.py",
         "// Sources: data/processed/next_cycle_zones.csv, data/processed/alt_next_cycle_zones.csv",
-        "// Open chart: BITSTAMP:BTCUSD / COINBASE:ETHUSD / BINANCE:XRPUSDT / BINANCE:SOLUSDT (1D)",
-        "// Zones auto-select via syminfo.basecurrency; non-model symbols draw nothing.",
+        "// Open chart: BITSTAMP:BTCUSD / COINBASE:ETHUSD / BINANCE:XRPUSDT / BINANCE:SOLUSDT / NASDAQ:MSTR / ARCA:WGMI (1D)",
+        "// Zones auto-select via syminfo.basecurrency (crypto) or syminfo.ticker (MSTR, WGMI); non-model symbols draw nothing.",
         "//@version=6",
         'indicator("Crypto Cycle Zones (model)", overlay=true, '
-        "max_boxes_count=100, max_labels_count=50, max_lines_count=50)",
+        "max_boxes_count=200, max_labels_count=100, max_lines_count=50)",
         "",
         "const string OPACITY_GROUP = \"Element opacity (Style tab not available for drawings)\"",
         "int boxesFillInput = input.int(95, \"Zone fill transparency (0 = solid)\", minval = 0, maxval = 100, group = OPACITY_GROUP)",
