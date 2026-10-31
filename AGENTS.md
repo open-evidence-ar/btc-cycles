@@ -67,6 +67,50 @@ build` then fails. The working command on this machine prefixes Ruby 3.3:
 $env:PATH = "C:\Ruby33-x64\bin;$env:PATH"; bundle exec jekyll build
 ```
 
+## Dependency pinning & supply-chain policy
+
+All runtime dependencies are **pinned to exact, audited versions** and verified
+with hashes. Do not loosen pins or install unpinned packages.
+
+- **Python:** `requirements.txt` pins direct deps with `==`; the full resolved
+  tree with SHA-256 hashes lives in `requirements.lock` (generated via
+  `pip-compile --generate-hashes`). CI installs with
+  `pip install --require-hashes -r requirements.lock`. Any new/changed
+  dependency must be added to `requirements.txt` and re-compiled into
+  `requirements.lock` (commit both).
+- **Ruby:** `Gemfile.lock` is committed (not gitignored) and carries per-gem
+  SHA-256 checksums. CI's `bundler-cache` consumes it. Platforms tracked:
+  `x64-mingw-ucrt` (Windows dev) and `x86_64-linux` (CI). Add a platform with
+  `bundle lock --add-platform <platform>` before committing if a new OS is used.
+- **GitHub Actions:** every `uses:` is pinned to a full commit SHA (with a
+  trailing version comment). Never reference a mutable tag (`@v4`) in a
+  workflow. Update SHAs only after reviewing the release diff.
+- **No unpinned/unhashed installs** in CI or docs. `pip install <pkg>` without
+  a version is forbidden in workflows.
+
+### Upgrade evaluation (do this before bumping any pin)
+
+Before raising a pin, run the full gate suite against the new version and check
+for the compromised-release signals that characterized recent incidents
+(`ultralytics`, `litellm`, `PyTorch Lightning`, `axios`→`plain-crypto-js`):
+
+1. **Provenance:** confirm the release was published by the project's normal
+   maintainer account / Trusted Publishing (OIDC) and that there is matching
+   source-repo activity and a publish attestation. Yanked/re-published
+   same-version wheels are a red flag.
+2. **Diff the package:** compare the new version's file list and metadata against
+   the previous one. Reject on any new transitive dependency, new `.pth`/`sitecustomize`
+   file, new install-time script, or new network call.
+3. **Scan:** run `pip-audit` / `bundler-audit` and an OSV/Socket-style behavioral
+   scan; confirm zero new vulnerabilities and zero new suspicious behaviors.
+4. **Test:** run `pytest -q tests/` and `bundle exec jekyll build` against the
+   bumped pin locally; all gates must stay green.
+5. **Document:** record the bump, the reviewed version, the reviewer, and the
+   date in the commit message / a blocker note under `docs/blockers/` if any
+   gate moved. Never silently refresh a pin.
+
+Until an upgrade is explicitly approved and documented, keep the existing pins.
+
 ## Quick refresh workflow
 
 One command rebuilds everything from fresh data:
