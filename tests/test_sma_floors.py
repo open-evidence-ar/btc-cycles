@@ -137,17 +137,18 @@ def test_memo_reference_position_below_50w_above_200w():
 
 
 def test_latest_position_reflects_fresh_data():
-    """Live position as of the latest weekly row (2026-09-21 week):
-    price is back above the 50w SMA (close $85,705 vs sma_50w $78,202;
-    the 50w reclaim transition fired on the 2026-09-14 week) and above
-    the 200w SMA ($65,842; reclaim fired 2026-08-17, state persists
-    above, so event_reclaim_200w is False on the latest row).
-    This is a moving state — update when data changes.
+    """Live position as of the latest weekly row (2026-11-09 week):
+    price has dropped back below the 50w SMA (close $74,652 vs sma_50w
+    $75,178; the 50w first-below transition fired on the 2026-11-02 week)
+    but remains above the 200w SMA ($68,024; the 200w reclaim fired on
+    2026-08-17 and state persists above, so event_reclaim_200w is False on
+    the latest row).
+    This is a moving state - update when data changes.
     See docs/blockers/I-18a-sma-position-rebreak.md."""
     df = pd.read_csv(TARGET_CSV, dtype=str)
     last = df.iloc[-1]
-    assert last["below_sma_50w"] == "False", (
-        f"Expected latest close back above sma_50w (2026-09-14 reclaim); "
+    assert last["below_sma_50w"] == "True", (
+        f"Expected latest close below sma_50w (2026-11-02 break); "
         f"got below_sma_50w={last['below_sma_50w']!r}"
     )
     assert last["below_sma_200w"] == "False", (
@@ -159,12 +160,12 @@ def test_latest_position_reflects_fresh_data():
         f"(transition fired 2026-08-17, state persists above); "
         f"got event_reclaim_200w={last['event_reclaim_200w']!r}"
     )
-    # The 50w reclaim transition must be recorded on the 2026-09-14 week.
-    reclaim_50_row = df[df["date"] == "2026-09-14"]
-    assert not reclaim_50_row.empty, "Expected 2026-09-14 weekly row to exist"
-    assert reclaim_50_row.iloc[0]["event_reclaim_50w"] == "True", (
-        f"Expected the 50w reclaim transition on the 2026-09-14 row; "
-        f"got {reclaim_50_row.iloc[0]['event_reclaim_50w']!r}"
+    # The 50w first-below transition must be recorded on the 2026-11-02 week.
+    break_50_row = df[df["date"] == "2026-11-02"]
+    assert not break_50_row.empty, "Expected 2026-11-02 weekly row to exist"
+    assert break_50_row.iloc[0]["event_first_below_50w"] == "True", (
+        f"Expected the 50w first-below transition on the 2026-11-02 row; "
+        f"got {break_50_row.iloc[0]['event_first_below_50w']!r}"
     )
     # The 200w reclaim transition itself must be recorded on the 2026-08-17 week.
     reclaim_row = df[df["date"] == "2026-08-17"]
@@ -173,7 +174,6 @@ def test_latest_position_reflects_fresh_data():
         f"Expected the 200w reclaim transition on the 2026-08-17 row; "
         f"got {reclaim_row.iloc[0]['event_reclaim_200w']!r}"
     )
-
 
 def test_known_historical_break_and_reclaim_events():
     """The C3-cycle (2022) history must include the break-then-false-reclaim
