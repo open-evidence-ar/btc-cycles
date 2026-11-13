@@ -1,5 +1,5 @@
 // TradingView Pine Script - Crypto next-cycle (C5) zones (BTC/ETH/XRP/SOL/MSTR/WGMI)
-// Generated: 2026-11-12 by scripts/export_tradingview_pine.py
+// Generated: 2026-11-13 by scripts/export_tradingview_pine.py
 // Sources: data/processed/next_cycle_zones.csv, data/processed/alt_next_cycle_zones.csv
 // Open chart: BITSTAMP:BTCUSD / COINBASE:ETHUSD / BINANCE:XRPUSDT / BINANCE:SOLUSDT / NASDAQ:MSTR / ARCA:WGMI (1D)
 // Zones auto-select via syminfo.basecurrency (crypto) or syminfo.ticker (MSTR, WGMI); non-model symbols draw nothing.
