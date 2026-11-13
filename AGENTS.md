@@ -138,6 +138,22 @@ Key data flow notes:
 - `build_next_cycle_zones.py` reads `forward_ranges.csv::D_bottom_to_next_top` for the folklore cross-check band on C6 (qualitative cross-reference, not independent validation — see DESIGN.md §9.4 R-4).
 - I-21 curve-regime chain: `fetch_yields.py` (raw y2/y10/y5/y13w/y30) → `build_curve_state.py` (`curve_state.csv`: 10y-2y slope, §4.1 classifier, 5-day persistence gate) → `build_regime_multipliers.py` (`regime_multipliers.csv` + `regime_anchor.csv`, per-asset mean-ratio, n<3 → 1.0 fallback) → `build_alt_next_cycle_zones.py` (additive regime-adjusted B4 columns, anchor-date regime, auto re-adjust on regime change). Regime adjustment is CANONICAL (R-9): computed multiplier != 1.0 overrides bear_bottom price_low/high in both zones CSVs (audit in b4_price_*_unconditional); fallback leaves corridors untouched. Charts render unadjusted-as-dotted-gray only when active; mechanism docs (C8h + `_includes/regime-sensitivity.html`, emitted by `build_regime_multipliers.py`) live in methodology.md appendix.
 
+## Market brief (scheduled task)
+
+The **market brief** is a Windows scheduled task that produces the spoken morning brief (and can be run on demand at any time as a market check).
+
+- **Task:** `\OpenCode\morning-assets` — **Monday–Friday at 10:50**, interactive-logon mode, `StartWhenAvailable=true`, allowed to run on battery. Query/change it with `schtasks /Query /TN "\OpenCode\morning-assets" /V /FO LIST` and `Get-ScheduledTask -TaskPath '\OpenCode\' -TaskName 'morning-assets'`.
+- **Runner:** `scripts/scheduled-jobs/morning-assets.ps1` (preflight + `opencode run`). **Prompt:** `scripts/scheduled-jobs/morning-assets.md` (the agent instructions). Both are machine-local and intentionally **git-excluded** (`.git/info/exclude`) — they carry absolute paths and the local voice setup.
+- **Run it any time (ad-hoc market check):**
+  ```powershell
+  powershell -NoProfile -ExecutionPolicy Bypass -File D:\trading\scripts\scheduled-jobs\morning-assets.ps1
+  ```
+  Same behaviour as the scheduled run: freshness check → refresh only if stale → pytest gates → commit/push only when the refresh path ran and something changed → written brief + spoken brief.
+- **Outputs:** `%USERPROFILE%\.config\opencode\logs\scheduled\morning-assets.log` (run log) and `%USERPROFILE%\.config\opencode\logs\scheduled\summaries\<date>.md` (brief + header: refresh result, tests result, commit sha or NOT PUSHED, voice spoken yes/no).
+- **Voicebox preflight (the part that breaks):** `voicebox.exe` is a Tauri app that **spawns `voicebox-server.exe` itself** (`--data-dir … --port 17493 --parent-pid …`). Never hand-start a second server while the app is alive — it races the app's sidecar for port 17493 and the loser dies mid-generation, which leaves OpenCode with a dead MCP endpoint (`ECONNREFUSED` → zero voicebox tools → no spoken brief). Correct order: kill orphaned sidecars → start exactly ONE `voicebox.exe` → poll `/health` (boot ≈ 20 s; allow 180 s) → prove the MCP handshake returns **4 tools** (`voicebox_speak`, `voicebox_transcribe`, `voicebox_list_captures`, `voicebox_list_profiles`) → warm up via `POST /generate` (no autoplay) → re-check `/health` → then start `opencode run`. The OpenCode MCP entry lives in `D:\opencode\config\opencode\opencode.json` (`mcp.servers.voicebox`, remote, `oauth: false`, header `X-Voicebox-Client-Id: claude-code`).
+- **Never hardcode the opencode CLI path:** the desktop app auto-updates and moves version directories (`...\ai.opencode.desktop\cli\<version>\opencode-cli.exe`). Resolve the newest one at runtime.
+- **If the voice is missing, say so:** the brief file must carry `voice spoken: no` rather than claiming an audio output that never happened.
+
 ## Increment status
 
 | ID | Title | Gate test | Status |
