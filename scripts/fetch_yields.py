@@ -30,7 +30,27 @@ proper 10y-2y slope; the thresholds are slope-agnostic (slope <= 0,
 
 from __future__ import annotations
 
+import os
+
+# Cap BLAS/OpenMP thread pools BEFORE numpy/pandas is imported. This script
+# runs as a child of refresh_all.py's parallel FETCH stage (up to 8 siblings,
+# one pandas+numpy runtime each), and each runtime's default per-thread BLAS
+# buffers are sized to the full CPU count - the peak-memory driver behind the
+# 2026-11-14 "OpenBLAS memory allocation failed" rc=1 in that stage. Two
+# threads is plenty for 9k-13k row parses; refresh_all.py sets the same cap
+# for the rest of the pipeline.
+for _var in (
+    "OPENBLAS_NUM_THREADS",
+    "OMP_NUM_THREADS",
+    "MKL_NUM_THREADS",
+    "NUMEXPR_NUM_THREADS",
+    "VECLIB_MAXIMUM_THREADS",
+    "BLIS_NUM_THREADS",
+):
+    os.environ.setdefault(_var, "2")
+
 import argparse
+import gc
 import hashlib
 import io
 import sys
@@ -170,6 +190,11 @@ def fetch_yahoo_yield(key: str, symbol: str) -> Path | None:
             print(f"         last error: {last_exc}")
         return None
 
+    # Release the response payload (Yahoo returns ~9k points per series,
+    # including quote arrays we never use) before the sibling fetches continue.
+    del data, r
+    gc.collect()
+
     RAW_DIR.mkdir(parents=True, exist_ok=True)
     retrieved_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     snapshot_date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
@@ -226,6 +251,10 @@ def fetch_eco3min_yield(key: str, url: str) -> Path | None:
     snapshot_date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     fname = f"{key}_eco3min_{snapshot_date}.csv"
     filepath = RAW_DIR / fname
+    # Drop the response bodies (the eco3min CSV is ~13k rows) before writing.
+    del r
+    text = None
+    gc.collect()
     df = df[["date", "close"]]
     df.to_csv(filepath, index=False)
     _append_manifest(
@@ -264,6 +293,9 @@ def main(argv: list[str] | None = None) -> int:
     print()
     for k in yahoo_keys:
         fetch_yahoo_yield(k, YAHOO_SERIES[k])
+        # Drop sibling fetch state between series; the fetch stage runs this
+        # script alongside several other pandas/numpy children.
+        gc.collect()
         time.sleep(1)
     for k in eco3min_keys:
         fetch_eco3min_yield(k, ECO3MIN_SERIES[k])

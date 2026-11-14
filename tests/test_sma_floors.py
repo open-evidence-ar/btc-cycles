@@ -138,26 +138,40 @@ def test_memo_reference_position_below_50w_above_200w():
 
 def test_latest_position_reflects_fresh_data():
     """Live position as of the latest weekly row (2026-11-09 week):
-    price has dropped back below the 50w SMA (close $74,652 vs sma_50w
-    $75,178; the 50w first-below transition fired on the 2026-11-02 week)
-    but remains above the 200w SMA ($68,024; the 200w reclaim fired on
-    2026-08-17 and state persists above, so event_reclaim_200w is False on
-    the latest row).
+    close $65,588.32 sits below BOTH the 50w SMA ($74,996.32) and the
+    200w SMA ($67,978.23). The 50w first-below transition fired on the
+    2026-11-02 week (close $74,742.52 vs sma_50w $75,492.20); the 200w
+    break is the FIRST close below the 200w since the 2026-08-17 reclaim
+    (close $77,716 vs sma_200w $64,286, state persists above thereafter).
+    Per the builder's 2-consecutive-close rule the 200w break EVENT flag
+    is recorded on the *next* weekly row (second consecutive close below),
+    so the latest row itself carries event_first_below_200w=False while
+    below_sma_200w is already True - assert the state, not the flag, here.
     This is a moving state - update when data changes.
     See docs/blockers/I-18a-sma-position-rebreak.md."""
     df = pd.read_csv(TARGET_CSV, dtype=str)
     last = df.iloc[-1]
+    assert last["date"] == "2026-11-09", (
+        f"Expected latest weekly row 2026-11-09; got {last['date']!r}"
+    )
+    assert float(last["close"]) < float(last["sma_50w"]), (
+        f"Latest close {last['close']} should sit below sma_50w {last['sma_50w']}"
+    )
     assert last["below_sma_50w"] == "True", (
         f"Expected latest close below sma_50w (2026-11-02 break); "
         f"got below_sma_50w={last['below_sma_50w']!r}"
     )
-    assert last["below_sma_200w"] == "False", (
-        f"Expected latest close above sma_200w (2026-08-17 reclaim persists); "
+    assert float(last["close"]) < float(last["sma_200w"]), (
+        f"Latest close {last['close']} should sit below sma_200w {last['sma_200w']}"
+    )
+    assert last["below_sma_200w"] == "True", (
+        f"Expected latest close below sma_200w (break landed on the "
+        f"2026-11-09 week, first close below since the 2026-08-17 reclaim); "
         f"got below_sma_200w={last['below_sma_200w']!r}"
     )
     assert last["event_reclaim_200w"] == "False", (
         f"Expected no new 200w reclaim transition on the latest row "
-        f"(transition fired 2026-08-17, state persists above); "
+        f"(the 2026-08-17 above-spell has ended, not re-started); "
         f"got event_reclaim_200w={last['event_reclaim_200w']!r}"
     )
     # The 50w first-below transition must be recorded on the 2026-11-02 week.

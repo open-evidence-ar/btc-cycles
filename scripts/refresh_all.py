@@ -18,12 +18,30 @@ Pipeline order (each stage depends on the previous one):
   6. CHARTS  — render all PNG charts (C1-C9, C-SMA)
 """
 
+import os
 import subprocess
 import sys
 import time
 import argparse
 from pathlib import Path
 from dataclasses import dataclass, field
+
+# Cap BLAS/OpenMP thread pools BEFORE any child process imports numpy.
+# The parallel FETCH stage spawns one pandas/numpy runtime per series (8 at
+# once); with default sizing each runtime builds per-thread BLAS working
+# buffers for the full CPU count, and under memory pressure OpenBLAS aborts
+# mid-fetch with "memory allocation failed" (observed 2026-11-14: stage 8,
+# US Treasury yield panel). Child processes inherit os.environ via
+# subprocess, so this cap covers every stage, not just this file.
+for _var in (
+    "OPENBLAS_NUM_THREADS",
+    "OMP_NUM_THREADS",
+    "MKL_NUM_THREADS",
+    "NUMEXPR_NUM_THREADS",
+    "VECLIB_MAXIMUM_THREADS",
+    "BLIS_NUM_THREADS",
+):
+    os.environ.setdefault(_var, "2")
 
 SCRIPTS_DIR = Path(__file__).resolve().parent
 ROOT = SCRIPTS_DIR.parent
