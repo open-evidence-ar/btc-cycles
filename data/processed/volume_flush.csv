@@ -2,14 +2,14 @@ asset,cycle,top_date,top_price,top_vol_spike,top_vol_lag_days,top_vol_status,bot
 btc,C1,2013-12-04,1132.01,True,1.0,confirmed,2015-01-14,,confirmed,flush,0.8655,2015-01-14,2,2,0.0,,closed,2026-11-16,
 btc,C2,2017-12-16,19187.78,True,6.0,confirmed,2018-12-15,,confirmed,mixed,0.5625,2018-11-20,2,2,25.0,,closed,2026-11-16,
 btc,C3,2021-11-08,67559.0,True,10.0,confirmed,2022-11-21,,confirmed,flush,0.9672,2022-11-11,3,3,10.0,,closed,2026-11-16,
-btc,C4,2025-10-06,124728.0,True,4.0,confirmed,2026-06-30,58526.17,open (low-to-date),,,2026-06-05,2,2,25.0,103.1,expired_clock,2026-11-16,pending
+btc,C4,2025-10-06,124728.0,True,4.0,confirmed,2026-06-30,58526.17,open (low-to-date),,,2026-06-05,2,2,25.0,100.0,expired_clock,2026-11-16,pending
 eth,C2,2018-01-13,1396.4200439453125,True,-3.0,confirmed,2018-12-14,,confirmed,mixed,0.582,2018-11-20,2,2,24.0,,closed,2026-10-21,
 eth,C3,2021-11-08,4812.08740234375,False,,not_confirmed,2022-06-18,,confirmed,flush,0.8667,2022-05-12,3,3,37.0,,closed,2026-10-21,
-eth,C4,2025-08-22,4831.3486328125,True,0.0,confirmed,2026-06-25,1564.816650390625,open (low-to-date),,,,0,0,,92.4,no_cluster_yet,2026-10-21,pending
+eth,C4,2025-08-22,4831.3486328125,True,0.0,confirmed,2026-06-25,1564.816650390625,open (low-to-date),,,,0,0,,89.9,no_cluster_yet,2026-10-21,pending
 xrp,C3,2021-04-14,1.8392360210418701,True,0.0,confirmed,2022-06-18,,confirmed,apathy,0.0502,2022-05-12,2,2,37.0,,closed,2026-09-16,
-xrp,C4,2025-07-21,3.55576491355896,True,-3.0,confirmed,2026-11-14,0.9130309820175171,open (low-to-date),,,2025-07-24,2,2,478.0,77.0,expired_clock,2026-09-16,pending
+xrp,C4,2025-07-21,3.55576491355896,True,-3.0,confirmed,2026-11-14,0.9130309820175171,open (low-to-date),,,2025-07-24,2,2,478.0,75.2,expired_clock,2026-09-16,pending
 sol,C3,2021-11-06,258.934326171875,False,,not_confirmed,2022-12-29,,confirmed,apathy,0.0468,2022-11-09,3,3,50.0,,closed,2027-03-29,
-sol,C4,2025-01-18,261.8697509765625,True,0.0,confirmed,2026-06-06,62.18980407714844,open (low-to-date),,,2025-07-24,2,2,317.0,89.9,expired_clock,2027-03-29,pending
+sol,C4,2025-01-18,261.8697509765625,True,0.0,confirmed,2026-06-06,62.18980407714844,open (low-to-date),,,2025-07-24,2,2,317.0,87.4,expired_clock,2027-03-29,pending
 mstr,C3,2021-02-09,127.29399871826172,False,,not_confirmed,2022-12-29,,confirmed,apathy,0.2478,2022-11-09,2,2,50.0,,closed,2027-03-29,
 mstr,C4,2024-11-20,473.8299865722656,True,0.0,confirmed,2026-06-26,82.30999755859375,open (low-to-date),,,2026-06-26,3,3,0.0,82.1,expired_clock,2027-03-29,pending
 wgmi,C1,2014-12-23,154.72000122070312,False,,not_confirmed,2015-11-13,,confirmed,,,,0,0,,,closed,2028-01-24,
