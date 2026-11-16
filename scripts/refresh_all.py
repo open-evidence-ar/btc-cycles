@@ -200,6 +200,11 @@ def build_pipeline(skip_fetch: bool = False) -> list[Stage]:
                 label="Alt next-cycle zones (I-21.5 regime-adjusted B4)",
             ),
             Step(
+                name="volume_flush",
+                cmd=[sys.executable, str(SCRIPTS_DIR / "build_volume_flush.py")],
+                label="Volume top-confirmation + bottom flavor (I-23)",
+            ),
+            Step(
                 name="chart_captions",
                 cmd=[sys.executable, str(SCRIPTS_DIR / "build_chart_captions.py")],
                 label="Chart captions (data-derived, _data/chart_captions.json)",

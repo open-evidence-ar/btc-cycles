@@ -1,0 +1,118 @@
+{
+  "generated": "2026-11-16",
+  "top_confirmation": {
+    "closed_tops": 17,
+    "confirmed": 11,
+    "note": "spike (z>=3 or top-2%-of-cycle) within +/-14d of top"
+  },
+  "bottom_flavor_counts": {
+    "NaN": 8,
+    "apathy": 4,
+    "flush": 3,
+    "mixed": 2
+  },
+  "open_cycles": [
+    {
+      "asset": "btc",
+      "cycle": "C4",
+      "low_to_date": "2026-06-30",
+      "red_cluster_end": "2026-06-05",
+      "red_cluster_days": 2,
+      "red_cluster_down": 2,
+      "lag_days": 25,
+      "volume_regime_pct": 103.1,
+      "flush_state": "expired_clock",
+      "b4_outer_end": "2026-11-16",
+      "c5_top_window": [
+        "2029-04-07",
+        "2029-09-29"
+      ],
+      "c5_top_window_status": "pending"
+    },
+    {
+      "asset": "eth",
+      "cycle": "C4",
+      "low_to_date": "2026-06-25",
+      "red_cluster_end": NaN,
+      "red_cluster_days": 0,
+      "red_cluster_down": 0,
+      "lag_days": null,
+      "volume_regime_pct": 92.4,
+      "flush_state": "no_cluster_yet",
+      "b4_outer_end": "2026-10-21",
+      "c5_top_window": [
+        "2029-08-03",
+        "2029-10-06"
+      ],
+      "c5_top_window_status": "pending"
+    },
+    {
+      "asset": "xrp",
+      "cycle": "C4",
+      "low_to_date": "2026-11-14",
+      "red_cluster_end": "2025-07-24",
+      "red_cluster_days": 2,
+      "red_cluster_down": 2,
+      "lag_days": 478,
+      "volume_regime_pct": 77.0,
+      "flush_state": "expired_clock",
+      "b4_outer_end": "2026-09-16",
+      "c5_top_window": [
+        "2029-03-05",
+        "2029-07-02"
+      ],
+      "c5_top_window_status": "pending"
+    },
+    {
+      "asset": "sol",
+      "cycle": "C4",
+      "low_to_date": "2026-06-06",
+      "red_cluster_end": "2025-07-24",
+      "red_cluster_days": 2,
+      "red_cluster_down": 2,
+      "lag_days": 317,
+      "volume_regime_pct": 89.9,
+      "flush_state": "expired_clock",
+      "b4_outer_end": "2027-03-29",
+      "c5_top_window": [
+        "2028-12-30",
+        "2029-09-27"
+      ],
+      "c5_top_window_status": "pending"
+    },
+    {
+      "asset": "mstr",
+      "cycle": "C4",
+      "low_to_date": "2026-06-26",
+      "red_cluster_end": "2026-06-26",
+      "red_cluster_days": 3,
+      "red_cluster_down": 3,
+      "lag_days": 0,
+      "volume_regime_pct": 82.1,
+      "flush_state": "expired_clock",
+      "b4_outer_end": "2027-03-29",
+      "c5_top_window": [
+        "2028-11-01",
+        "2028-12-31"
+      ],
+      "c5_top_window_status": "pending"
+    },
+    {
+      "asset": "wgmi",
+      "cycle": "C4",
+      "low_to_date": "2026-11-05",
+      "red_cluster_end": NaN,
+      "red_cluster_days": 0,
+      "red_cluster_down": 0,
+      "lag_days": null,
+      "volume_regime_pct": 133.1,
+      "flush_state": "no_cluster_yet",
+      "b4_outer_end": "2028-01-24",
+      "c5_top_window": [
+        "2028-10-18",
+        "2030-05-30"
+      ],
+      "c5_top_window_status": "pending"
+    }
+  ]
+}

@@ -1,5 +1,5 @@
 // TradingView Pine Script - Crypto next-cycle (C5) zones (BTC/ETH/XRP/SOL/MSTR/WGMI)
-// Generated: 2026-11-15 by scripts/export_tradingview_pine.py
+// Generated: 2026-11-16 by scripts/export_tradingview_pine.py
 // Sources: data/processed/next_cycle_zones.csv, data/processed/alt_next_cycle_zones.csv
 // Open chart: BITSTAMP:BTCUSD / COINBASE:ETHUSD / BINANCE:XRPUSDT / BINANCE:SOLUSDT / NASDAQ:MSTR / ARCA:WGMI (1D)
 // Zones auto-select via syminfo.basecurrency (crypto) or syminfo.ticker (MSTR, WGMI); non-model symbols draw nothing.
@@ -68,6 +68,40 @@ float volLo  = volOk ? math.min(volO, volC) : na
 color volCol = volUp ? volUpCol : volDnCol
 
 plotcandle(volO, volHi, volLo, volC, "Volume", color=volCol, wickcolor=color.new(color.gray, 100))
+
+// ---- Relevant volume spike (daily detector; forced daily even on weekly charts) ----
+//     Live marker: a 3-sigma volume day while price is above its 200-day SMA.
+//     NOT a confirmed top - treat as top-risk only (false positives happen).
+//     All math runs on the DAILY series, so weekly charts behave identically.
+const string VOLTOP_GROUP = "Relevant volume spike (top risk)"
+bool   showVolTop = input.bool(true,  "Show relevant volume spike marker", group=VOLTOP_GROUP)
+float  volTopThr  = input.float(3.0,  "Spike threshold (z vs 90d baseline)", minval=1.0, step=0.5, group=VOLTOP_GROUP)
+int    volTopWinDays   = input.int(15, "Top-risk window (days)", minval=1, group=VOLTOP_GROUP)
+bool   volTopTrendFilter = input.bool(true, "Require price above 200-day SMA", group=VOLTOP_GROUP)
+int    volTopCooldownDays = input.int(14, "Cooldown (days) after a marker", minval=1, group=VOLTOP_GROUP)
+color  volTopCol  = input.color(color.new(color.red, 0), "Marker color", group=VOLTOP_GROUP)
+
+f_volTopDailyOK() =>
+    z = ta.stdev(volume, 90) != 0 ? (volume - ta.sma(volume, 90)[1]) / ta.stdev(volume, 90)[1] : na
+    trendOk = not volTopTrendFilter or close > ta.sma(close, 200)
+    not na(z) and z >= volTopThr and trendOk
+
+volTopDailyArr = request.security_lower_tf(syminfo.tickerid, "D", f_volTopDailyOK())
+bool volTopQual = timeframe.isdaily ? f_volTopDailyOK() : (array.size(volTopDailyArr) > 0 and array.includes(volTopDailyArr, true))
+
+float volTopBarDays = math.max(1.0, timeframe.in_seconds(timeframe.period) / 86400.0)
+int   volTopCoolBars = math.max(1, int(math.ceil(volTopCooldownDays / volTopBarDays)))
+int   volTopWinBars  = math.max(1, int(math.ceil(volTopWinDays / volTopBarDays)))
+var int volTopLastBar = na
+bool volTopCoolOk = na(volTopLastBar) or (bar_index - volTopLastBar) > volTopCoolBars
+bool volTopFiltered = volTopQual and volTopCoolOk
+if volTopFiltered
+    volTopLastBar := bar_index
+
+bool volTopRisk = volTopFiltered or (not na(ta.barssince(volTopFiltered)) and ta.barssince(volTopFiltered) <= volTopWinBars)
+bgcolor(showVolTop and volTopRisk ? color.new(volTopCol, 92) : na, title="Top-risk window (relevant volume spike)")
+plotshape(showVolTop and volTopFiltered, title="Relevant volume spike - possible top +/-15d (unconfirmed)", style=shape.triangledown, location=location.abovebar, color=volTopCol, text="RVS", size=size.small)
+alertcondition(showVolTop and volTopFiltered, title="Relevant volume spike - possible top", message="Relevant volume spike fired - possible top within +/-15 days (unconfirmed, false positives common)")
 
 const string OPACITY_GROUP = "Element opacity (Style tab not available for drawings)"
 int boxesFillInput = input.int(95, "Zone fill transparency (0 = solid)", minval = 0, maxval = 100, group = OPACITY_GROUP)

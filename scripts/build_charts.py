@@ -1466,6 +1466,36 @@ def build_c6():
         borderpad=3,
     )
 
+    # --- Volume-confirmation marker on the observed C4 top (I-23) ---
+    try:
+        _vf = pd.read_csv(Path(__file__).resolve().parent.parent / 'data' / 'processed' / 'volume_flush.csv')
+        _row = _vf[(_vf['asset'] == 'btc') & (_vf['cycle'] == 'C4')]
+        if not _row.empty:
+            _spike = bool(_row.iloc[0]['top_vol_spike'])
+            _lag = _row.iloc[0]['top_vol_lag_days']
+            _lag_txt = (f"{int(_lag):+d}d" if pd.notna(_lag) else "")
+            _col = '#22c55e' if _spike else '#94a3b8'
+            _txt = ('VC confirmed' if _spike else 'no vol spike') + (f" ({_lag_txt})" if _lag_txt else "")
+            fig.add_trace(go.Scatter(
+                x=[observed_c4_top_date], y=[observed_c4_top_price * 1.12],
+                mode='markers+text', name='Volume confirmation (VC)',
+                marker=dict(symbol='circle', size=6, color=_col,
+                            line=dict(color='white', width=1)),
+                text=['\u2581\u2582\u2583'], textposition='top center',
+                textfont=dict(size=14, color=_col),
+                hovertemplate='Volume confirmation (VC): ' + _txt +
+                              '<br>VC = volume confirmation (z>=3 spike w/in +/-14d of top)<extra></extra>',
+                showlegend=True,
+            ))
+            fig.add_annotation(
+                x=observed_c4_top_date, y=observed_c4_top_price * 1.22,
+                xref='x', yref='y', text='VC = volume confirmation (z>=3 spike w/in +/-14d of top)',
+                showarrow=False, font=dict(size=8, color='#94a3b8'),
+                bgcolor='rgba(10,14,26,0.6)', borderpad=2,
+            )
+    except Exception:
+        pass
+
         # --- Projected B4 date (kept for folklore band + event lines + cross-ref note;
     #     the bear_bottom band above now carries the B4 marker + annotation). ---
     b4_zone = None
@@ -2215,6 +2245,32 @@ def _build_alt_chart(asset, filename, title, extra_note=''):
                 showarrow=True, arrowhead=2, arrowcolor=color,
                 ax=40, ay=-20, font=dict(size=9, color=color),
                 bgcolor='rgba(10,14,26,0.85)', borderpad=2)
+
+            # --- Volume-confirmation marker on the observed C4 top (I-23) ---
+            try:
+                _vf = pd.read_csv(Path(__file__).resolve().parent.parent / 'data' / 'processed' / 'volume_flush.csv')
+                _vrow = _vf[(_vf['asset'] == asset) & (_vf['cycle'] == 'C4')]
+                if not _vrow.empty and c4_top_date is not None:
+                    _spike = bool(_vrow.iloc[0]['top_vol_spike'])
+                    _lag = _vrow.iloc[0]['top_vol_lag_days']
+                    _lag_txt = (f"{int(_lag):+d}d" if pd.notna(_lag) else "")
+                    _col = '#22c55e' if _spike else '#94a3b8'
+                    _txt = ('VC confirmed' if _spike else 'no vol spike') + (f" ({_lag_txt})" if _lag_txt else "")
+                    fig.add_trace(go.Scatter(x=[c4_top_date], y=[c4_top_price * 1.12],
+                        mode='markers+text',
+                        marker=dict(symbol='circle', size=5, color=_col,
+                                    line=dict(color='white', width=1)),
+                        text=['\u2581\u2582\u2583'], textposition='top center',
+                        textfont=dict(size=12, color=_col),
+                        hovertemplate='Volume confirmation (VC): ' + _txt +
+                                      '<br>VC = volume confirmation (z>=3 spike w/in +/-14d of top)<extra></extra>',
+                        showlegend=False))
+                    fig.add_annotation(x=c4_top_date, y=c4_top_price * 1.22,
+                        xref='x', yref='y', text='VC = volume confirmation (z>=3 spike w/in +/-14d)',
+                        showarrow=False, font=dict(size=7, color='#94a3b8'),
+                        bgcolor='rgba(10,14,26,0.6)', borderpad=2)
+            except Exception:
+                pass
 
     # Observed bear bottom (B4) — when the cycle metrics already detected the
     # post-C4-top bear bottom, plot it as a distinct green diamond so the chart

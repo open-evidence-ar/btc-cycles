@@ -184,6 +184,7 @@ The **market brief** is a Windows scheduled task that produces the spoken mornin
 | I-22 | Provisional open-cycle bottoms (`bottom_status` + `bottom_tracking` banner) | `tests/test_bottom_status.py` | **done** |
 | I-22a | Zone-band non-overlap clamp (R-5 enforcement) | `tests/test_zones.py::test_zones_dont_overlap_base_bands`, `test_zones.py::test_zone_chronological_order`, `tests/test_alt_timing.py::test_alt_next_cycle_zones_no_overlap`, `::test_alt_next_cycle_zones_chronological_order` | **done** |
 | I-22b | Zone keys made direction-neutral (`exit`→`b5_bottom`, `distribution`→`top`, `bear_bottom`→`bottom`) | `tests/test_zones.py` (vocab + shape gates) | **done** |
+| I-23 | Volume confirmation + bottom volume-flavor bookkeeping | `tests/test_volume_flush.py` | **done** |
 
 Zone non-overlap note (I-22a): R-5 promises the four zones are mutually
 non-overlapping, and they were not. The exit band is built independently as

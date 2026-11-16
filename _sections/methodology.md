@@ -291,6 +291,41 @@ This appendix carries the mechanism detail so the timing pages stay clean.
 
 {% include chart.html id="C8h" height="760px" caption="C8h (appendix) — US yield-curve regime dashboard: 10y−2y slope with classifier trigger levels, raw daily classification, gated regime ribbon (5-day persistence) with every asset's drawdown-onset markers and the current-regime anchor." %}
 
+### Appendix — Volume confirmation overlay (I-23)
+
+Two signals, both **confirmation-shaped** — they never move a date or a price,
+they only upgrade or downgrade confidence in a number the model already
+produced.  Full evidence memo: `docs/volume_spikes.md`.
+
+**1. Volume confirmation (the real pattern).**  A volume climax — a day whose
+volume is at least 3 standard deviations above its trailing 90-day baseline,
+or one of the largest ~2% of volume days in the cycle — landing within
+±14 days of a candidate top.  Evidence: ~14 tops across 10 independent
+detectors, p 0.000-0.02 vs a random-day null; the spike arrives *with* the
+top (lag median 0 days; leads only on BTC).  Surfaced as `top_vol_spike` /
+`top_vol_lag_days` in `data/processed/volume_flush.csv`, a marker on the
+TradingView overlay ("possible top ±15d", daily detector forced under weekly
+charts), and a line on the status banner.
+
+**2. Bottom volume flavor (bookkeeping only).**  Each closed bottom is
+classified by where its 14-day volume sits inside its own bear leg:
+*flush* (bottom in the loudest quarter — the capitulation climax was the low),
+*apathy* (quietest quarter — the low arrived after volume dried up), or
+*mixed*.  Open C4 legs additionally record their last red 2-day cluster
+(z >= 2, >=2 red days, gap <= 2 days), its direction mix, and the lag to the
+low-to-date, plus a convergence state against the model's own B4 outer
+window.  No timing claims and no window widening are made: the closed-leg
+"+0..+50 days" envelope is partly by construction (the last cluster is
+defined as the last) and currently fails on BTC C4, so the pattern stays a
+marker, not a predictor.  The direction mix is published on every cluster so
+a buy-side burst (such as Aug-2026) can never again be silently counted as a
+capitulation flush.
+
+Demotion rule (pre-registered): if C4 closes outside the red-cluster window
+for at least half of the six crypto assets, the bottom-flush bookkeeping is
+withdrawn with a blocker note.  MSTR's B4 price band is breached by ~20%
+independently of this overlay and is tracked separately.
+
 ---
 *Data snapshots: `data/raw/manifest.txt` · Cycle metrics: `data/processed/btc_cycle_metrics.csv`*
 *Canonical event table `data/events.csv` SHA-256: `be24b84859d71ea8598c6a0fc16ebf2262291cd20b87e691090243e717e6289a`*
