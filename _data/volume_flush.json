@@ -1,5 +1,5 @@
 {
-  "generated": "2026-11-23",
+  "generated": "2026-11-25",
   "top_confirmation": {
     "closed_tops": 17,
     "confirmed": 11,
@@ -15,12 +15,12 @@
     {
       "asset": "btc",
       "cycle": "C4",
-      "low_to_date": "2026-06-30",
+      "low_to_date": "2026-11-25",
       "red_cluster_end": "2026-06-05",
       "red_cluster_days": 2,
       "red_cluster_down": 2,
-      "lag_days": 25,
-      "volume_regime_pct": 104.5,
+      "lag_days": 173,
+      "volume_regime_pct": 98.8,
       "flush_state": "expired_clock",
       "b4_outer_end": "2026-11-16",
       "c5_top_window": [
@@ -37,7 +37,7 @@
       "red_cluster_days": 0,
       "red_cluster_down": 0,
       "lag_days": null,
-      "volume_regime_pct": 105.5,
+      "volume_regime_pct": 106.9,
       "flush_state": "no_cluster_yet",
       "b4_outer_end": "2026-10-21",
       "c5_top_window": [
@@ -49,12 +49,12 @@
     {
       "asset": "xrp",
       "cycle": "C4",
-      "low_to_date": "2026-11-20",
+      "low_to_date": "2026-11-25",
       "red_cluster_end": "2025-07-24",
       "red_cluster_days": 2,
       "red_cluster_down": 2,
-      "lag_days": 484,
-      "volume_regime_pct": 86.0,
+      "lag_days": 489,
+      "volume_regime_pct": 85.5,
       "flush_state": "expired_clock",
       "b4_outer_end": "2026-09-16",
       "c5_top_window": [
@@ -71,7 +71,7 @@
       "red_cluster_days": 2,
       "red_cluster_down": 2,
       "lag_days": 317,
-      "volume_regime_pct": 99.3,
+      "volume_regime_pct": 102.2,
       "flush_state": "expired_clock",
       "b4_outer_end": "2027-03-29",
       "c5_top_window": [
@@ -83,12 +83,12 @@
     {
       "asset": "mstr",
       "cycle": "C4",
-      "low_to_date": "2026-11-20",
+      "low_to_date": "2026-11-24",
       "red_cluster_end": "2026-06-26",
       "red_cluster_days": 3,
       "red_cluster_down": 3,
-      "lag_days": 147,
-      "volume_regime_pct": 96.5,
+      "lag_days": 151,
+      "volume_regime_pct": 101.1,
       "flush_state": "expired_clock",
       "b4_outer_end": "2027-03-29",
       "c5_top_window": [
@@ -105,7 +105,7 @@
       "red_cluster_days": 0,
       "red_cluster_down": 0,
       "lag_days": null,
-      "volume_regime_pct": 126.2,
+      "volume_regime_pct": 130.7,
       "flush_state": "no_cluster_yet",
       "b4_outer_end": "2028-01-24",
       "c5_top_window": [
