@@ -1,5 +1,5 @@
 {
-  "generated": "2026-11-26",
+  "generated": "2026-11-27",
   "top_confirmation": {
     "closed_tops": 17,
     "confirmed": 11,
@@ -20,7 +20,7 @@
       "red_cluster_days": 2,
       "red_cluster_down": 2,
       "lag_days": 25,
-      "volume_regime_pct": 98.5,
+      "volume_regime_pct": 94.0,
       "flush_state": "expired_clock",
       "b4_outer_end": "2026-11-16",
       "c5_top_window": [
@@ -37,7 +37,7 @@
       "red_cluster_days": 0,
       "red_cluster_down": 0,
       "lag_days": null,
-      "volume_regime_pct": 108.0,
+      "volume_regime_pct": 104.6,
       "flush_state": "no_cluster_yet",
       "b4_outer_end": "2026-10-21",
       "c5_top_window": [
@@ -54,7 +54,7 @@
       "red_cluster_days": 2,
       "red_cluster_down": 2,
       "lag_days": 484,
-      "volume_regime_pct": 86.8,
+      "volume_regime_pct": 84.6,
       "flush_state": "expired_clock",
       "b4_outer_end": "2026-09-16",
       "c5_top_window": [
@@ -71,7 +71,7 @@
       "red_cluster_days": 2,
       "red_cluster_down": 2,
       "lag_days": 317,
-      "volume_regime_pct": 104.3,
+      "volume_regime_pct": 100.5,
       "flush_state": "expired_clock",
       "b4_outer_end": "2027-03-29",
       "c5_top_window": [
@@ -88,7 +88,7 @@
       "red_cluster_days": 3,
       "red_cluster_down": 3,
       "lag_days": 151,
-      "volume_regime_pct": 101.9,
+      "volume_regime_pct": 100.8,
       "flush_state": "expired_clock",
       "b4_outer_end": "2027-03-29",
       "c5_top_window": [
@@ -105,7 +105,7 @@
       "red_cluster_days": 0,
       "red_cluster_down": 0,
       "lag_days": null,
-      "volume_regime_pct": 126.7,
+      "volume_regime_pct": 121.6,
       "flush_state": "no_cluster_yet",
       "b4_outer_end": "2028-01-24",
       "c5_top_window": [
